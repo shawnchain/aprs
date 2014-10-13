@@ -49,10 +49,10 @@ void hw_afsk_dacInit(int ch, struct Afsk *_ctx);
 
 /* ------------------------------------------------------------------------
  *  Configurations:
- *    D4-D7 --> Data OUT
- *    D11    --> PTT OUT
- *    D12    --> TX(RED) LED OUT
- *    D13    --> RX(GRN) LED OUT
+ *    D4-D7  -->  Data OUT
+ *    D11    -->  PTT OUT
+ *    D12    -->  TX(RED) LED OUT
+ *    D13    -->  RX(GRN) LED OUT
  * ------------------------------------------------------------------------
  */
 
@@ -83,22 +83,19 @@ void hw_afsk_dacInit(int ch, struct Afsk *_ctx);
  * to configure the pins as output pins, and the _ON()
  * and _OFF() functions writes to the PORT registers
  * to turn the pins on or off.
+ *
+ * Use D9 for TX, D10 for RX, where the register is:
+ * D8:  PORTB |= BV(0)  PTT
+ * D9:  PORTB |= BV(1)  TX
+ * D10: PORTB |= BV(2)  RX
  */
-#define AFSK_LED_INIT() do { DDRB |= BV(4)|BV(5);/*PIN12, PIN13*/ } while (0)
-#define AFSK_LED_TX_ON()   do { PORTB |= BV(4); } while (0)
-#define AFSK_LED_TX_OFF()  do { PORTB &= ~BV(4); } while (0)
+// Use PIN9 for TX, D10 for RX, the corresponding register:
+#define AFSK_LED_INIT() do { DDRB |= BV(1)|BV(2);/*PIN9, PIN10*/ } while (0)
+#define AFSK_LED_TX_ON()   do { PORTB |= BV(1); } while (0) // PIN9
+#define AFSK_LED_TX_OFF()  do { PORTB &= ~BV(1); } while (0)
+#define AFSK_LED_RX_ON()   do { PORTB |= BV(2); } while (0) // PIN10
+#define AFSK_LED_RX_OFF()  do { PORTB &= ~BV(2); } while (0)
 
-#define AFSK_LED_RX_ON()   do { PORTB |= BV(5); } while (0)
-#define AFSK_LED_RX_OFF()  do { PORTB &= ~BV(5); } while (0)
-
-
-//#define LED_TX_INIT() //do { DDRB |= BV(1);/*PIN9*/ } while (0)
-//#define LED_TX_ON()   AFSK_LED_ON()//do { PORTB |= BV(1); } while (0)
-//#define LED_TX_OFF()  AFSK_LED_OFF()//do { PORTB &= ~BV(1); } while (0)
-//
-//#define LED_RX_INIT() //do { DDRB |= BV(2);/*PIN10*/ } while (0)
-//#define LED_RX_ON()   AFSK_LED_ON() //do { PORTB |= BV(2); } while (0)
-//#define LED_RX_OFF()  AFSK_LED_OFF()//do { PORTB &= ~BV(2); } while (0)
 
 /**
  * Initialize the specified channel of the DAC for AFSK needs.
@@ -110,18 +107,18 @@ void hw_afsk_dacInit(int ch, struct Afsk *_ctx);
  * \param ctx AFSK context (\see Afsk).  This parameter must be saved and
  *             passed back to afsk_dac_isr() for every convertion.
  */
-#define AFSK_DAC_INIT(ch, ctx)   do { (void)ch, (void)ctx; DDRD |= 0xF0/*D4-D7 as data*/; DDRB |= BV(3)/*D11 as PTT*/; } while (0)
+#define AFSK_DAC_INIT(ch, ctx)   do { (void)ch, (void)ctx; DDRD |= 0xF0/*D4-D7 as data*/; DDRB |= BV(0)/*D8 as PTT*/; } while (0)
 
 /**
  * Start DAC convertions on channel \a ch.
  * \param ch DAC channel.
  */
-#define AFSK_DAC_IRQ_START(ch)   do { (void)ch; extern bool hw_afsk_dac_isr; PORTB |= BV(3)/*PTT on*/; hw_afsk_dac_isr = true; } while (0)
+#define AFSK_DAC_IRQ_START(ch)   do { (void)ch; extern bool hw_afsk_dac_isr; PORTB |= BV(0)/*PTT on*/; hw_afsk_dac_isr = true; } while (0)
 
 /**
  * Stop DAC convertions on channel \a ch.
  * \param ch DAC channel.
  */
-#define AFSK_DAC_IRQ_STOP(ch)    do { (void)ch; extern bool hw_afsk_dac_isr; PORTB &= ~BV(3)/*PTT off*/; hw_afsk_dac_isr = false; } while (0)
+#define AFSK_DAC_IRQ_STOP(ch)    do { (void)ch; extern bool hw_afsk_dac_isr; PORTB &= ~BV(0)/*PTT off*/; hw_afsk_dac_isr = false; } while (0)
 
 #endif /* HW_AFSK_H */
