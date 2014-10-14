@@ -12,6 +12,8 @@
 #include "config.h"
 #include <cfg/cfg_afsk.h>
 
+#include <lcd/hw_lcd_4884.h>
+
 static bool PRINT_SRC = true;
 static bool PRINT_DST = true;
 static bool PRINT_PATH = true;
@@ -151,6 +153,14 @@ void ss_init(AX25Ctx *ax25, Serial *ser) {
         kprintf("---------------\n");
     }
 	*/
+
+#define HAS_LCD 1
+#if defined(HAS_LCD) && HAS_LCD == 1
+	lcd_4884_init();
+	_delay_ms(100);
+	lcd_4884_writeString("BertAPRS",0);
+	lcd_4884_writeString("Made by BH5HHP",2);
+#endif
 }
 
 void ss_clearSettings(void) {
@@ -233,6 +243,33 @@ static uint16_t message_count = 0;
 void ss_messageCallback(struct AX25Msg *msg, Serial *ser) {
 	message_count++;
 	kfile_printf(&ser->fd, "%d",message_count);
+#if HAS_LCD
+	lcd_4884_clear();
+	char buf[16];
+	buf[15] = 0;
+	snprintf(buf,15,"%.6s-%d>",msg->src.call, msg->src.ssid);
+	lcd_4884_writeString(buf,0);
+	snprintf(buf,15,"%.6s-%d",msg->dst.call, msg->dst.ssid);
+	lcd_4884_writeString(buf,1);
+
+#define SCREEN_WIDTH 14
+	//snprintf(buf,31,"%.*s", 15, msg->info);
+	short txtlen = msg->len;
+	const uint8_t *txt = msg->info;
+	for(int i = 0;i<4;i++){
+		short len_to_print = txtlen > SCREEN_WIDTH ? SCREEN_WIDTH:txtlen;
+		snprintf(buf,len_to_print,"%s",txt);
+		lcd_4884_writeString(buf,i+2);
+		txtlen -= len_to_print;
+		if(txtlen > 0){
+			txt += len_to_print;
+			continue;
+		}else{
+			break;
+		}
+	}
+#endif
+
 /*
     if (PRINT_SRC) {
         if (PRINT_INFO) kfile_print(&ser->fd, "SRC: ");

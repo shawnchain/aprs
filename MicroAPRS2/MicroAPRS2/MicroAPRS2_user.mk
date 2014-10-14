@@ -12,6 +12,7 @@ MicroAPRS2_USER_CSRC = \
 	$(MicroAPRS2_SRC_PATH)/main.c \
 	$(MicroAPRS2_HW_PATH)/hw/hw_afsk.c \
 	$(MicroAPRS2_HW_PATH)/console.c \
+	$(MicroAPRS2_SRC_PATH)/lcd/hw_lcd_4884.c \
 	#
 
 # Files included by the user.

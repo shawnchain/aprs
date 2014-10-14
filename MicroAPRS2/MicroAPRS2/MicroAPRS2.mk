@@ -4,7 +4,7 @@
 #
 
 # Constants automatically defined by the selected modules
-MicroAPRS2_DEBUG = 1
+MicroAPRS2_DEBUG = 0
 
 # Our target application
 TRG += MicroAPRS2

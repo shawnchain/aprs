@@ -64,11 +64,15 @@ void hw_afsk_adcInit(int ch, Afsk *_ctx)
 	ICR1 = ((CPU_FREQ / 8) / 9600) - 1;
 
 	/* Set reference to AVCC (5V), select CH */
-	ADMUX = BV(REFS0) | ch;
-
+#define AFSK_ADC_USE_EXTERNAL_AREF 0
+#if defined(AFSK_ADC_USE_EXTERNAL_AREF) && (AFSK_ADC_USE_EXTERNAL_AREF==1)
+	ADMUX = ch;
+#else
+	ADMUX = BV(REFS0) | ch; // by default we'll use VCC as AREF
+#endif
 	DDRC &= ~BV(ch);
 	PORTC &= ~BV(ch);
-	DIDR0 |= BV(ch);
+	DIDR0 |= BV(ch); // Digital Input Disable Register is enabled on pin(ch)
 
 	/* Set autotrigger on Timer1 Input capture flag */
 	ADCSRB = BV(ADTS2) | BV(ADTS1) | BV(ADTS0);
