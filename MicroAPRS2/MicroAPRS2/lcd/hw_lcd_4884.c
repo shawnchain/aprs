@@ -10,15 +10,53 @@
 
 #include <drv/timer.h>
 
+static void hw_lcd_4884_send(uint8_t type, uint8_t data);
+
 /*
- * PIN Configuragion
+ * TODO - PIN Configuration for Microduino 644PA
+ *
+ *
+ */
+#if defined(MICRODUINO_644PA) && (MICRODUINO_644PA == 1)
+
+#define HW_LCD_INIT() do { DDRB |= BV(1)|BV(2);/*PIN9, PIN10*/ } while (0)
+#define HW_LCD_SCLK_ON()   do { PORTB |= BV(1); } while (0)
+#define HW_LCD_SCLK_OFF()  do { PORTB &= ~BV(1); } while (0)
+
+#else
+
+/*
+ * PIN Configuration for Microduino 328P
  *
  * PORTC(1)/D15/A1 -> CLK
  * PORTC(2)/D16/A2 -> DIN
  * PORTC(3)/D17/A3 -> DC
  * PORTC(4)/D18/A4 -> SCE
  * PORTC(5)/D19/A5 -> RST
+ *
+ * value = 62(00111110) (BV(PIN_SCLK)|BV(PIN_SDIN)|BV(PIN_DC)|BV(PIN_RESET)|BV(PIN_SCE));
  */
+//
+#define HW_LCD_INIT() do { DDRC |= BV(1)|BV(2)|BV(3)|BV(4)|BV(5); PORTC |= BV(1)|BV(2)|BV(3)|BV(4)|BV(5);} while (0)
+
+#define HW_LCD_SCLK_HI()	do { PORTC |= BV(1); } while (0)
+#define HW_LCD_SCLK_LO()	do { PORTC &= ~BV(1); } while (0)
+
+#define HW_LCD_SDIN_HI()	do { PORTC |= BV(2); } while (0)
+#define HW_LCD_SDIN_LO()	do { PORTC &= ~BV(2); } while (0)
+
+#define HW_LCD_DC_HI()		do { PORTC |= BV(3); } while (0)
+#define HW_LCD_DC_LO()		do { PORTC &= ~BV(3); } while (0)
+
+#define HW_LCD_SCE_HI()		do { PORTC |= BV(4); } while (0)
+#define HW_LCD_SCE_LO()	do { PORTC &= ~BV(4); } while (0)
+
+#define HW_LCD_RESET_HI()	do { PORTC |= BV(5); } while (0)
+#define HW_LCD_RESET_LO()	do { PORTC &= ~BV(5); } while (0)
+
+#define HW_LCD_PIN_HI(x)	do { PORTC |= BV(x); } while (0)
+#define HW_LCD_PIN_LO(x)	do { PORTC &= ~BV(x); } while (0)
+#endif
 
 #define PIN_SCLK 1
 #define PIN_SDIN 2
@@ -29,6 +67,11 @@
 #define HI(x) PORTC |= BV(x)
 #define LO(x) PORTC &= ~BV(x)
 
+
+#define PCD8544_CMD  0
+#define PCD8544_DATA 1
+#define HW_LCD_CMD(x) hw_lcd_4884_send(PCD8544_CMD,x)
+#define HW_LCD_DATA(x) hw_lcd_4884_send(PCD8544_DATA,x)
 ///////////////////////////////////////////////
 // Internal variables
 ///////////////////////////////////////////////
@@ -43,9 +86,6 @@
 static unsigned char pix_x;
 static unsigned char pix_y;
 
-#define PCD8544_CMD  0
-#define PCD8544_DATA 1
-
 ///////////////////////////////////////////////
 // Internal functions
 ///////////////////////////////////////////////
@@ -55,8 +95,7 @@ static unsigned char pix_y;
 // Public functions
 ///////////////////////////////////////////////
 void lcd_4884_init(){
-	DDRC |= 62;//00111110 (BV(PIN_SCLK)|BV(PIN_SDIN)|BV(PIN_DC)|BV(PIN_RESET)|BV(PIN_SCE));
-	PORTC |= 62;
+	HW_LCD_INIT();
 #if 0
 	for(uint16_t i = 0;i < 1000;i++){
 		if(i % 2 == 0)
@@ -70,11 +109,11 @@ void lcd_4884_init(){
 	}
 #else
 	// reset the controller
-	HI(PIN_RESET);
+	HW_LCD_RESET_HI();
 	timer_delay(1);
-	LO(PIN_RESET);
+	HW_LCD_RESET_LO();
 	timer_delay(1);
-	HI(PIN_RESET);
+	HW_LCD_RESET_HI();
 	timer_delay(100);
 
 	/*
@@ -84,91 +123,88 @@ void lcd_4884_init(){
 	*/
 
 	// set parameters
-	lcd_4884_sendCommand(PCD8544_CMD, 0x21); // extended instruction set control (H=1)
-	lcd_4884_sendCommand(PCD8544_CMD, 0xc0); // bias system (1:48)
+	HW_LCD_CMD(0x21); // extended instruction set control (H=1)
+	HW_LCD_CMD(0xc0); // bias system (1:48)
 
-	lcd_4884_sendCommand(PCD8544_CMD, 0x06);
-	lcd_4884_sendCommand(PCD8544_CMD, 0x13);
-	lcd_4884_sendCommand(PCD8544_CMD, 0x20); // set enable
+	HW_LCD_CMD(0x06);
+	HW_LCD_CMD(0x13);
+	HW_LCD_CMD(0x20); // set enable
 
 	lcd_4884_clear();
-	lcd_4884_sendCommand(PCD8544_CMD, 0x0c); // normal mode(0x0d = inverse mode)
+	HW_LCD_CMD(0x0c); // normal mode(0x0d = inverse mode)
 
 	// all done, keep low of PIN_SCE
-	LO(PIN_SCE);
+	HW_LCD_SCE_LO();
 
 	/*
 #if defined(CHIP_ST7576) && CHIP_ST7576 == 1
-	lcd_4884_sendCommand(PCD8544_CMD,0xe0);
-	lcd_4884_sendCommand(PCD8544_CMD,0x05);
+	hw_lcd_4884_send(PCD8544_CMD,0xe0);
+	hw_lcd_4884_send(PCD8544_CMD,0x05);
 #else
-	lcd_4884_sendCommand(PCD8544_CMD,0xc2);
+	hw_lcd_4884_send(PCD8544_CMD,0xc2);
 #endif
-	lcd_4884_sendCommand(PCD8544_CMD,0x20);
-	lcd_4884_sendCommand(PCD8544_CMD,0x09);
+	hw_lcd_4884_send(PCD8544_CMD,0x20);
+	hw_lcd_4884_send(PCD8544_CMD,0x09);
 
 	// clear the ram
 	lcd_4884_clear();
 
-	lcd_4884_sendCommand(PCD8544_CMD,0x08); //display blank
-	lcd_4884_sendCommand(PCD8544_CMD,0x0c); // normal mode(0x0d = inverse mode)
+	hw_lcd_4884_send(PCD8544_CMD,0x08); //display blank
+	hw_lcd_4884_send(PCD8544_CMD,0x0c); // normal mode(0x0d = inverse mode)
 	timer_delay(100);
 
 	// reset cursor
-	lcd_4884_sendCommand(PCD8544_CMD,0x80);
-	lcd_4884_sendCommand(PCD8544_CMD,0x40);
+	hw_lcd_4884_send(PCD8544_CMD,0x80);
+	hw_lcd_4884_send(PCD8544_CMD,0x40);
 	*/
 #endif
 }
 
-void lcd_4884_sendCommand(uint8_t type, uint8_t data){
+static void hw_lcd_4884_send(uint8_t type, uint8_t data){
 	uint8_t i;
 
-	LO(PIN_SCE);
-	if(type == 0){
-		LO(PIN_DC);
+	HW_LCD_SCE_LO();
+	if(type ==  0){
+		// this is command
+		HW_LCD_DC_LO();
 	}else{
-		HI(PIN_DC);
+		// this is data
+		HW_LCD_DC_HI();
 	}
 
 	// shift data out
 	for (i = 0; i < 8; i++) {
-		/*
 		if((data & (1 << (7 - i)))){
-			HI(PIN_SDIN);
+			HW_LCD_SDIN_HI();
 		}else{
-			LO(PIN_SDIN);
+			HW_LCD_SDIN_LO();
 		}
-		LO(PIN_SCLK);
-		HI(PIN_SCLK);
-		*/
+		HW_LCD_SCLK_LO();
+		HW_LCD_SCLK_HI();
+		/*
 		if(data& 0x80) {
-			HI(PIN_SDIN);
+			HW_LCD_SDIN_HI();
 		} else {
-			LO(PIN_SDIN);
+			HW_LCD_SDIN_LO();
 		}
-		LO(PIN_SCLK);
+		HW_LCD_SCLK_LO();
 		data = data << 1;
-		HI(PIN_SCLK);
+		HW_LCD_SCLK_HI();
+		*/
 	}
 
-	HI(PIN_SCE);
+	HW_LCD_SCE_HI();
 }
 
-void lcd_4884_setEnable(uint8_t enable){
-	lcd_4884_sendCommand(PCD8544_CMD, enable ? 0x20 : 0x24);
+void lcd_4884_home(){
+	lcd_4884_setCursor(0,pix_y);
 }
-
-#define lcd_4884_home() lcd_4884_setCursor(0,pix_y)
-
 
 void lcd_4884_setCursor(uint8_t x, uint8_t y){
-
 	pix_x = x % width;
 	pix_y = y % height;
-
-	lcd_4884_sendCommand(PCD8544_CMD,0x80 | pix_x);
-	lcd_4884_sendCommand(PCD8544_CMD,0x40 | pix_y);
+	HW_LCD_CMD(0x80 | pix_x);
+	HW_LCD_CMD(0x40 | pix_y);
 }
 
 
@@ -176,7 +212,7 @@ void lcd_4884_clear() {
 	lcd_4884_setCursor(0, 0);
 	// the font 6x8 is 6 pix width and 8 pix height
 	for (uint16_t i = 0; i < width * (height / 8) /*504*/; i++) {
-		lcd_4884_sendCommand(PCD8544_DATA, 0x00);
+		HW_LCD_DATA(0x00);
 	}
 	lcd_4884_setCursor(0, 0);
 }
@@ -184,7 +220,7 @@ void lcd_4884_clear() {
 void lcd_4884_clearLine(uint8_t aline){
 	lcd_4884_setCursor(0, aline);
 	for (uint16_t i = 0; i < width; i++) {
-		lcd_4884_sendCommand(PCD8544_DATA, 0x00);
+		HW_LCD_DATA(0x00);
 	}
 	lcd_4884_setCursor(0, aline);
 }
@@ -297,7 +333,11 @@ const PROGMEM unsigned char charset[][5] = {
 	    { 0x44, 0x28, 0x10, 0x28, 0x44 },   // x
 	    { 0x1C, 0xA0, 0xA0, 0xA0, 0x7C },   // y
 	    { 0x44, 0x64, 0x54, 0x4C, 0x44 },   // z
-	    { 0x00, 0x06, 0x09, 0x09, 0x06 }    // horiz lines
+	    { 0x00, 0x08, 0x36, 0x41, 0x00 },  // 7b {
+	    { 0x00, 0x00, 0x7f, 0x00, 0x00 },  // 7c |
+	    { 0x00, 0x41, 0x36, 0x08, 0x00 },  // 7d }
+	    { 0x10, 0x08, 0x08, 0x10, 0x08 },  // 7e ~
+	    { 0x00, 0x00, 0x00, 0x00, 0x00 }   // 7f
 /*
   { 0x00, 0x00, 0x00, 0x00, 0x00 },  // 20 space
   { 0x00, 0x00, 0x5f, 0x00, 0x00 },  // 21 !
@@ -415,10 +455,10 @@ void lcd_4884_write(uint8_t chr){
 
     // Output one column at a time...
     // One column between characters...
-    lcd_4884_sendCommand(PCD8544_DATA, 0x00);
-    //lcd_4884_sendCommand(PCD8544_DATA, 0); // the first byte of glyph is always 0
+    hw_lcd_4884_send(PCD8544_DATA, 0x00);
+    //hw_lcd_4884_send(PCD8544_DATA, 0); // the first byte of glyph is always 0
     for (unsigned char i = 0; i < pgm_buffer_size; i++) {
-        lcd_4884_sendCommand(PCD8544_DATA, glyph[i]);
+        hw_lcd_4884_send(PCD8544_DATA, glyph[i]);
     }
 
     // Update the cursor position...

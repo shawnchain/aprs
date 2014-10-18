@@ -4,6 +4,7 @@
 #include "cfg/cfg_arch.h"
 #include <stdint.h>
 
+
 void lcd_4884_init(void);
 
 void lcd_4884_sendCommand(uint8_t type, uint8_t data);
