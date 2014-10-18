@@ -141,25 +141,14 @@ void ss_init(AX25Ctx *ax25, Serial *ser) {
     SS_INIT = true;
 	
 	_delay_ms(300);
-	kfile_printf(&ser->fd, "BertAPRS 1.0-r%d/f%d/BG5HHP - ready\r\n",VERS_BUILD,CONFIG_AFSK_FILTER);
-	/*
-    if (VERBOSE) {
-        _delay_ms(300);
-        kprintf("---------------\n");
-        kprintf("MicroAPRS v0.2a\n");
-        kprintf("unsigned.io/microaprs\n");
-        if (SS_DEFAULT_CONF) kprintf("Default configuration loaded!\n");
-        kprintf("Modem ready\n");
-        kprintf("---------------\n");
-    }
-	*/
+	kfile_printf(&ser->fd, "BertAPRS 1.0(f%da%d)-r%d BG5HHP - ready\r\n",CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 
-#define HAS_LCD 1
+//#define MicroAPRS2_HAS_LCD 1 - SEE config.h
 #if defined(HAS_LCD) && HAS_LCD == 1
 	lcd_4884_init();
 	_delay_ms(100);
 	lcd_4884_writeString("BertAPRS",0);
-	lcd_4884_writeString("Made by BH5HHP",2);
+	lcd_4884_writeString("Made by BG5HHP",2);
 #endif
 }
 
@@ -243,23 +232,27 @@ static uint16_t message_count = 0;
 void ss_messageCallback(struct AX25Msg *msg, Serial *ser) {
 	message_count++;
 	kfile_printf(&ser->fd, "%d",message_count);
-#if HAS_LCD
+
+#if defined(HAS_LCD) && HAS_LCD == 1
 	lcd_4884_clear();
 	char buf[16];
 	buf[15] = 0;
-	snprintf(buf,15,"%.6s-%d>",msg->src.call, msg->src.ssid);
+	snprintf(buf,15,"%04d:%.6s-%d",message_count,msg->src.call,msg->src.ssid);
 	lcd_4884_writeString(buf,0);
-	snprintf(buf,15,"%.6s-%d",msg->dst.call, msg->dst.ssid);
+	/*
+	snprintf(buf,15,"%.6s-%d>%.6s-%d",msg->src.call, msg->src.ssid,msg->dst.call, msg->dst.ssid);
 	lcd_4884_writeString(buf,1);
-
-#define SCREEN_WIDTH 14
+	snprintf(buf,15," %.6s-%d",msg->dst.call, msg->dst.ssid);
+	lcd_4884_writeString(buf,2);
+	*/
+#define SCREEN_WIDTH 15
 	//snprintf(buf,31,"%.*s", 15, msg->info);
 	short txtlen = msg->len;
 	const uint8_t *txt = msg->info;
-	for(int i = 0;i<4;i++){
+	for(int i = 0;i<5;i++){
 		short len_to_print = txtlen > SCREEN_WIDTH ? SCREEN_WIDTH:txtlen;
 		snprintf(buf,len_to_print,"%s",txt);
-		lcd_4884_writeString(buf,i+2);
+		lcd_4884_writeString(buf,i+1);
 		txtlen -= len_to_print;
 		if(txtlen > 0){
 			txt += len_to_print;
