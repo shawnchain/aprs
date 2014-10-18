@@ -50,9 +50,9 @@ void hw_afsk_dacInit(int ch, struct Afsk *_ctx);
 /* ------------------------------------------------------------------------
  *  Configurations:
  *    D4-D7  -->  Data OUT
- *    D11    -->  PTT OUT
- *    D12    -->  TX(RED) LED OUT
- *    D13    -->  RX(GRN) LED OUT
+ *    D8     -->  PTT OUT
+ *    D9     -->  TX(RED) LED OUT
+ *    D10    -->  RX(GRN) LED OUT
  * ------------------------------------------------------------------------
  */
 

@@ -64,8 +64,8 @@ void hw_afsk_adcInit(int ch, Afsk *_ctx)
 	ICR1 = ((CPU_FREQ / 8) / 9600) - 1;
 
 	/* Set reference to AVCC (5V), select CH */
-#define AFSK_ADC_USE_EXTERNAL_AREF 0
-#if defined(AFSK_ADC_USE_EXTERNAL_AREF) && (AFSK_ADC_USE_EXTERNAL_AREF==1)
+	//#define CONFIG_AFSK_ADC_USE_EXTERNAL_AREF 0 - See cfg_afsk.h
+#if defined(CONFIG_AFSK_ADC_USE_EXTERNAL_AREF) && (CONFIG_AFSK_ADC_USE_EXTERNAL_AREF==1)
 	ADMUX = ch;
 #else
 	ADMUX = BV(REFS0) | ch; // by default we'll use VCC as AREF
