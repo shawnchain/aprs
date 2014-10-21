@@ -1,12 +1,13 @@
 #include "kiss.h"
 
-#include "cfg/cfg_kiss.h"
-
 #include <algo/rand.h>
 
 #define LOG_LEVEL  KISS_LOG_LEVEL
 #define LOG_FORMAT KISS_LOG_FORMAT
 #include <cfg/log.h>
+
+
+#define KISS_QUEUE CONFIG_KISS_QUEUE
 
 Serial *kiss_ser;
 AX25Ctx *kiss_ax25;

@@ -4,13 +4,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "cfg/cfg_kiss.h"
+
 #include <net/afsk.h>
 #include <net/ax25.h>
 #include <drv/ser.h>
 #include <drv/timer.h>
 #include <algo/crc_ccitt.h>
-
-#define KISS_QUEUE 5
 
 #define KISS_FEND  0xc0
 #define KISS_FESC  0xdb

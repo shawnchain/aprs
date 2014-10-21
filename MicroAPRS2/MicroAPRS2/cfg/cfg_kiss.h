@@ -18,4 +18,10 @@
  */
 #define KISS_LOG_FORMAT     LOG_FMT_TERSE
 
+
+/**
+ * Kiss queue length
+ * for AVR chip with 4k ram, 1 or 2 is enough
+ */
+#define CONFIG_KISS_QUEUE	2
 #endif /* CFG_KISS_H */
