@@ -1,0 +1,189 @@
+diff -u -r cpu.bak/attr.h cpu/attr.h
+--- cpu.bak/attr.h	2014-11-25 19:16:30.000000000 +0800
++++ cpu/attr.h	2014-11-25 19:16:30.000000000 +0800
+@@ -254,7 +254,7 @@
+ 	/// Valid pointers should be >= than this value (used for debug)
+ 	#if CPU_AVR_ATMEGA8 || CPU_AVR_ATMEGA32 || CPU_AVR_ATMEGA103
+ 		#define CPU_RAM_START       0x60
+-	#elif CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P
++	#elif CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P || CPU_AVR_ATMEGA644PA
+ 		#define CPU_RAM_START       0x100
+ 	#elif CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560
+ 		#define CPU_RAM_START       0x200
+diff -u -r cpu.bak/avr/drv/adc_avr.c cpu/avr/drv/adc_avr.c
+--- cpu.bak/avr/drv/adc_avr.c	2014-11-25 19:16:30.000000000 +0800
++++ cpu/avr/drv/adc_avr.c	2014-11-25 19:16:30.000000000 +0800
+@@ -102,6 +102,7 @@
+ 	#if CPU_AVR_ATMEGA8 || CPU_AVR_ATMEGA328P || CPU_AVR_ATMEGA168
+ 		ADMUX &= ~(BV(MUX3) | BV(MUX2) | BV(MUX1) | BV(MUX0));
+ 	#elif CPU_AVR_ATMEGA32 || CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA1281 \
++	      || CPU_AVR_ATMEGA644PA \
+ 	      || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560
+ 		ADMUX &= ~(BV(MUX4) | BV(MUX3) | BV(MUX2) | BV(MUX1) | BV(MUX0));
+ 		#if CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560
+diff -u -r cpu.bak/avr/drv/i2c_avr.c cpu/avr/drv/i2c_avr.c
+--- cpu.bak/avr/drv/i2c_avr.c	2014-11-25 19:16:30.000000000 +0800
++++ cpu/avr/drv/i2c_avr.c	2014-11-25 19:16:30.000000000 +0800
+@@ -387,6 +387,9 @@
+ 	#if CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560
+ 		PORTD |= BV(PD0) | BV(PD1);
+ 		DDRD  |= BV(PD0) | BV(PD1);
++	#elif CPU_AVR_ATMEGA644PA
++		PORTC |= BV(PC0) | BV(PC1);
++		DDRC |= BV(PC0) | BV(PC1)
+ 	#elif CPU_AVR_ATMEGA8
+ 		PORTC |= BV(PC4) | BV(PC5);
+ 		DDRC  |= BV(PC4) | BV(PC5);
+diff -u -r cpu.bak/avr/drv/kdebug_mega.c cpu/avr/drv/kdebug_mega.c
+--- cpu.bak/avr/drv/kdebug_mega.c	2014-11-25 19:16:30.000000000 +0800
++++ cpu/avr/drv/kdebug_mega.c	2014-11-25 19:16:30.000000000 +0800
+@@ -73,7 +73,7 @@
+ 	#endif
+ 
+ 	#if CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 \
+-	    || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P || CPU_AVR_ATMEGA2560
++	    || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P || CPU_AVR_ATMEGA644PA || CPU_AVR_ATMEGA2560
+ 		#define UCR UCSR0B
+ 		#define UDR UDR0
+ 		#define USR UCSR0A
+@@ -317,7 +317,7 @@
+ 		/* Compute the baud rate */
+ 		uint16_t period = DIV_ROUND(CPU_FREQ / 16UL, CONFIG_KDEBUG_BAUDRATE) - 1;
+ 
+-		#if (CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA1281)
++		#if (CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA644PA )
+ 			#if CONFIG_KDEBUG_PORT == 0
+ 				UBRR0H = (uint8_t)(period>>8);
+ 				UBRR0L = (uint8_t)period;
+diff -u -r cpu.bak/avr/drv/ser_mega.c cpu/avr/drv/ser_mega.c
+--- cpu.bak/avr/drv/ser_mega.c	2014-11-25 19:16:30.000000000 +0800
++++ cpu/avr/drv/ser_mega.c	2014-11-25 19:16:30.000000000 +0800
+@@ -74,7 +74,7 @@
+ 	/*\}*/
+ #endif
+ 
+-#if CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560
++#if CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560 || CPU_AVR_ATMEGA644PA
+ 	#define BIT_RXCIE0 RXCIE0
+ 	#define BIT_RXEN0  RXEN0
+ 	#define BIT_TXEN0  TXEN0
+@@ -333,6 +333,7 @@
+ 
+ /* SPI port and pin configuration */
+ #if CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA103 || CPU_AVR_ATMEGA1281 \
++    || CPU_AVR_ATMEGA644PA \
+     || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560
+ 	#define SPI_PORT      PORTB
+ 	#define SPI_DDR       DDRB
+@@ -356,7 +357,7 @@
+ 	#define SPI_SCK_BIT   PB5
+ 	#define SPI_MOSI_BIT  PB3
+ 	#define SPI_MISO_BIT  PB4
+-#elif CPU_AVR_ATMEGA32
++#elif CPU_AVR_ATMEGA32 || CPU_AVR_ATMEGA644PA
+ 	#define SPI_PORT      PORTB
+ 	#define SPI_DDR       DDRB
+ 	#define SPI_SS_BIT    PB4
+@@ -372,7 +373,7 @@
+ 	#define AVR_HAS_UART1 1
+ 	#define AVR_HAS_UART2 1
+ 	#define AVR_HAS_UART3 1
+-#elif CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA1281
++#elif CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA644PA
+ 	#define AVR_HAS_UART1 1
+ 	#define AVR_HAS_UART2 0
+ 	#define AVR_HAS_UART3 0
+diff -u -r cpu.bak/avr/drv/ser_mega.h cpu/avr/drv/ser_mega.h
+--- cpu.bak/avr/drv/ser_mega.h	2014-11-25 19:16:30.000000000 +0800
++++ cpu/avr/drv/ser_mega.h	2014-11-25 19:16:30.000000000 +0800
+@@ -92,7 +92,7 @@
+ 	SER_UART2,
+ 	SER_UART3,
+ 	SER_SPI,
+-#elif  CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA1281
++#elif  CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA644PA
+ 	SER_UART0,
+ 	SER_UART1,
+ 	SER_SPI,
+diff -u -r cpu.bak/avr/drv/timer_mega.c cpu/avr/drv/timer_mega.c
+--- cpu.bak/avr/drv/timer_mega.c	2014-11-25 19:16:30.000000000 +0800
++++ cpu/avr/drv/timer_mega.c	2014-11-25 19:16:30.000000000 +0800
+@@ -49,18 +49,18 @@
+ 
+ #include <avr/io.h>
+ 
+-#if CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P || CPU_AVR_ATMEGA2560
++#if CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P || CPU_AVR_ATMEGA644PA || CPU_AVR_ATMEGA2560
+ 	#define REG_TIFR0 TIFR0
+ 	#define REG_TIFR1 TIFR1
+ 	#define REG_TIFR2 TIFR2
+-	#if CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560
++	#if CPU_AVR_ATMEGA644PA || CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560
+ 		#define REG_TIFR3 TIFR3
+ 	#endif
+ 
+ 	#define REG_TIMSK0 TIMSK0
+ 	#define REG_TIMSK1 TIMSK1
+ 	#define REG_TIMSK2 TIMSK2
+-	#if CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560
++	#if CPU_AVR_ATMEGA644PA || CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560
+ 		#define REG_TIMSK3 TIMSK3
+ 	#endif
+ 
+diff -u -r cpu.bak/avr/drv/timer_mega.h cpu/avr/drv/timer_mega.h
+--- cpu.bak/avr/drv/timer_mega.h	2014-11-25 19:16:30.000000000 +0800
++++ cpu/avr/drv/timer_mega.h	2014-11-25 19:16:30.000000000 +0800
+@@ -72,7 +72,7 @@
+ 
+ 	#define TIMER_PRESCALER      64
+ 	#define TIMER_HW_BITS        8
+-	#if CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P || CPU_AVR_ATMEGA2560
++	#if CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P || CPU_AVR_ATMEGA644PA || CPU_AVR_ATMEGA2560
+ 		#define DEFINE_TIMER_ISR     DECLARE_ISR_CONTEXT_SWITCH(TIMER0_COMPA_vect)
+ 	#else
+ 		#define DEFINE_TIMER_ISR     DECLARE_ISR_CONTEXT_SWITCH(TIMER0_COMP_vect)
+@@ -111,7 +111,7 @@
+ 
+ 	#define TIMER_PRESCALER      64
+ 	#define TIMER_HW_BITS        8
+-	#if CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P || CPU_AVR_ATMEGA2560
++	#if CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P || CPU_AVR_ATMEGA644PA || CPU_AVR_ATMEGA2560
+ 		#define DEFINE_TIMER_ISR     DECLARE_ISR_CONTEXT_SWITCH(TIMER2_COMPA_vect)
+ 	#else
+ 		#define DEFINE_TIMER_ISR     DECLARE_ISR_CONTEXT_SWITCH(TIMER2_COMP_vect)
+Only in cpu/avr/info: ATmega644P.cdef
+diff -u -r cpu.bak/detect.h cpu/detect.h
+--- cpu.bak/detect.h	2014-11-25 19:16:30.000000000 +0800
++++ cpu/detect.h	2014-11-25 19:16:30.000000000 +0800
+@@ -466,6 +466,14 @@
+ 		#define CPU_AVR_ATMEGA328P   0
+ 	#endif
+ 
++        #if defined(__AVR_ATmega644PA__)
++                #define CPU_AVR_MEGA            1
++                #define CPU_AVR_ATMEGA644PA   1
++                #define CPU_NAME            "ATmega644PA"
++        #else
++                #define CPU_AVR_ATMEGA644PA   0
++        #endif
++
+ 	#if defined(__AVR_ATmega1281__)
+ 		#define CPU_AVR_MEGA		1
+ 		#define CPU_AVR_ATMEGA1281  1
+@@ -500,7 +508,7 @@
+ 	#endif
+ 
+ 	#if CPU_AVR_ATMEGA32 + CPU_AVR_ATMEGA64 + CPU_AVR_ATMEGA103 + CPU_AVR_ATMEGA128 \
+-	  + CPU_AVR_ATMEGA8 + CPU_AVR_ATMEGA168 + CPU_AVR_ATMEGA328P + CPU_AVR_ATMEGA1281 \
++	  + CPU_AVR_ATMEGA8 + CPU_AVR_ATMEGA168 + CPU_AVR_ATMEGA328P + CPU_AVR_ATMEGA644PA + CPU_AVR_ATMEGA1281 \
+ 	  + CPU_AVR_ATMEGA1280 + CPU_AVR_ATMEGA2560 + CPU_AVR_ATXMEGA32D4 != 1
+ 		#error AVR CPU configuration error
+ 	#endif
+@@ -524,6 +532,7 @@
+ 	#define CPU_AVR_ATMEGA8         0
+ 	#define CPU_AVR_ATMEGA168       0
+ 	#define CPU_AVR_ATMEGA328P      0
++	#define CPU_AVR_ATMEGA644PA      0
+ 	#define CPU_AVR_ATMEGA32        0
+ 	#define CPU_AVR_ATMEGA64        0
+ 	#define CPU_AVR_ATMEGA103       0
