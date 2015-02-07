@@ -50,6 +50,7 @@
 
 #include <net/afsk.h>
 #include <net/ax25.h>
+#include <net/kiss.h>
 
 #include <drv/ser.h>
 #include <drv/timer.h>
@@ -64,6 +65,8 @@
 #include <cfg/debug.h>
 #endif
 
+#include "buildrev.h"
+
 
 static Afsk afsk;
 static AX25Ctx ax25;
@@ -74,14 +77,19 @@ static Serial ser;
 #define SER_BAUD_RATE_115200 115200L
 
 
+#if CONFIG_KISS_ENABLED
+
+#else
+
 //FIXME check memory
 static uint8_t serialBuffer[CONFIG_AX25_FRAME_BUF_LEN+1]; // Buffer for holding incoming serial data
 static int sbyte;                               // For holding byte read from serial port
 static size_t serialLen = 0;                    // Counter for counting length of data from serial
 static bool sertx = false;                      // Flag signifying whether it's time to send data
-                                                // received on the serial port.
+// received on the serial port.
 #define SER_BUFFER_FULL (serialLen < CONFIG_AX25_FRAME_BUF_LEN-1)
 
+#endif
 
 /*
  * Print on console the message that we have received.
@@ -95,6 +103,9 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 
 	kfile_printf(&ser.fd, "DATA: %.*s\r\n", msg->len, msg->info);
 	*/
+#if CONFIG_KISS_ENABLED
+	kiss_send_host(0x00,ax25.buf,ax25.frm_len - 2);
+#endif
 	ss_messageCallback(msg,&ser);
 }
 
@@ -119,18 +130,30 @@ static void init(void)
 	 * We do not need transmission for now, so we set transmission DAC channel to 0.
 	 */
 	afsk_init(&afsk, ADC_CH, 0);
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//FIXME - should both support KISS mode and CONFIG mode
+#if CONFIG_KISS_ENABLED
+	kiss_init(&ser,&ax25,&afsk);
+	ax25_init(&ax25, &afsk.fd, true /*keep the raw message*/, ax25_msg_callback);
+
+	kfile_printf(&ser.fd, "TinyAPRS KISS TNC 1.0 (f%da%dk%dr%d) - init\r\n",CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,CONFIG_KISS_ENABLED,VERS_BUILD);
+#else
 	/*
 	 * Here we initialize AX25 context, the channel (KFile) we are going to read messages
 	 * from and the callback that will be called on incoming messages.
 	 */
 	ax25_init(&ax25, &afsk.fd, false, ax25_msg_callback);
 
+	// Initialize the serial console
     ss_init(&ax25,&ser);
+#endif
 }
 
 
 //static AX25Call path[] = AX25_PATH(AX25_CALL("BG5HHP", 0), AX25_CALL("nocall", 0), AX25_CALL("wide1", 1), AX25_CALL("wide2", 2));
 //#define APRS_MSG    ">Test BeRTOS APRS http://www.bertos.org"
+
 
 int main(void)
 {
@@ -146,15 +169,20 @@ int main(void)
 		 */
 		ax25_poll(&ax25);
 
+#if CONFIG_KISS_ENABLED
+		kiss_serial_poll();
+		kiss_queue_process();
 
-		/*
+#else
+
+		#if 0	// - TEST ONLY, DISABLED -
 		// Send out message every 5sec
 		if (timer_clock() - start > ms_to_ticks(5000L))
 		{
 			start = timer_clock();
 			ax25_sendVia(&ax25, path, countof(path), APRS_MSG, sizeof(APRS_MSG));
 		}
-		*/
+		#endif
 
         // Poll for incoming serial data
         if (!sertx && ser_available(&ser)) {
@@ -209,6 +237,7 @@ int main(void)
             sertx = false;
             serialLen = 0;
         }
+#endif // end of #if CONFIG_KISS_ENABLED
 	} // end of while(1)
 	return 0;
 }

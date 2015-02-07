@@ -122,6 +122,6 @@
 /**
  * AFSK Enable to use external 3.3v AREF for improving the ADC sensitivity
  */
-#define CONFIG_AFSK_ADC_USE_EXTERNAL_AREF 1
+#define CONFIG_AFSK_ADC_USE_EXTERNAL_AREF 0
 
 #endif /* CFG_AFSK_H */

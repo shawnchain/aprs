@@ -20,8 +20,13 @@
 
 
 /**
+ * Module Enable/Disable flag
+ */
+#define CONFIG_KISS_ENABLED 1
+
+/**
  * Kiss queue length
  * for AVR chip with 4k ram, 1 or 2 is enough
  */
-#define CONFIG_KISS_QUEUE	2
+#define CONFIG_KISS_QUEUE	1
 #endif /* CFG_KISS_H */

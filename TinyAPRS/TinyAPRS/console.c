@@ -6,11 +6,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <avr/eeprom.h>
-#define F_CPU 16000000UL
+#include <avr/pgmspace.h>
+
+//See config headers, by default will be 16000000UL
+#define F_CPU CPU_FREQ
 #include <util/delay.h>
+
 #include "buildrev.h"
 #include "config.h"
 #include <cfg/cfg_afsk.h>
+#include <cfg/cfg_kiss.h>
 
 #include <lcd/hw_lcd_4884.h>
 
@@ -141,7 +146,7 @@ void ss_init(AX25Ctx *ax25, Serial *ser) {
     SS_INIT = true;
 	
 	_delay_ms(300);
-	kfile_printf(&ser->fd, "TinyAPRS 1.0(f%da%d)-r%d BG5HHP - ready\r\n",CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	kfile_printf(&ser->fd, "TinyAPRS 1.0(f%da%dk%d)-r%d BG5HHP - ready\r\n",CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,CONFIG_KISS_ENABLED,VERS_BUILD);
 
 //#define MicroAPRS2_HAS_LCD 1 - SEE config.h
 #if defined(HAS_LCD) && HAS_LCD == 1
@@ -150,9 +155,17 @@ void ss_init(AX25Ctx *ax25, Serial *ser) {
 	lcd_4884_writeString("TinyAPRS",0);
 	lcd_4884_writeString("Made by BG5HHP",2);
 #endif
+
+	// FIXME - Use PGMSPACE for strings
+	/*
+	char s[32];
+	snprintf_P(s,32,PSTR("Hello world! %d"),10);
+	*/
+
 }
 
 void ss_clearSettings(void) {
+	respond_ok(s);
     eeprom_update_byte((void*)&nvMagicByte, 0xFF);
 	respond_ok("Configuration cleared. Restart to load defaults");
 }
@@ -263,7 +276,6 @@ void ss_messageCallback(struct AX25Msg *msg, Serial *ser) {
 	}
 #endif
 
-/*
     if (PRINT_SRC) {
         if (PRINT_INFO) kfile_print(&ser->fd, "SRC: ");
         kfile_printf(&ser->fd, "[%.6s-%d] ", msg->src.call, msg->src.ssid);
@@ -272,17 +284,17 @@ void ss_messageCallback(struct AX25Msg *msg, Serial *ser) {
         if (PRINT_INFO) kfile_printf(&ser->fd, "DST: ");
         kfile_printf(&ser->fd, "[%.6s-%d] ", msg->dst.call, msg->dst.ssid);
     }
-*/
+
     kfile_print(&ser->fd, "A");
     kfile_printf(&ser->fd, "%.6s-%d>", msg->src.call, msg->src.ssid);
     kfile_printf(&ser->fd, "%.6s-%d,", msg->dst.call, msg->dst.ssid);
-/*
+
     if (PRINT_PATH) {
         if (PRINT_INFO) kfile_print(&ser->fd, "PATH: ");
         for (int i = 0; i < msg->rpt_cnt; i++)
             kfile_printf(&ser->fd, "[%.6s-%d] ", msg->rpt_lst[i].call, msg->rpt_lst[i].ssid);
     }
-*/
+
     for (int i = 0; i < msg->rpt_cnt; i++) {
         if (i == msg->rpt_cnt -1) {
             kfile_printf(&ser->fd, "%.6s-%d", msg->rpt_lst[i].call, msg->rpt_lst[i].ssid);
@@ -290,12 +302,12 @@ void ss_messageCallback(struct AX25Msg *msg, Serial *ser) {
             kfile_printf(&ser->fd, "%.6s-%d,", msg->rpt_lst[i].call, msg->rpt_lst[i].ssid);
         }
     }
-/*    
+
     if (PRINT_DATA) {
         if (PRINT_INFO) kfile_print(&ser->fd, "DATA: ");
         kfile_printf(&ser->fd, "%.*s", msg->len, msg->info);
     }
-*/
+
     kfile_print(&ser->fd, ":");
     kfile_printf(&ser->fd, "%.*s", msg->len, msg->info);
 
