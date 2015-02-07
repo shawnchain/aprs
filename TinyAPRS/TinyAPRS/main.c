@@ -153,13 +153,14 @@ static void init(void)
 
 //static AX25Call path[] = AX25_PATH(AX25_CALL("BG5HHP", 0), AX25_CALL("nocall", 0), AX25_CALL("wide1", 1), AX25_CALL("wide2", 2));
 //#define APRS_MSG    ">Test BeRTOS APRS http://www.bertos.org"
-
+#define APRS_TEST 0
 
 int main(void)
 {
 	init();
+#if APRS_TEST
 	ticks_t start = timer_clock();
-
+#endif
 	while (1)
 	{
 		/*
@@ -175,7 +176,7 @@ int main(void)
 
 #else
 
-		#if 0	// - TEST ONLY, DISABLED -
+		#if APRS_TEST	// - TEST ONLY, REMOVE ME WHEN DONE -
 		// Send out message every 5sec
 		if (timer_clock() - start > ms_to_ticks(5000L))
 		{
