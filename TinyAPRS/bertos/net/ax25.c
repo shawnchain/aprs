@@ -61,6 +61,9 @@
 		} while(0) 
 #endif
 
+/*
+ * Decode the CALL field, assume addr is a fix-size array
+ */
 #define DECODE_CALL(buf, addr) \
 	for (unsigned i = 0; i < sizeof((addr)); i++) \
 	{ \
@@ -68,6 +71,10 @@
 		(addr)[i] = (c == ' ') ? '\x0' : c; \
 	}
 
+/*
+ * The decoded ax25 frame contains:
+ * | DST_ID(7) |SRC_ID(7) | RPT_LIST(7 * 8) | CTRL(0x03) | PID(0xF0) | PAYLOAD | LEN |
+ */
 static void ax25_decode(AX25Ctx *ctx)
 {
 	AX25Msg msg;
@@ -151,7 +158,7 @@ void ax25_poll(AX25Ctx *ctx)
 				if (ctx->crc_in == AX25_CRC_CORRECT)
 				{
 					LOG_INFO("Frame found!\n");
-					if (ctx->raw) {
+					if (ctx->pass_through) {
 						if (ctx->hook) {
 							//TODO: make MSG union and pass to hook
 							ctx->hook(NULL);
@@ -363,7 +370,7 @@ void ax25_print(KFile *ch, const AX25Msg *msg)
  * \param channel Used to gain access to the physical medium
  * \param hook Callback function called when a message is received
  */
-void ax25_init(AX25Ctx *ctx, KFile *channel, bool raw, ax25_callback_t hook)
+void ax25_init(AX25Ctx *ctx, KFile *channel, ax25_callback_t hook)
 {
 	ASSERT(ctx);
 	ASSERT(channel);
@@ -371,6 +378,9 @@ void ax25_init(AX25Ctx *ctx, KFile *channel, bool raw, ax25_callback_t hook)
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->ch = channel;
 	ctx->hook = hook;
-	ctx->raw = raw;
+	// decode the AX.25 frame needs extra memory but necessary acting as digipeater
+	// or for displaying/debug purpose.
+	// AS a TNC modem with KISS protocol used, pass_though could be enabled(set=1)
+	ctx->pass_through = 0;
 	ctx->crc_in = ctx->crc_out = CRC_CCITT_INIT_VAL;
 }

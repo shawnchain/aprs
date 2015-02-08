@@ -80,7 +80,7 @@ typedef struct AX25Ctx
 	uint16_t crc_in;  ///< CRC for current received frame
 	uint16_t crc_out; ///< CRC of current sent frame
 	ax25_callback_t hook; ///< Hook function to be called when a message is received
-	bool raw;
+	bool pass_through;
 	bool sync;   ///< True if we have received a HDLC flag.
 	bool escape; ///< True when we have to escape the following char.
 	uint8_t dcd_state;
@@ -189,7 +189,7 @@ void ax25_putchar(AX25Ctx *ctx, uint8_t c);
  * \see ax25_sendVia() if you want to send a frame with a specific path.
  */
 #define ax25_send(ctx, dst, src, buf, len) ax25_sendVia(ctx, ({static AX25Call __path[]={dst, src}; __path;}), 2, buf, len)
-void ax25_init(AX25Ctx *ctx, KFile *channel, bool raw, ax25_callback_t hook);
+void ax25_init(AX25Ctx *ctx, KFile *channel, ax25_callback_t hook);
 
 void ax25_print(KFile *ch, const AX25Msg *msg);
 
