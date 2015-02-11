@@ -13,6 +13,8 @@ TinyAPRS_USER_CSRC = \
 	$(TinyAPRS_HW_PATH)/hw/hw_afsk.c \
 	$(TinyAPRS_HW_PATH)/lcd/hw_lcd_4884.c \
 	$(TinyAPRS_HW_PATH)/console.c \
+	$(TinyAPRS_HW_PATH)/settings.c \
+	$(TinyAPRS_SRC_PATH)/net/kiss.c \
 	#
 
 # Files included by the user.

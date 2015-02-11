@@ -8,15 +8,18 @@
 
 
 #define KISS_QUEUE CONFIG_KISS_QUEUE
+#define KISS_PORT CONFIG_KISS_PORT
 
 Serial *kiss_ser;
 AX25Ctx *kiss_ax25;
 Afsk *kiss_afsk;
 
+#if KISS_QUEUE > 0
 ticks_t kiss_queue_ts;
 uint8_t kiss_queue_state;
 size_t kiss_queue_len = 0;
 struct Kiss_msg kiss_queue[KISS_QUEUE];
+#endif
 
 #define KISS_PORTS 4
 kiss_in_callback_t kiss_in_callbacks[KISS_PORTS];
@@ -42,6 +45,9 @@ void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk)
 	kiss_afsk = afsk;
 }
 
+/*
+ * port number starts from 1
+ */
 void kiss_set_in_callback(uint8_t port, kiss_in_callback_t fnc)
 {
 	if ((port == 0) || ((port - 1) > KISS_PORTS))
@@ -110,13 +116,14 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 	uint8_t cmd;
 	uint8_t port;
 
+	// the first byte of KISS message is for command and port
 	cmd = k->buf[0] & 0x0f;
 	port = k->buf[0] >> 4;
 
 	if (port != 0) {
 		kiss_in_callback_t fnc;
 
-		if (port > 5)
+		if (port > KISS_PORT/*5*/)
 			return;
 
 		if (cmd != KISS_CMD_DATA)
@@ -132,12 +139,11 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 	if (cmd == KISS_CMD_DATA) {
 		LOG_INFO("Kiss - queueing message\n");
 		kiss_queue_message(k->buf + 1, k->pos - 1);
-		//ax25_sendRaw(kiss_ax25, k->buf+1, k->pos-1);
 		return;
 	}
 
 	if (k->pos < 2) {
-		LOG_INFO("Kiss - discarting packet - too short\n");
+		LOG_INFO("Kiss - discarding packet - too short\n");
 		return;
 	}
 	
@@ -161,16 +167,22 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 
 void kiss_queue_message(uint8_t *buf, size_t len)
 {
+#if KISS_QUEUE > 0
 	if (kiss_queue_len == KISS_QUEUE)
 		return;
 
 	memcpy(kiss_queue[kiss_queue_len].buf, buf, len);
 	kiss_queue[kiss_queue_len].pos = len;
 	kiss_queue_len ++;
+#else
+	LOG_INFO("Kiss - queue disabled, sending message\n");
+	ax25_sendRaw(kiss_ax25, buf, len);
+#endif
 }
 
 void kiss_queue_process()
 {
+#if KISS_QUEUE > 0
 	uint8_t random;
 
 	if (kiss_queue_len == 0) {
@@ -210,7 +222,9 @@ void kiss_queue_process()
 
 	kiss_queue_len = 0;
 	kiss_queue_state = KISS_QUEUE_IDLE;
+#endif
 }
+
 
 void kiss_send_host(uint8_t ch, uint8_t *buf, size_t len)
 {
