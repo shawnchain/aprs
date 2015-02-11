@@ -165,8 +165,42 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 	}
 }
 
-void kiss_queue_message(uint8_t *buf, size_t len)
-{
+#define ACTIVE_CSMA_ENABLED 1
+#if KISS_QUEUE == 0 && ACTIVE_CSMA_ENABLED == 1
+static void kiss_csma(AX25Ctx *ctx, uint8_t *buf, size_t len) {
+	bool sent = false;
+	while (!sent) {
+		if (!ctx->dcd /*kiss_afsk->hdlc.rxstart*/) {
+			uint8_t tp = rand() & 0xFF;
+			if (tp < kiss_persistence) {
+				ax25_sendRaw(ctx, buf, len);
+				sent = true;
+			} else {
+				ticks_t start = timer_clock();
+				while (timer_clock() - start < ms_to_ticks(kiss_slot_time * 10)) {
+					cpu_relax();
+				}
+			}
+		} else {
+			while (!sent && kiss_ax25->dcd /*kiss_afsk->hdlc.rxstart*/) {
+				// Continously poll the modem for data
+				// while waiting, so we don't overrun
+				// receive buffers
+				ax25_poll(ctx);
+				if (kiss_afsk->status != 0) {
+					// If an overflow or other error
+					// occurs, we'll back off and drop
+					// this packet silently.
+					kiss_afsk->status = 0;
+					sent = true;
+				}
+			}
+		}
+	}
+}
+#endif
+
+void kiss_queue_message(uint8_t *buf, size_t len){
 #if KISS_QUEUE > 0
 	if (kiss_queue_len == KISS_QUEUE)
 		return;
@@ -176,7 +210,13 @@ void kiss_queue_message(uint8_t *buf, size_t len)
 	kiss_queue_len ++;
 #else
 	LOG_INFO("Kiss - queue disabled, sending message\n");
+#if ACTIVE_CSMA_ENABLED
+	// perform an active CSMA detection here
+	kiss_csma(kiss_ax25, buf, len);
+#else
 	ax25_sendRaw(kiss_ax25, buf, len);
+#endif
+
 #endif
 }
 
