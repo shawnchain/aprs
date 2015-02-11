@@ -65,6 +65,16 @@
 #include <cfg/debug.h>
 #endif
 
+//#include <mware/parser.h>
+
+#include "settings.h"
+#include <ctype.h>
+
+#include <cpu/pgm.h>     /* PROGMEM */
+#include <avr/pgmspace.h>
+
+#include "sys_utils.h"
+
 #include "buildrev.h"
 
 
@@ -72,42 +82,114 @@ static Afsk afsk;
 static AX25Ctx ax25;
 static Serial ser;
 
+static bool kissMode;
+static void console_serial_poll(void);
+static void console_parse_command(char* command, size_t len);
+
 #define ADC_CH 0
 #define SER_BAUD_RATE_9600 9600L
 #define SER_BAUD_RATE_115200 115200L
 
 
-#if CONFIG_KISS_ENABLED
+/*
+static const char string_1[] PROGMEM = "String 1";
+static const char string_2[] PROGMEM = "String 2";
+static const char string_3[] PROGMEM = "String 3";
+static const char string_4[] PROGMEM = "String 4";
+static const char string_5[] PROGMEM = "String 5";
 
-#else
+const char *string_table[] =
+{
+string_1,
+string_2,
+string_3,
+string_4,
+string_5,
+};
 
-//FIXME check memory
-static uint8_t serialBuffer[CONFIG_AX25_FRAME_BUF_LEN+1]; // Buffer for holding incoming serial data
-static int sbyte;                               // For holding byte read from serial port
-static size_t serialLen = 0;                    // Counter for counting length of data from serial
-static bool sertx = false;                      // Flag signifying whether it's time to send data
-// received on the serial port.
-#define SER_BUFFER_FULL (serialLen < CONFIG_AX25_FRAME_BUF_LEN-1)
+static void _testPGMString(void){
+	char buffer[10];
+	for (unsigned char i = 0; i < 5; i++)
+	{
+//	strcpy_P(buffer, (PGM_P)pgm_read_word(&(string_table[i])));
+//	strcpy_P(buffer, string_table[i]);
+	// Display buffer on LCD.
+//	SERIAL_PRINTF((&ser),"%s\r\n",buffer);
 
-#endif
+	SERIAL_PRINTF((&ser),"%d\r\n",(uint16_t)string_table[i]);
+	}
+
+	return;
+}
+*/
 
 /*
  * Print on console the message that we have received.
  */
 static void ax25_msg_callback(struct AX25Msg *msg){
-	/*
-	kfile_printf(&ser.fd, "\n\nSRC[%.6s-%d], DST[%.6s-%d]\r\n", msg->src.call, msg->src.ssid, msg->dst.call, msg->dst.ssid);
 
-	for (int i = 0; i < msg->rpt_cnt; i++)
-		kfile_printf(&ser.fd, "via: [%.6s-%d]\r\n", msg->rpt_lst[i].call, msg->rpt_lst[i].ssid);
-
-	kfile_printf(&ser.fd, "DATA: %.*s\r\n", msg->len, msg->info);
-	*/
-#if CONFIG_KISS_ENABLED
-	kiss_send_host(0x00,ax25.buf,ax25.frm_len - 2);
+#if SERIAL_DEBUG
+	if(!kissMode){
+		SERIAL_PRINTF((&ser), "\r\n>[%.6s-%d]->[%.6s-%d]", msg->src.call, msg->src.ssid, msg->dst.call, msg->dst.ssid);
+		if(msg->rpt_cnt > 0){
+			SERIAL_PRINTF((&ser),", via[");
+			for (int i = 0; i < msg->rpt_cnt; i++){
+				SERIAL_PRINTF((&ser), "%.6s-%d,", msg->rpt_lst[i].call, msg->rpt_lst[i].ssid);
+			}
+			SERIAL_PRINTF((&ser),"]");
+		}
+		// DATA part
+		SERIAL_PRINTF((&ser), "\r\n%.*s\r\n", msg->len, msg->info);
+	}
 #endif
-	ss_messageCallback(msg,&ser);
+
+#if CONFIG_KISS_ENABLED
+	if(kissMode)
+		kiss_send_host(0x00/*channel ID*/,ax25.buf,ax25.frm_len - 2);
+#else
+	if(!msg){
+		// msg might be null under pass_through mode
+		ss_messageCallback(msg,&ser);
+	}
+#endif
+
 }
+
+/*
+ *
+ */
+static void _print_greeting_banner(void){
+#if CONFIG_KISS_ENABLED
+	/*
+	static const PROGMEM char p[] = "TinyAPRS TNC (KISS) 1.0 (f%da%dr%d) - init\r\n";
+	char t[64];
+	sprintf_P(t, p,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	kfile_printf(&ser.fd,"%10s",t);
+	kfile_printf(&ser.fd,(const char*)t,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	*/
+	kfile_printf(&ser.fd, "TinyAPRS TNC (KISS) 1.0 (f%da%dr%d)\r\n" ,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+#else
+	kfile_printf(&ser.fd, "TinyAPRS TNC (Demo) 1.0 (f%da%dr%d)\r\n",CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+#endif
+}
+
+static void _print_settings(void){
+	// DEBUG Purpose
+//		char buf[7];
+//		memset(buf,0,7);
+//		memcpy(buf,g_settings.callsign,6);
+//		uint8_t bufLen = 7;
+//		settings_get(SETTINGS_CALLSIGN,buf,&bufLen);
+//		for(int i = 0;i < 6;i++){
+//			SERIAL_PRINTF((&ser),"%d,",g_settings.callsign[i]);
+//		}
+//		SERIAL_PRINTF((&ser),"%d,",g_settings.ssid);
+	//SERIAL_PRINTF((&ser),"%s-%d\r\n",buf,g_settings.ssid);
+
+	SERIAL_PRINTF((&ser), "%6s-%d\r\n",g_settings.callsign,g_settings.ssid);
+}
+
+
 
 static void init(void)
 {
@@ -131,35 +213,44 @@ static void init(void)
 	 */
 	afsk_init(&afsk, ADC_CH, 0);
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//FIXME - should both support KISS mode and CONFIG mode
-#if CONFIG_KISS_ENABLED
-	kiss_init(&ser,&ax25,&afsk);
-	ax25_init(&ax25, &afsk.fd, true /*keep the raw message*/, ax25_msg_callback);
-
-	kfile_printf(&ser.fd, "TinyAPRS KISS TNC 1.0 (f%da%dk%dr%d) - init\r\n",CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,CONFIG_KISS_ENABLED,VERS_BUILD);
-#else
 	/*
 	 * Here we initialize AX25 context, the channel (KFile) we are going to read messages
 	 * from and the callback that will be called on incoming messages.
 	 */
-	ax25_init(&ax25, &afsk.fd, false, ax25_msg_callback);
+	ax25_init(&ax25, &afsk.fd, ax25_msg_callback);
 
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//FIXME - should both support KISS mode and CONFIG mode
+#if CONFIG_KISS_ENABLED
+	// passthrough(don't decode the frame) only when debug disabled
+	ax25.pass_through = !SERIAL_DEBUG;
+	kiss_init(&ser,&ax25,&afsk);
+#else
 	// Initialize the serial console
     ss_init(&ax25,&ser);
 #endif
+    _print_greeting_banner();
+    settings_load();
+    _print_settings();
 }
 
 
-//static AX25Call path[] = AX25_PATH(AX25_CALL("BG5HHP", 0), AX25_CALL("nocall", 0), AX25_CALL("wide1", 1), AX25_CALL("wide2", 2));
-//#define APRS_MSG    ">Test BeRTOS APRS http://www.bertos.org"
-#define APRS_TEST 0
+
+
 
 int main(void)
 {
+
 	init();
+
+#define APRS_TEST 0
 #if APRS_TEST
+	static AX25Call path[] = AX25_PATH(AX25_CALL("BG5HHP", 0), AX25_CALL("nocall", 0), AX25_CALL("wide1", 1), AX25_CALL("wide2", 2));
+	#define APRS_MSG    ">Test Tiny APRS "
 	ticks_t start = timer_clock();
+#endif
+#if FREE_RAM_TEST
+	uint32_t i = 0;
 #endif
 	while (1)
 	{
@@ -170,13 +261,8 @@ int main(void)
 		 */
 		ax25_poll(&ax25);
 
-#if CONFIG_KISS_ENABLED
-		kiss_serial_poll();
-		kiss_queue_process();
-
-#else
-
-		#if APRS_TEST	// - TEST ONLY, REMOVE ME WHEN DONE -
+		// - TEST ONLY, REMOVE ME WHEN DONE -
+		#if APRS_TEST
 		// Send out message every 5sec
 		if (timer_clock() - start > ms_to_ticks(5000L))
 		{
@@ -185,60 +271,183 @@ int main(void)
 		}
 		#endif
 
-        // Poll for incoming serial data
-        if (!sertx && ser_available(&ser)) {
-            // We then read a byte from the serial port.
-            // Notice that we use "_nowait" since we can't
-            // have this blocking execution until a byte
-            // comes in.
-            sbyte = ser_getchar_nowait(&ser);
-
-            // If SERIAL_DEBUG is specified we'll handle
-            // serial data as direct human input and only
-            // transmit when we get a LF character
-            #if SERIAL_DEBUG
-                // If we have not yet surpassed the maximum frame length
-                // and the byte is not a "transmit" (newline) character,
-                // we should store it for transmission.
-                if ((serialLen < CONFIG_AX25_FRAME_BUF_LEN) && (sbyte != 10)) {
-                    // Put the read byte into the buffer;
-                    serialBuffer[serialLen] = sbyte;
-                    // Increment the read length counter
-                    serialLen++;
-                } else {
-                    // If one of the above conditions were actually the
-                    // case, it means we have to transmit, se we set
-                    // transmission flag to true.
-                    sertx = true;
-                }
-            #else
-                // Otherwise we assume the modem is running
-                // in automated mode, and we push out data
-                // as it becomes available. We either transmit
-                // immediately when the max frame length has
-                // been reached, or when we get no input for
-                // a certain amount of time.
-
-                serialBuffer[serialLen++] = sbyte;
-                if (serialLen >= CONFIG_AX25_FRAME_BUF_LEN-1) {
-                	sertx = true;
-                }
-
-                start = timer_clock();
-            #endif
-        } else {
-            if (!SERIAL_DEBUG && serialLen > 0 && timer_clock() - start > ms_to_ticks(TX_MAXWAIT)) {
-                sertx = true;
-            }
-        }
-
-        if (sertx) {
-        	// parse serial input
-            ss_serialCallback(serialBuffer, serialLen, &ser, &ax25);
-            sertx = false;
-            serialLen = 0;
-        }
+#if CONFIG_KISS_ENABLED
+	if(kissMode){
+		kiss_serial_poll();
+		kiss_queue_process();
+	}else{
+		console_serial_poll();
+	}
+#else
+		console_serial_poll();
 #endif // end of #if CONFIG_KISS_ENABLED
+
+#if FREE_RAM_TEST
+		if(i++ == 100000){
+			i = 0;
+			// log the stack size
+			uint16_t ram = freeRam();
+			SERIAL_PRINTF((&ser),"%u\r\n",ram);
+		}
+#endif
 	} // end of while(1)
 	return 0;
+}
+
+
+//FIXME check memory usage
+#define CONSOLE_SERIAL_BUF_LEN 64 						//CONFIG_AX25_FRAME_BUF_LEN
+static uint8_t serialBuffer[CONSOLE_SERIAL_BUF_LEN+1]; 	// Buffer for holding incoming serial data
+static int sbyte;                               		// For holding byte read from serial port
+static size_t serialLen = 0;                    		// Counter for counting length of data from serial
+static bool sertx = false;                      		// Flag signifying whether it's time to send data
+// received on the serial port.
+#define SER_BUFFER_FULL (serialLen < CONSOLE_SERIAL_BUF_LEN-1)
+static void console_serial_poll(void){
+	ticks_t start = timer_clock();
+	// Poll for incoming serial data
+	if (!sertx && ser_available(&ser)) {
+		// We then read a byte from the serial port.
+		// Notice that we use "_nowait" since we can't
+		// have this blocking execution until a byte
+		// comes in.
+		sbyte = ser_getchar_nowait(&ser);
+
+		// If SERIAL_DEBUG is specified we'll handle
+		// serial data as direct human input and only
+		// transmit when we get a LF character
+		#if SERIAL_DEBUG
+			// If we have not yet surpassed the maximum frame length
+			// and the byte is not a "transmit" (newline) character,
+			// we should store it for transmission.
+			if ((serialLen < CONSOLE_SERIAL_BUF_LEN) && (sbyte != 10) && (sbyte != 13)) {
+				// Put the read byte into the buffer;
+				serialBuffer[serialLen] = sbyte;
+				// Increment the read length counter
+				serialLen++;
+			} else {
+				// If one of the above conditions were actually the
+				// case, it means we have to transmit, se we set
+				// transmission flag to true.
+				sertx = true;
+			}
+		#else
+			// Otherwise we assume the modem is running
+			// in automated mode, and we push out data
+			// as it becomes available. We either transmit
+			// immediately when the max frame length has
+			// been reached, or when we get no input for
+			// a certain amount of time.
+
+			serialBuffer[serialLen++] = sbyte;
+			if (serialLen >= CONSOLE_SERIAL_BUF_LEN-1) {
+				sertx = true;
+			}
+
+			start = timer_clock();
+		#endif
+	} else {
+		if (!SERIAL_DEBUG && serialLen > 0 && timer_clock() - start > ms_to_ticks(TX_MAXWAIT)) {
+			sertx = true;
+		}
+	}
+
+	if (sertx) {
+		serialBuffer[serialLen] = 0; // end of the command string
+		// parse serial input
+		/*
+		ss_serialCallback(serialBuffer, serialLen, &ser, &ax25);
+		*/
+		console_parse_command((char*)serialBuffer, serialLen);
+		sertx = false;
+		serialLen = 0;
+	}
+}
+
+/*
+const char PROGMEM cmd_kiss []  = "KISS";
+const char PROGMEM cmd_callsign []  = "CALLSIGN";
+const char PROGMEM cmd_ssid []  = "SSID";
+PGM_P string_table[] =
+{
+cmd_kiss,
+cmd_callsign,
+cmd_ssid
+};
+*/
+/*
+PROGMEM const char *cmd_table []  = {
+		cmd_kiss,
+		cmd_callsign,
+		cmd_ssid
+};
+*/
+
+static void console_parse_command(char* command, size_t len){
+	bool settingsChanged = false;
+	// convert to upper case
+	strupr(command);
+
+	char *key = NULL, *value = NULL;
+	uint8_t valueLen = 0;
+	//AT+X=Y
+	if(len >=6 && command[0] == 'A' && command[1] == 'T' && command[2] == '+' ){
+		const char s[2] = "=";
+		char* t = strtok((command + 3),s);
+		if(t != NULL){
+			key = t;
+			t = strtok(NULL,s);
+			if(t){
+				value = t;
+				valueLen = strlen(value);
+			}
+		}
+	}
+
+	if(key == NULL && value == NULL){
+		// bail out
+		SERIAL_PRINTF((&ser),"INVALID CMD: %.*s\r\n",len,command);
+		return;
+	}
+
+	if(strcmp((const char*)key,"KISS") == 0 && value[0] == '1'){
+		kissMode = 1;
+		ax25.pass_through = 1;
+		SERIAL_PRINTF((&ser),"Enter KISS mode\r\n");
+	}
+	else if(strcmp((const char*)key,"CALLSIGN") == 0){
+		settings_set(SETTINGS_CALLSIGN,value,valueLen);
+		settingsChanged = true;
+		SERIAL_PRINTF((&ser),"CALLSIGN: %s\r\n",value);
+	}
+	else if(strcmp((const char*)key,"SSID") == 0){
+		SERIAL_PRINTF((&ser),"SSID: %s\r\n",value);
+		uint8_t ssid = atoi((const char*)value);
+		settings_set(SETTINGS_SSID,&ssid,1);
+		settingsChanged = true;
+	}
+	else if(strcmp((const char*)key,"RESET") == 0){
+		if(value[0] == '1'){
+			// clear the settings if AT+RESET=1
+			SERIAL_PRINTF((&ser),"Settings cleared");
+			settings_clear();
+		}
+		//TODO - reboot the device
+		//soft_reset();
+	}
+
+	else if(strcmp((const char*)key,"INFO") == 0){
+		_print_greeting_banner();
+		_print_settings();
+	}
+
+	// Unknown
+	else{
+		SERIAL_PRINTF((&ser),"UNKNOWN CMD: %.*s\r\n",len,command);
+	}
+
+	if(settingsChanged){
+		settings_save();
+	}
+	return;
 }

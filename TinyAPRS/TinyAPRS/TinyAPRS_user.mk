@@ -15,6 +15,7 @@ TinyAPRS_USER_CSRC = \
 	$(TinyAPRS_HW_PATH)/console.c \
 	$(TinyAPRS_HW_PATH)/settings.c \
 	$(TinyAPRS_SRC_PATH)/net/kiss.c \
+	$(TinyAPRS_SRC_PATH)/sys_utils.c \
 	#
 
 # Files included by the user.
