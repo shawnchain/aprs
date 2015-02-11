@@ -48,7 +48,7 @@
  * \sa PRINTF_NOFLOAT
  * \sa PRINTF_FULL
  */
-#define CONFIG_PRINTF PRINTF_REDUCED
+#define CONFIG_PRINTF PRINTF_NOFLOAT
 
 /**
  * Size of buffer to format "%" sequences in printf.
