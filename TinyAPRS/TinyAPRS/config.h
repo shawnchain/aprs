@@ -3,7 +3,7 @@
 #define TINY_APRS_CFG
 
 // Debug & test options
-#define SERIAL_DEBUG false
+#define SERIAL_DEBUG true
 #define PASSALL false
 #define AUTOREPLY false
 

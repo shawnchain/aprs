@@ -435,7 +435,7 @@ static void console_parse_command(char* command, size_t len){
 
 	if(strcmp((const char*)key,"KISS") == 0 && value[0] == '1'){
 		runMode = MODE_KISS;
-		set_kiss_enabled(true);
+		kiss_set_enabled(true);
 		ax25.pass_through = 1;
 		ser_purge(&ser);  // clear all rx/tx buffer
 

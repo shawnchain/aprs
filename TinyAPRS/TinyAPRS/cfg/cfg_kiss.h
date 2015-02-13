@@ -35,5 +35,5 @@
  * Number of KISS port to support.
  * The index of port id is started from 1
  */
-#define CONFIG_KISS_PORT 1
+#define CONFIG_KISS_PORT 4
 #endif /* CFG_KISS_H */

@@ -52,6 +52,8 @@ void kiss_serial_poll(void);
 void kiss_queue_message(uint8_t *buf, size_t len);
 void kiss_queue_process(void);
 void kiss_send_host(uint8_t ch, uint8_t *buf, size_t len);
+bool kiss_enabled(void);
+void kiss_set_enabled(bool flag);
 
 #endif
 

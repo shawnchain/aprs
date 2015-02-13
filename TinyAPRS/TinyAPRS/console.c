@@ -18,6 +18,7 @@
 #include <cfg/cfg_kiss.h>
 
 #include <lcd/hw_lcd_4884.h>
+#include "sys_utils.h"
 
 static bool PRINT_SRC = true;
 static bool PRINT_DST = true;
@@ -244,7 +245,8 @@ void ss_saveSettings(void) {
 static uint16_t message_count = 0;
 void ss_messageCallback(struct AX25Msg *msg, Serial *ser) {
 	message_count++;
-	kfile_printf(&ser->fd, "%d",message_count);
+	//kfile_printf(&ser->fd, "%d",message_count);
+	SERIAL_PRINTF(ser, "%d",message_count);
 
 #if defined(HAS_LCD) && HAS_LCD == 1
 	lcd_4884_clear();

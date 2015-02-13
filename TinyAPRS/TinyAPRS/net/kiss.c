@@ -21,7 +21,7 @@ size_t kiss_queue_len = 0;
 struct Kiss_msg kiss_queue[KISS_QUEUE];
 #endif
 
-#define KISS_PORTS 4
+#define KISS_PORTS CONFIG_KISS_PORT /*4*/
 kiss_in_callback_t kiss_in_callbacks[KISS_PORTS];
 
 uint8_t kiss_txdelay;
@@ -30,6 +30,7 @@ uint8_t kiss_persistence;
 uint8_t kiss_slot_time;
 uint8_t kiss_duplex;
 
+static bool s_kiss_enabled = false;
 static void kiss_cmd_process(struct Kiss_msg *k);
 
 void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk)
@@ -111,10 +112,25 @@ void kiss_serial_poll()
 	k.last_tick = timer_clock();
 }
 
+void kiss_set_enabled(bool flag){
+	s_kiss_enabled = flag;
+}
+
+bool kiss_enabled(void){
+	return s_kiss_enabled;
+}
+
 static void kiss_cmd_process(struct Kiss_msg *k)
 {
 	uint8_t cmd;
 	uint8_t port;
+
+	// Check return command
+	if(k->pos == 1 && k->buf[0] == KISS_CMD_Return){
+		LOG_INFO("Kiss - exiting");
+		s_kiss_enabled = false;
+		return;
+	}
 
 	// the first byte of KISS message is for command and port
 	cmd = k->buf[0] & 0x0f;
@@ -123,7 +139,7 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 	if (port != 0) {
 		kiss_in_callback_t fnc;
 
-		if (port > KISS_PORT/*5*/)
+		if (port > (KISS_PORT + 1)/*4 + 1 = 5*/)
 			return;
 
 		if (cmd != KISS_CMD_DATA)
@@ -149,16 +165,24 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 	
 	if (cmd == KISS_CMD_TXDELAY) {
 		LOG_INFO("Kiss - setting txdelay %d\n", k->buf[1]);
-		kiss_txdelay = k->buf[1];
+		if(k->buf[1] > 0){
+			kiss_txdelay = k->buf[1];
+		}
 	} else if (cmd == KISS_CMD_P) {
 		LOG_INFO("Kiss - setting persistence %d\n", k->buf[1]);
-		kiss_persistence = k->buf[1];
+		if(k->buf[1] > 0){
+			kiss_persistence = k->buf[1];
+		}
 	} else if (cmd == KISS_CMD_SlotTime) {
 		LOG_INFO("Kiss - setting slot_time %d\n", k->buf[1]);
-		kiss_slot_time = k->buf[1];
+		if(k->buf[1] > 0){
+			kiss_slot_time = k->buf[1];
+		}
 	} else if (cmd == KISS_CMD_TXtail) {
 		LOG_INFO("Kiss - setting txtail %d\n", k->buf[1]);
-		kiss_txtail = k->buf[1];
+		if(k->buf[1] > 0){
+			kiss_txtail = k->buf[1];
+		}
 	} else if (cmd == KISS_CMD_FullDuplex) {
 		LOG_INFO("Kiss - setting duplex %d\n", k->buf[1]);
 		kiss_duplex = k->buf[1];
@@ -170,7 +194,7 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 static void kiss_csma(AX25Ctx *ctx, uint8_t *buf, size_t len) {
 	bool sent = false;
 	while (!sent) {
-		if (!ctx->dcd /*kiss_afsk->hdlc.rxstart*/) {
+		if (!/*ctx->dcd*/kiss_afsk->hdlc.rxstart) {
 			uint8_t tp = rand() & 0xFF;
 			if (tp < kiss_persistence) {
 				ax25_sendRaw(ctx, buf, len);
@@ -182,7 +206,7 @@ static void kiss_csma(AX25Ctx *ctx, uint8_t *buf, size_t len) {
 				}
 			}
 		} else {
-			while (!sent && kiss_ax25->dcd /*kiss_afsk->hdlc.rxstart*/) {
+			while (!sent && /*kiss_ax25->dcd*/ kiss_afsk->hdlc.rxstart) {
 				// Continously poll the modem for data
 				// while waiting, so we don't overrun
 				// receive buffers

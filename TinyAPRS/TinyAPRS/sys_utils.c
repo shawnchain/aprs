@@ -19,13 +19,11 @@
 
 
 // Free ram test
-#if FREE_RAM_TEST
-inline uint16_t freeRam (void) {
+uint16_t freeRam (void) {
   extern int __heap_start, *__brkval;
   uint8_t v;
   return (uint16_t) (&v - (__brkval == 0 ? (uint16_t) &__heap_start : (uint16_t) __brkval));
 }
-#endif
 
 // Software reset
 //

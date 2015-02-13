@@ -17,6 +17,7 @@
 #ifndef SYS_UTILS_H_
 #define SYS_UTILS_H_
 
+#include <stdlib.h>
 #include <avr/wdt.h>
 
 // Software reset
@@ -31,7 +32,7 @@
 
 
 // Memory test
-#define FREE_RAM_TEST 0
+//#define FREE_RAM_TEST 1
 uint16_t freeRam (void);
 
 // Serial printf helper macros
