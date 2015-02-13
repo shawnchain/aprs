@@ -10,12 +10,13 @@ TinyAPRS_PROGRAMMER_PORT = asp
 # Files included by the user.
 TinyAPRS_USER_CSRC = \
 	$(TinyAPRS_SRC_PATH)/main.c \
-	$(TinyAPRS_HW_PATH)/hw/hw_afsk.c \
-	$(TinyAPRS_HW_PATH)/lcd/hw_lcd_4884.c \
-	$(TinyAPRS_HW_PATH)/console.c \
-	$(TinyAPRS_HW_PATH)/settings.c \
+	$(TinyAPRS_SRC_PATH)/hw/hw_afsk.c \
+	$(TinyAPRS_SRC_PATH)/lcd/hw_lcd_4884.c \
+	$(TinyAPRS_SRC_PATH)/console.c \
+	$(TinyAPRS_SRC_PATH)/settings.c \
 	$(TinyAPRS_SRC_PATH)/net/kiss.c \
 	$(TinyAPRS_SRC_PATH)/sys_utils.c \
+	$(TinyAPRS_SRC_PATH)/beacon.c \
 	#
 
 # Files included by the user.

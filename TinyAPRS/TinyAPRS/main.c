@@ -75,6 +75,8 @@
 
 #include "sys_utils.h"
 
+#include "beacon.h"
+
 #include "buildrev.h"
 
 
@@ -82,7 +84,6 @@ static Afsk afsk;
 static AX25Ctx ax25;
 static Serial ser;
 
-static bool kissMode;
 static void console_serial_poll(void);
 static void console_parse_command(char* command, size_t len);
 
@@ -90,6 +91,12 @@ static void console_parse_command(char* command, size_t len);
 #define SER_BAUD_RATE_9600 9600L
 #define SER_BAUD_RATE_115200 115200L
 
+typedef enum{
+	MODE_CMD = 0,
+	MODE_KISS,
+}RunMode;
+
+static RunMode runMode = MODE_CMD;
 
 /*
 static const char string_1[] PROGMEM = "String 1";
@@ -127,9 +134,10 @@ static void _testPGMString(void){
  * Print on console the message that we have received.
  */
 static void ax25_msg_callback(struct AX25Msg *msg){
-
-#if SERIAL_DEBUG
-	if(!kissMode){
+	switch(runMode){
+	case MODE_CMD:{
+#if 1
+		// Print received message to serial
 		SERIAL_PRINTF((&ser), "\r\n>[%.6s-%d]->[%.6s-%d]", msg->src.call, msg->src.ssid, msg->dst.call, msg->dst.ssid);
 		if(msg->rpt_cnt > 0){
 			SERIAL_PRINTF((&ser),", via[");
@@ -140,19 +148,19 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 		}
 		// DATA part
 		SERIAL_PRINTF((&ser), "\r\n%.*s\r\n", msg->len, msg->info);
-	}
-#endif
-
-#if CONFIG_KISS_ENABLED
-	if(kissMode)
-		kiss_send_host(0x00/*channel ID*/,ax25.buf,ax25.frm_len - 2);
 #else
-	if(!msg){
-		// msg might be null under pass_through mode
-		ss_messageCallback(msg,&ser);
-	}
+		if(msg) ss_messageCallback(msg,&ser);
 #endif
+		break;
+	}
+	case MODE_KISS:
+		kiss_send_host(0x00/*channel ID*/,ax25.buf,ax25.frm_len - 2);
+		break;
 
+	default:
+		break;
+
+	}
 }
 
 /*
@@ -229,29 +237,27 @@ static void init(void)
 	// Initialize the serial console
     ss_init(&ax25,&ser);
 #endif
+
+#if CONFIG_BEACON_ENABLED
+    beacon_init(&ax25);
+#endif
+
     _print_greeting_banner();
     settings_load();
     _print_settings();
 }
 
 
-
-
+#define APRS_TEST_SEND 1
 
 int main(void)
 {
 
 	init();
 
-#define APRS_TEST 0
-#if APRS_TEST
-	static AX25Call path[] = AX25_PATH(AX25_CALL("BG5HHP", 0), AX25_CALL("nocall", 0), AX25_CALL("wide1", 1), AX25_CALL("wide2", 2));
-	#define APRS_MSG    ">Test Tiny APRS "
-	ticks_t start = timer_clock();
-#endif
-#if FREE_RAM_TEST
-	uint32_t i = 0;
-#endif
+	uint16_t ram = freeRam();
+	SERIAL_PRINTF((&ser),"Free RAM: %u\r\n",ram);
+
 	while (1)
 	{
 		/*
@@ -261,28 +267,37 @@ int main(void)
 		 */
 		ax25_poll(&ax25);
 
-		// - TEST ONLY, REMOVE ME WHEN DONE -
-		#if APRS_TEST
-		// Send out message every 5sec
-		if (timer_clock() - start > ms_to_ticks(5000L))
-		{
-			start = timer_clock();
-			ax25_sendVia(&ax25, path, countof(path), APRS_MSG, sizeof(APRS_MSG));
+		switch(runMode){
+		case MODE_CMD:{
+			console_serial_poll();
+			break;
 		}
-		#endif
 
 #if CONFIG_KISS_ENABLED
-	if(kissMode){
-		kiss_serial_poll();
-		kiss_queue_process();
-	}else{
-		console_serial_poll();
-	}
-#else
-		console_serial_poll();
-#endif // end of #if CONFIG_KISS_ENABLED
+		case MODE_KISS:{
+			if(!kiss_enabled()){
+				runMode = MODE_CMD;
+				SERIAL_PRINTF((&ser),"Exit KISS mode\r\n");
+				break;
+			}
+			kiss_serial_poll();
+			kiss_queue_process();
+			break;
+		}
+#endif
 
-#if FREE_RAM_TEST
+		default:
+			break;
+		}// end of switch(runMode)
+
+		// BEACON ROUTINS
+#if CONFIG_BEACON_ENABLED
+		beacon_poll();
+#endif
+
+#define FREE_RAM_DEBUG 0
+#if FREE_RAM_DEBUG
+		static uint32_t i = 0;
 		if(i++ == 100000){
 			i = 0;
 			// log the stack size
@@ -385,11 +400,19 @@ PROGMEM const char *cmd_table []  = {
 
 static void console_parse_command(char* command, size_t len){
 	bool settingsChanged = false;
-	// convert to upper case
-	strupr(command);
-
 	char *key = NULL, *value = NULL;
 	uint8_t valueLen = 0;
+
+#if APRS_TEST_SEND && CONFIG_BEACON_ENABLED
+	if(len > 0 && command[0] == '!'){
+		beacon_send();
+		SERIAL_PRINTF((&ser),"TEST MESSAGE SEND OK\r\n");
+		return;
+	}
+#endif
+
+	// convert to upper case
+	strupr(command);
 	//AT+X=Y
 	if(len >=6 && command[0] == 'A' && command[1] == 'T' && command[2] == '+' ){
 		const char s[2] = "=";
@@ -411,10 +434,40 @@ static void console_parse_command(char* command, size_t len){
 	}
 
 	if(strcmp((const char*)key,"KISS") == 0 && value[0] == '1'){
-		kissMode = 1;
+		runMode = MODE_KISS;
+		set_kiss_enabled(true);
 		ax25.pass_through = 1;
+		ser_purge(&ser);  // clear all rx/tx buffer
+
+		// disable beacon mode
+		beacon_set_enabled(false);
+
 		SERIAL_PRINTF((&ser),"Enter KISS mode\r\n");
 	}
+#if CONFIG_BEACON_ENABLED
+	else if(strcmp((const char*)key,"BEACON") == 0 /*&& value[0] == '1'*/){
+		//FIXME - also support KISS mode when BEACON = 1
+		if(value[0] == '0'){
+			beacon_set_enabled(false);
+			SERIAL_PRINTF((&ser),"Beacon mode disabled\r\n");
+		}else if(value[0] == '1'){
+			beacon_set_enabled(true);
+			SERIAL_PRINTF((&ser),"Beacon mode enabled\r\n");
+		}else{
+			SERIAL_PRINTF((&ser),"Invalid value %s, only value 0 and 1 is accepted\r\n",value);
+		}
+	}
+	else if(strcmp((const char*)key,"SEND") == 0){
+		if(valueLen == 0){
+			// send test message
+			beacon_send();
+		}else{
+			//TODO send user input message out
+			//TODO build the ax25 path according settings
+		}
+		SERIAL_PRINTF((&ser),"SEND OK\r\n");
+	}
+#endif
 	else if(strcmp((const char*)key,"CALLSIGN") == 0){
 		settings_set(SETTINGS_CALLSIGN,value,valueLen);
 		settingsChanged = true;
@@ -429,18 +482,16 @@ static void console_parse_command(char* command, size_t len){
 	else if(strcmp((const char*)key,"RESET") == 0){
 		if(value[0] == '1'){
 			// clear the settings if AT+RESET=1
-			SERIAL_PRINTF((&ser),"Settings cleared");
+			SERIAL_PRINTF((&ser),"Settings cleared\r\n");
 			settings_clear();
 		}
 		//TODO - reboot the device
 		//soft_reset();
 	}
-
 	else if(strcmp((const char*)key,"INFO") == 0){
 		_print_greeting_banner();
 		_print_settings();
 	}
-
 	// Unknown
 	else{
 		SERIAL_PRINTF((&ser),"UNKNOWN CMD: %.*s\r\n",len,command);
