@@ -48,4 +48,9 @@ bool beacon_enabled(void);
  */
 void beacon_set_enabled(bool flag);
 
+/*
+ * Send test beacon
+ */
+void beacon_send_test(uint8_t count);
+
 #endif /* BEACON_H_ */

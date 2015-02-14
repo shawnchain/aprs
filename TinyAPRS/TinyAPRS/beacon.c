@@ -23,6 +23,7 @@
 
 static bool beaconEnabled;
 static ticks_t start;
+static ticks_t test_start;
 static AX25Ctx *ax25Ctx;
 
 /*
@@ -40,7 +41,15 @@ bool beacon_enabled(void){
 
 void beacon_set_enabled(bool flag){
 	start = timer_clock();
+	test_start = start;
 	beaconEnabled = flag;
+}
+
+static uint8_t beaconTestCount = 0;
+void beacon_send_test(uint8_t count){
+	if(beaconTestCount == 0){
+		beaconTestCount = count;
+	}
 }
 
 void beacon_poll(void){
@@ -56,6 +65,14 @@ void beacon_poll(void){
 		}
 	}
 #endif
+	if(beaconTestCount > 0){
+		if(timer_clock() - test_start > ms_to_ticks(2000L)){
+
+			beacon_send();
+			beaconTestCount--;
+			test_start = timer_clock();
+		}
+	}
 }
 
 void beacon_send(void){
@@ -67,3 +84,5 @@ void beacon_send(void){
 	ax25_sendVia(ax25Ctx, path, countof(path), APRS_TEST_MSG, sizeof(APRS_TEST_MSG));
 #endif
 }
+
+

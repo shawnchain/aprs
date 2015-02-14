@@ -290,7 +290,7 @@ int main(void)
 			break;
 		}// end of switch(runMode)
 
-		// BEACON ROUTINS
+// BEACON ROUTINS
 #if CONFIG_BEACON_ENABLED
 		beacon_poll();
 #endif
@@ -405,8 +405,8 @@ static void console_parse_command(char* command, size_t len){
 
 #if APRS_TEST_SEND && CONFIG_BEACON_ENABLED
 	if(len > 0 && command[0] == '!'){
-		beacon_send();
-		SERIAL_PRINTF((&ser),"TEST MESSAGE SEND OK\r\n");
+		beacon_send_test(5);
+		SERIAL_PRINTF((&ser),"TESTING...\r\n");
 		return;
 	}
 #endif
