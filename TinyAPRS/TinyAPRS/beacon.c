@@ -78,7 +78,7 @@ void beacon_poll(void){
 
 void beacon_send(void){
 #if CONFIG_BEACON_ENABLED
-	static AX25Call path[] = AX25_PATH(AX25_CALL("BR5AA", 1) /*dst*/, AX25_CALL("NOCALL", 0)/*src*/, AX25_CALL("wide1", 1), AX25_CALL("wide2", 2));
+	static AX25Call path[] = AX25_PATH(AX25_CALL("APTIBC"/*APRS TINY BEACON, the destination field*/, 0) /*dst*/, AX25_CALL("NOCALL", 0)/*src*/, AX25_CALL("wide1", 1)/*, AX25_CALL("wide2", 2)*/);
 	// update callsign and ssid from settings
 	uint8_t len = 6;
 	settings_get(SETTINGS_CALLSIGN,&(path[1].call),&len);
