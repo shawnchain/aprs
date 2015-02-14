@@ -19,6 +19,7 @@
 #include <drv/timer.h>
 
 #include "beacon.h"
+#include "settings.h"
 
 
 static bool beaconEnabled;
@@ -77,7 +78,12 @@ void beacon_poll(void){
 
 void beacon_send(void){
 #if CONFIG_BEACON_ENABLED
-	static AX25Call path[] = AX25_PATH(AX25_CALL("BR5AA", 0) /*dst*/, AX25_CALL("BG5HHP", 10)/*src*/, AX25_CALL("wide1", 1), AX25_CALL("wide2", 2));
+	static AX25Call path[] = AX25_PATH(AX25_CALL("BR5AA", 1) /*dst*/, AX25_CALL("NOCALL", 0)/*src*/, AX25_CALL("wide1", 1), AX25_CALL("wide2", 2));
+	// update callsign and ssid from settings
+	uint8_t len = 6;
+	settings_get(SETTINGS_CALLSIGN,&(path[1].call),&len);
+	settings_get(SETTINGS_SSID,&(path[1].ssid),&len);
+
 	#define APRS_TEST_MSG "!3011.47N/12009.10E>000/000/A=000087Rolling! 3.6V 1011.0pa"
 	//#define APRS_TEST_MSG ">Test Tiny APRS "
 
