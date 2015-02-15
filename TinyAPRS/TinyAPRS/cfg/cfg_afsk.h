@@ -108,7 +108,7 @@
  * $WIZ$ type = "int"
  * $WIZ$ min = 1
  */
-#define CONFIG_AFSK_PREAMBLE_LEN 350UL
+#define CONFIG_AFSK_PREAMBLE_LEN 450UL
 
 
 
@@ -117,7 +117,7 @@
  * $WIZ$ type = "int"
  * $WIZ$ min = 1
  */
-#define CONFIG_AFSK_TRAILER_LEN 50UL
+#define CONFIG_AFSK_TRAILER_LEN 75UL
 
 /**
  * AFSK Enable to use external 3.3v AREF for improving the ADC sensitivity
