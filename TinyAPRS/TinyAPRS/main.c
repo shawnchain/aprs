@@ -65,8 +65,6 @@
 #include <cfg/debug.h>
 #endif
 
-//#include <mware/parser.h>
-
 #include "settings.h"
 #include <ctype.h>
 
@@ -85,9 +83,6 @@ static Afsk afsk;
 static AX25Ctx ax25;
 static Serial ser;
 
-static void console_serial_poll(void);
-static void console_parse_command(char* command, size_t len);
-
 #define ADC_CH 0
 #define SER_BAUD_RATE_9600 9600L
 #define SER_BAUD_RATE_115200 115200L
@@ -98,38 +93,6 @@ typedef enum{
 }RunMode;
 
 static RunMode runMode = MODE_CMD;
-
-/*
-static const char string_1[] PROGMEM = "String 1";
-static const char string_2[] PROGMEM = "String 2";
-static const char string_3[] PROGMEM = "String 3";
-static const char string_4[] PROGMEM = "String 4";
-static const char string_5[] PROGMEM = "String 5";
-
-const char *string_table[] =
-{
-string_1,
-string_2,
-string_3,
-string_4,
-string_5,
-};
-
-static void _testPGMString(void){
-	char buffer[10];
-	for (unsigned char i = 0; i < 5; i++)
-	{
-//	strcpy_P(buffer, (PGM_P)pgm_read_word(&(string_table[i])));
-//	strcpy_P(buffer, string_table[i]);
-	// Display buffer on LCD.
-//	SERIAL_PRINTF((&ser),"%s\r\n",buffer);
-
-	SERIAL_PRINTF((&ser),"%d\r\n",(uint16_t)string_table[i]);
-	}
-
-	return;
-}
-*/
 
 /*
  * Print on console the message that we have received.
@@ -164,41 +127,189 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////////
+// Console message print
+
 /*
- *
+ * print the welcome message to console
  */
-static void _print_greeting_banner(void){
+static void _print_greeting_banner(Serial *pSer){
 #if CONFIG_KISS_ENABLED
-	/*
-	static const PROGMEM char p[] = "TinyAPRS TNC (KISS) 1.0 (f%da%dr%d) - init\r\n";
-	char t[64];
-	sprintf_P(t, p,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
-	kfile_printf(&ser.fd,"%10s",t);
-	kfile_printf(&ser.fd,(const char*)t,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
-	*/
-//	kfile_printf(&ser.fd, "TinyAPRS TNC (KISS) 1.0 (f%da%dr%d)\r\n" ,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
-	SERIAL_PRINTF_P((&ser), PSTR("TinyAPRS TNC (KISS) 1.0 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS TNC (KISS) 1.0 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 #else
-	SERIAL_PRINTF_P((&ser), PSTR("TinyAPRS TNC (Demo) 1.0 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS TNC (Demo) 1.0 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 #endif
 }
 
+/*
+ * Print the settings to console
+ */
 static void _print_settings(void){
 	// DEBUG Purpose
 	char buf[7];
 	memset(buf,0,7);
-//	memcpy(buf,g_settings.callsign,6);
-	uint8_t bufLen = sizeof(buf);
+	uint8_t bufLen = 6;
 	settings_get(SETTINGS_CALLSIGN,buf,&bufLen);
-//	for(int i = 0;i < 6;i++){
-//		SERIAL_PRINTF((&ser),"%d,",g_settings.callsign[i]);
-//	}
-//	SERIAL_PRINTF((&ser),"%d,",g_settings.ssid);
-	//SERIAL_PRINTF((&ser),"%s-%d\r\n",buf,g_settings.ssid);
-	SERIAL_PRINTF_P((&ser), PSTR("%s-%d\r\n"),buf,g_settings.ssid);
+	SERIAL_PRINTF_P((&ser), PSTR("Beacon: %s-%d\r\n"),buf,g_settings.ssid);
+}
+
+static void _print_freemem(Serial *pSer){
+	// Print free ram
+	uint16_t ram = freeRam();
+	SERIAL_PRINTF(pSer,"Free RAM: %u\r\n",ram);
+}
+///////////////////////////////////////////////////////////////////////////////////
+// Command handlers
+
+/*
+ * !{n} - send {n} test packets
+ */
+static bool cmd_test(Serial* pSer, char* command, size_t len){
+	#define DEFAULT_REPEATS 5
+	uint8_t repeats = 0;
+	if(len > 0){
+		repeats = atoi((const char*)command);
+	}
+	if(repeats == 0) repeats = DEFAULT_REPEATS;
+	beacon_send_test(repeats);
+
+	SERIAL_PRINTF_P(pSer,PSTR("Sending %d test packet...\r\n"),repeats);
+	return true;
+}
+
+static bool cmd_help(Serial* pSer, char* command, size_t len){
+	(void)command;
+	(void)len;
+	SERIAL_PRINT_P(pSer,PSTR("\r\nAT commands supported\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("-----------------------------------------------\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+INFO\t\t\t;Display modem info\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+CALL=[CALLSIGN]\t;Set callsign\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+SSID=[SSID]\t\t;Set ssid\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=1\t\t;Enter kiss mode\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+HELP\t\t\t;Display help messages\r\n"));
+
+	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyRights 2015, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
+
+	return true;
 }
 
 
+/*
+ * AT+KISS=1 - enable the KISS mode
+ */
+static bool cmd_kiss(Serial* pSer, char* value, size_t len){
+	if(len > 0 && value[0] == '1'){
+		runMode = MODE_KISS;
+		kiss_set_enabled(true);
+		ax25.pass_through = 1;
+		ser_purge(pSer);  // clear all rx/tx buffer
+
+		// disable beacon mode
+		beacon_set_enabled(false);
+		SERIAL_PRINT_P(pSer,PSTR("Enter KISS mode\r\n"));
+	}else{
+		SERIAL_PRINTF_P(pSer,PSTR("Invalid value %s, only value 1 is accepted\r\n"),value);
+	}
+	return true;
+}
+
+/*
+ * AT+BEACON=[1|0] - enable the Beacon mode.
+ */
+static bool cmd_beacon(Serial* pSer, char* value, size_t len){
+	(void)len;
+	//FIXME - also support KISS mode when BEACON = 1
+	if(value[0] == '0'){
+		beacon_set_enabled(false);
+		SERIAL_PRINT_P(pSer,PSTR("Beacon mode disabled\r\n"));
+	}else if(value[0] == '1'){
+		beacon_set_enabled(true);
+		SERIAL_PRINT_P(pSer,PSTR("Beacon mode enabled\r\n"));
+	}else{
+		SERIAL_PRINTF_P(pSer,PSTR("Invalid value %s, only value 0 and 1 is accepted\r\n"),value);
+	}
+	return true;
+}
+
+/*
+ * AT+SEND - just send the beacon message once
+ */
+static bool cmd_send(Serial* pSer, char* value, size_t len){
+	(void)value;
+	(void)len;
+	if(len == 0){
+		// send test message
+		beacon_send();
+	}else{
+		//TODO send user input message out
+		//TODO build the ax25 path according settings
+	}
+	SERIAL_PRINT_P(pSer,PSTR("SEND OK\r\n"));
+	return true;
+}
+
+static bool cmd_settings_callsign(Serial* pSer, char* value, size_t len){
+	if(len > 0){
+		settings_set(SETTINGS_CALLSIGN,value,len);
+		settings_save();
+	}
+	char buf[7];
+	memset(buf,0,sizeof(buf));
+	uint8_t bufLen = sizeof(buf) - 1;
+	settings_get(SETTINGS_CALLSIGN,buf,&bufLen);
+	SERIAL_PRINTF_P(pSer,PSTR("CALLSIGN: %s\r\n"),buf);
+	return true;
+}
+
+static bool cmd_settings_ssid(Serial* pSer, char* value, size_t len){
+	if(len > 0){
+		uint8_t ssid = atoi((const char*)value);
+		settings_set(SETTINGS_SSID,&ssid,1);
+		settings_save();
+	}
+
+	uint8_t iSSID = 0;
+	uint8_t bufLen = 1;
+	settings_get(SETTINGS_SSID,&iSSID,&bufLen);
+	SERIAL_PRINTF_P(pSer,PSTR("SSID: %d\r\n"),iSSID);
+
+	return true;
+}
+
+static bool cmd_reset(Serial* pSer, char* value, size_t len){
+	if(len > 0 && value[0] == '1'){
+		// clear the settings if AT+RESET=1
+		SERIAL_PRINT_P(pSer,PSTR("Settings cleared\r\n"));
+		settings_clear();
+	}
+	//TODO - reboot the device
+	//soft_reset();
+	return true;
+}
+
+static bool cmd_info(Serial* pSer, char* value, size_t len){
+	(void)value;
+	(void)len;
+	_print_greeting_banner(pSer);
+	_print_settings();
+	_print_freemem(pSer);
+	return true;
+}
+
+static inline void _init_console(void){
+    console_init(&ser);
+    console_add_command(PSTR("INFO"),cmd_info);
+    console_add_command(PSTR("CALL"),cmd_settings_callsign);
+    console_add_command(PSTR("SSID"),cmd_settings_ssid);
+    console_add_command(PSTR("KISS"),cmd_kiss);
+    console_add_command(PSTR("RESET"),cmd_reset);
+    console_add_command(PSTR("BEACON"),cmd_beacon);
+    console_add_command(PSTR("HELP"),cmd_help);
+
+    // experimental commands
+    console_add_command(PSTR("SEND"),cmd_send);
+    console_add_command(PSTR("TEST"),cmd_test);
+}
 
 static void init(void)
 {
@@ -243,10 +354,13 @@ static void init(void)
     beacon_init(&ax25);
 #endif
 
-    command_init(&ser);
-    _print_greeting_banner();
+    //////////////////////////////////////////////////////////////
+    // Initialize the console & commands
+    _init_console();
+
     settings_load();
-    _print_settings();
+
+    cmd_info((&ser),0,0);
 }
 
 
@@ -256,9 +370,6 @@ int main(void)
 {
 
 	init();
-
-	uint16_t ram = freeRam();
-	SERIAL_PRINTF((&ser),"Free RAM: %u\r\n",ram);
 
 	while (1)
 	{
@@ -271,7 +382,7 @@ int main(void)
 
 		switch(runMode){
 		case MODE_CMD:{
-			console_serial_poll();
+			console_poll();
 			break;
 		}
 
@@ -309,198 +420,4 @@ int main(void)
 #endif
 	} // end of while(1)
 	return 0;
-}
-
-
-//FIXME check memory usage
-#define CONSOLE_SERIAL_BUF_LEN 64 						//CONFIG_AX25_FRAME_BUF_LEN
-static uint8_t serialBuffer[CONSOLE_SERIAL_BUF_LEN+1]; 	// Buffer for holding incoming serial data
-static int sbyte;                               		// For holding byte read from serial port
-static size_t serialLen = 0;                    		// Counter for counting length of data from serial
-static bool sertx = false;                      		// Flag signifying whether it's time to send data
-// received on the serial port.
-#define SER_BUFFER_FULL (serialLen < CONSOLE_SERIAL_BUF_LEN-1)
-static void console_serial_poll(void){
-	ticks_t start = timer_clock();
-	// Poll for incoming serial data
-	if (!sertx && ser_available(&ser)) {
-		// We then read a byte from the serial port.
-		// Notice that we use "_nowait" since we can't
-		// have this blocking execution until a byte
-		// comes in.
-		sbyte = ser_getchar_nowait(&ser);
-
-		// If SERIAL_DEBUG is specified we'll handle
-		// serial data as direct human input and only
-		// transmit when we get a LF character
-		#if SERIAL_DEBUG
-			// If we have not yet surpassed the maximum frame length
-			// and the byte is not a "transmit" (newline) character,
-			// we should store it for transmission.
-			if ((serialLen < CONSOLE_SERIAL_BUF_LEN) && (sbyte != 10) && (sbyte != 13)) {
-				// Put the read byte into the buffer;
-				serialBuffer[serialLen] = sbyte;
-				// Increment the read length counter
-				serialLen++;
-			} else {
-				// If one of the above conditions were actually the
-				// case, it means we have to transmit, se we set
-				// transmission flag to true.
-				sertx = true;
-			}
-		#else
-			// Otherwise we assume the modem is running
-			// in automated mode, and we push out data
-			// as it becomes available. We either transmit
-			// immediately when the max frame length has
-			// been reached, or when we get no input for
-			// a certain amount of time.
-
-			serialBuffer[serialLen++] = sbyte;
-			if (serialLen >= CONSOLE_SERIAL_BUF_LEN-1) {
-				sertx = true;
-			}
-
-			start = timer_clock();
-		#endif
-	} else {
-		if (!SERIAL_DEBUG && serialLen > 0 && timer_clock() - start > ms_to_ticks(TX_MAXWAIT)) {
-			sertx = true;
-		}
-	}
-
-	if (sertx) {
-		serialBuffer[serialLen] = 0; // end of the command string
-		// parse serial input
-		/*
-		ss_serialCallback(serialBuffer, serialLen, &ser, &ax25);
-		*/
-		if(serialLen > 0) console_parse_command((char*)serialBuffer, serialLen);
-		sertx = false;
-		serialLen = 0;
-	}
-}
-
-/*
-const char PROGMEM cmd_kiss []  = "KISS";
-const char PROGMEM cmd_callsign []  = "CALLSIGN";
-const char PROGMEM cmd_ssid []  = "SSID";
-PGM_P string_table[] =
-{
-cmd_kiss,
-cmd_callsign,
-cmd_ssid
-};
-*/
-/*
-PROGMEM const char *cmd_table []  = {
-		cmd_kiss,
-		cmd_callsign,
-		cmd_ssid
-};
-*/
-
-static void console_parse_command(char* command, size_t len){
-	bool settingsChanged = false;
-	char *key = NULL, *value = NULL;
-	uint8_t valueLen = 0;
-
-#if APRS_TEST_SEND && CONFIG_BEACON_ENABLED
-	if(len > 0 && command[0] == '!'){
-		beacon_send_test(5);
-		SERIAL_PRINT_P((&ser),PSTR("TESTING...\r\n"));
-		return;
-	}
-#endif
-
-	// convert to upper case
-	strupr(command);
-	//AT+X=Y
-	if(len >=6 && command[0] == 'A' && command[1] == 'T' && command[2] == '+' ){
-		const char s[2] = "=";
-		char* t = strtok((command + 3),s);
-		if(t != NULL){
-			key = t;
-			t = strtok(NULL,s);
-			if(t){
-				value = t;
-				valueLen = strlen(value);
-			}
-		}
-	}
-
-	if(key == NULL && value == NULL){
-		// bail out
-		SERIAL_PRINTF_P((&ser),PSTR("INVALID CMD: %.*s\r\n"),len,command);
-		return;
-	}
-
-	if(strcmp((const char*)key,"KISS") == 0 && value[0] == '1'){
-		runMode = MODE_KISS;
-		kiss_set_enabled(true);
-		ax25.pass_through = 1;
-		ser_purge(&ser);  // clear all rx/tx buffer
-
-		// disable beacon mode
-		beacon_set_enabled(false);
-
-		SERIAL_PRINT_P((&ser),PSTR("Enter KISS mode\r\n"));
-	}
-#if CONFIG_BEACON_ENABLED
-	else if(strcmp((const char*)key,"BEACON") == 0 /*&& value[0] == '1'*/){
-		//FIXME - also support KISS mode when BEACON = 1
-		if(value[0] == '0'){
-			beacon_set_enabled(false);
-			SERIAL_PRINT_P((&ser),PSTR("Beacon mode disabled\r\n"));
-		}else if(value[0] == '1'){
-			beacon_set_enabled(true);
-			SERIAL_PRINT_P((&ser),PSTR("Beacon mode enabled\r\n"));
-		}else{
-			SERIAL_PRINTF_P((&ser),PSTR("Invalid value %s, only value 0 and 1 is accepted\r\n"),value);
-		}
-	}
-	else if(strcmp((const char*)key,"SEND") == 0){
-		if(valueLen == 0){
-			// send test message
-			beacon_send();
-		}else{
-			//TODO send user input message out
-			//TODO build the ax25 path according settings
-		}
-		SERIAL_PRINT_P((&ser),PSTR("SEND OK\r\n"));
-	}
-#endif
-	else if(strcmp((const char*)key,"CALLSIGN") == 0){
-		settings_set(SETTINGS_CALLSIGN,value,valueLen);
-		settingsChanged = true;
-		SERIAL_PRINTF_P((&ser),PSTR("CALLSIGN: %s\r\n"),value);
-	}
-	else if(strcmp((const char*)key,"SSID") == 0){
-		SERIAL_PRINTF_P((&ser),PSTR("SSID: %s\r\n"),value);
-		uint8_t ssid = atoi((const char*)value);
-		settings_set(SETTINGS_SSID,&ssid,1);
-		settingsChanged = true;
-	}
-	else if(strcmp((const char*)key,"RESET") == 0){
-		if(value[0] == '1'){
-			// clear the settings if AT+RESET=1
-			SERIAL_PRINT_P((&ser),PSTR("Settings cleared\r\n"));
-			settings_clear();
-		}
-		//TODO - reboot the device
-		//soft_reset();
-	}
-	else if(strcmp((const char*)key,"INFO") == 0){
-		_print_greeting_banner();
-		_print_settings();
-	}
-	// Unknown
-	else{
-		SERIAL_PRINTF_P((&ser),PSTR("UNKNOWN CMD: %.*s\r\n"),len,command);
-	}
-
-	if(settingsChanged){
-		settings_save();
-	}
-	return;
 }
