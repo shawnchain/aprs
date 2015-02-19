@@ -153,7 +153,7 @@ static void _print_settings(void){
 	SERIAL_PRINTF_P((&ser), PSTR("Beacon: %s-%d\r\n"),buf,g_settings.ssid);
 }
 
-static void _print_freemem(Serial *pSer){
+static inline void _print_freemem(Serial *pSer){
 	// Print free ram
 	uint16_t ram = freeRam();
 	SERIAL_PRINTF(pSer,"Free RAM: %u\r\n",ram);
@@ -358,9 +358,8 @@ static void init(void)
     // Initialize the console & commands
     _init_console();
 
+    // Load settings
     settings_load();
-
-    cmd_info((&ser),0,0);
 }
 
 
@@ -370,6 +369,9 @@ int main(void)
 {
 
 	init();
+
+	// Initialization done, display the welcome banner and settings info
+	cmd_info((&ser),0,0);
 
 	while (1)
 	{
