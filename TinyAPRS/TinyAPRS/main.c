@@ -76,6 +76,7 @@
 #include "sys_utils.h"
 
 #include "beacon.h"
+#include "command.h"
 
 #include "buildrev.h"
 
@@ -138,16 +139,16 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 	case MODE_CMD:{
 #if 1
 		// Print received message to serial
-		SERIAL_PRINTF((&ser), "\r\n>[%.6s-%d]->[%.6s-%d]", msg->src.call, msg->src.ssid, msg->dst.call, msg->dst.ssid);
+		SERIAL_PRINTF_P((&ser), PSTR("\r\n>[%.6s-%d]->[%.6s-%d]"), msg->src.call, msg->src.ssid, msg->dst.call, msg->dst.ssid);
 		if(msg->rpt_cnt > 0){
-			SERIAL_PRINTF((&ser),", via[");
+			SERIAL_PRINT_P((&ser),PSTR(", via["));
 			for (int i = 0; i < msg->rpt_cnt; i++){
-				SERIAL_PRINTF((&ser), "%.6s-%d,", msg->rpt_lst[i].call, msg->rpt_lst[i].ssid);
+				SERIAL_PRINTF_P((&ser), PSTR("%.6s-%d,"), msg->rpt_lst[i].call, msg->rpt_lst[i].ssid);
 			}
 			SERIAL_PRINTF((&ser),"]");
 		}
 		// DATA part
-		SERIAL_PRINTF((&ser), "\r\n%.*s\r\n", msg->len, msg->info);
+		SERIAL_PRINTF_P((&ser), PSTR("\r\n%.*s\r\n"), msg->len, msg->info);
 #else
 		if(msg) ss_messageCallback(msg,&ser);
 #endif
@@ -175,26 +176,26 @@ static void _print_greeting_banner(void){
 	kfile_printf(&ser.fd,"%10s",t);
 	kfile_printf(&ser.fd,(const char*)t,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 	*/
-	kfile_printf(&ser.fd, "TinyAPRS TNC (KISS) 1.0 (f%da%dr%d)\r\n" ,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+//	kfile_printf(&ser.fd, "TinyAPRS TNC (KISS) 1.0 (f%da%dr%d)\r\n" ,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	SERIAL_PRINTF_P((&ser), PSTR("TinyAPRS TNC (KISS) 1.0 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 #else
-	kfile_printf(&ser.fd, "TinyAPRS TNC (Demo) 1.0 (f%da%dr%d)\r\n",CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	SERIAL_PRINTF_P((&ser), PSTR("TinyAPRS TNC (Demo) 1.0 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 #endif
 }
 
 static void _print_settings(void){
 	// DEBUG Purpose
-//		char buf[7];
-//		memset(buf,0,7);
-//		memcpy(buf,g_settings.callsign,6);
-//		uint8_t bufLen = 7;
-//		settings_get(SETTINGS_CALLSIGN,buf,&bufLen);
-//		for(int i = 0;i < 6;i++){
-//			SERIAL_PRINTF((&ser),"%d,",g_settings.callsign[i]);
-//		}
-//		SERIAL_PRINTF((&ser),"%d,",g_settings.ssid);
+	char buf[7];
+	memset(buf,0,7);
+//	memcpy(buf,g_settings.callsign,6);
+	uint8_t bufLen = sizeof(buf);
+	settings_get(SETTINGS_CALLSIGN,buf,&bufLen);
+//	for(int i = 0;i < 6;i++){
+//		SERIAL_PRINTF((&ser),"%d,",g_settings.callsign[i]);
+//	}
+//	SERIAL_PRINTF((&ser),"%d,",g_settings.ssid);
 	//SERIAL_PRINTF((&ser),"%s-%d\r\n",buf,g_settings.ssid);
-
-	SERIAL_PRINTF((&ser), "%6s-%d\r\n",g_settings.callsign,g_settings.ssid);
+	SERIAL_PRINTF_P((&ser), PSTR("%s-%d\r\n"),buf,g_settings.ssid);
 }
 
 
@@ -242,6 +243,7 @@ static void init(void)
     beacon_init(&ax25);
 #endif
 
+    command_init(&ser);
     _print_greeting_banner();
     settings_load();
     _print_settings();
@@ -277,7 +279,7 @@ int main(void)
 		case MODE_KISS:{
 			if(!kiss_enabled()){
 				runMode = MODE_CMD;
-				SERIAL_PRINTF((&ser),"Exit KISS mode\r\n");
+				SERIAL_PRINT_P((&ser),PSTR("Exit KISS mode\r\n"));
 				break;
 			}
 			kiss_serial_poll();
@@ -373,7 +375,7 @@ static void console_serial_poll(void){
 		/*
 		ss_serialCallback(serialBuffer, serialLen, &ser, &ax25);
 		*/
-		console_parse_command((char*)serialBuffer, serialLen);
+		if(serialLen > 0) console_parse_command((char*)serialBuffer, serialLen);
 		sertx = false;
 		serialLen = 0;
 	}
@@ -406,7 +408,7 @@ static void console_parse_command(char* command, size_t len){
 #if APRS_TEST_SEND && CONFIG_BEACON_ENABLED
 	if(len > 0 && command[0] == '!'){
 		beacon_send_test(5);
-		SERIAL_PRINTF((&ser),"TESTING...\r\n");
+		SERIAL_PRINT_P((&ser),PSTR("TESTING...\r\n"));
 		return;
 	}
 #endif
@@ -429,7 +431,7 @@ static void console_parse_command(char* command, size_t len){
 
 	if(key == NULL && value == NULL){
 		// bail out
-		SERIAL_PRINTF((&ser),"INVALID CMD: %.*s\r\n",len,command);
+		SERIAL_PRINTF_P((&ser),PSTR("INVALID CMD: %.*s\r\n"),len,command);
 		return;
 	}
 
@@ -442,19 +444,19 @@ static void console_parse_command(char* command, size_t len){
 		// disable beacon mode
 		beacon_set_enabled(false);
 
-		SERIAL_PRINTF((&ser),"Enter KISS mode\r\n");
+		SERIAL_PRINT_P((&ser),PSTR("Enter KISS mode\r\n"));
 	}
 #if CONFIG_BEACON_ENABLED
 	else if(strcmp((const char*)key,"BEACON") == 0 /*&& value[0] == '1'*/){
 		//FIXME - also support KISS mode when BEACON = 1
 		if(value[0] == '0'){
 			beacon_set_enabled(false);
-			SERIAL_PRINTF((&ser),"Beacon mode disabled\r\n");
+			SERIAL_PRINT_P((&ser),PSTR("Beacon mode disabled\r\n"));
 		}else if(value[0] == '1'){
 			beacon_set_enabled(true);
-			SERIAL_PRINTF((&ser),"Beacon mode enabled\r\n");
+			SERIAL_PRINT_P((&ser),PSTR("Beacon mode enabled\r\n"));
 		}else{
-			SERIAL_PRINTF((&ser),"Invalid value %s, only value 0 and 1 is accepted\r\n",value);
+			SERIAL_PRINTF_P((&ser),PSTR("Invalid value %s, only value 0 and 1 is accepted\r\n"),value);
 		}
 	}
 	else if(strcmp((const char*)key,"SEND") == 0){
@@ -465,16 +467,16 @@ static void console_parse_command(char* command, size_t len){
 			//TODO send user input message out
 			//TODO build the ax25 path according settings
 		}
-		SERIAL_PRINTF((&ser),"SEND OK\r\n");
+		SERIAL_PRINT_P((&ser),PSTR("SEND OK\r\n"));
 	}
 #endif
 	else if(strcmp((const char*)key,"CALLSIGN") == 0){
 		settings_set(SETTINGS_CALLSIGN,value,valueLen);
 		settingsChanged = true;
-		SERIAL_PRINTF((&ser),"CALLSIGN: %s\r\n",value);
+		SERIAL_PRINTF_P((&ser),PSTR("CALLSIGN: %s\r\n"),value);
 	}
 	else if(strcmp((const char*)key,"SSID") == 0){
-		SERIAL_PRINTF((&ser),"SSID: %s\r\n",value);
+		SERIAL_PRINTF_P((&ser),PSTR("SSID: %s\r\n"),value);
 		uint8_t ssid = atoi((const char*)value);
 		settings_set(SETTINGS_SSID,&ssid,1);
 		settingsChanged = true;
@@ -482,7 +484,7 @@ static void console_parse_command(char* command, size_t len){
 	else if(strcmp((const char*)key,"RESET") == 0){
 		if(value[0] == '1'){
 			// clear the settings if AT+RESET=1
-			SERIAL_PRINTF((&ser),"Settings cleared\r\n");
+			SERIAL_PRINT_P((&ser),PSTR("Settings cleared\r\n"));
 			settings_clear();
 		}
 		//TODO - reboot the device
@@ -494,7 +496,7 @@ static void console_parse_command(char* command, size_t len){
 	}
 	// Unknown
 	else{
-		SERIAL_PRINTF((&ser),"UNKNOWN CMD: %.*s\r\n",len,command);
+		SERIAL_PRINTF_P((&ser),PSTR("UNKNOWN CMD: %.*s\r\n"),len,command);
 	}
 
 	if(settingsChanged){

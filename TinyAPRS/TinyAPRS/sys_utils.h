@@ -35,8 +35,33 @@
 //#define FREE_RAM_TEST 1
 uint16_t freeRam (void);
 
-// Serial printf helper macros
+/////////////////////////////////////////////////////////////////////////
+// Serial print/printf macros
+/////////////////////////////////////////////////////////////////////////
+/*
+ * Macro that simplifies printing strings to serial port
+ */
 #define SERIAL_PRINTF(pSER,...) kfile_printf(&(pSER->fd),__VA_ARGS__)
 
+/*
+ * Macro that reads format string from program memory and print out to serial port
+ * support variable arguments
+ */
+#define SERIAL_PRINTF_P(pSER,pSTR,...) 			\
+{												\
+	char __ser_printf_p_buf[64];								\
+	strncpy_P(__ser_printf_p_buf,pSTR,63);						\
+	kfile_printf((&(pSER->fd)),__ser_printf_p_buf,__VA_ARGS__);	\
+}
+
+/*
+ * Macro that reads string from program memory and print out to serial port
+ */
+#define SERIAL_PRINT_P(pSER,pSTR) 			\
+{												\
+	char __ser_print_p_buf[64];								\
+	strncpy_P(__ser_print_p_buf,pSTR,63);						\
+	kfile_printf((&(pSER->fd)),__ser_print_p_buf);	\
+}
 
 #endif /* SYS_UTILS_H_ */
