@@ -57,25 +57,17 @@ void kiss_set_in_callback(uint8_t port, kiss_in_callback_t fnc)
 	kiss_in_callbacks[port - 1] = fnc;
 }
 
-void kiss_serial_poll()
-{
-	static struct Kiss_msg k = {.pos = 0};
+static struct Kiss_msg k = {.pos = 0};
+
+void kiss_parse(int c){
 	static bool escaped = false;
-	int c;
-
-	c = ser_getchar_nowait(kiss_ser);
-
-	if (c == EOF) {
-		return;
-	}
-	
 	// sanity checks
 	// no serial input in last 2 secs?
 	if ((k.pos != 0) && (timer_clock() - k.last_tick  >  ms_to_ticks(2000L))) {
 		LOG_INFO("Serial - Timeout\n");
 		k.pos = 0;
 	}
-	
+
 	// about to overflow buffer? reset
 	if (k.pos >= (CONFIG_AX25_FRAME_BUF_LEN - 2)) {
 		LOG_INFO("Serial - Packet too long %d >= %d\n", k.pos, CONFIG_AX25_FRAME_BUF_LEN - 2);
@@ -106,10 +98,20 @@ void kiss_serial_poll()
 	} else if (escaped) {
 		escaped = false;
 	}
-	
+
 	k.buf[k.pos] = c & 0xff;
 	k.pos++;
 	k.last_tick = timer_clock();
+}
+
+void kiss_serial_poll()
+{
+	int c;
+	c = ser_getchar_nowait(kiss_ser);
+	if (c == EOF) {
+		return;
+	}
+	kiss_parse(c);
 }
 
 void kiss_set_enabled(bool flag){

@@ -49,6 +49,7 @@ struct Kiss_msg {
 void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk);
 void kiss_set_in_callback(uint8_t port, kiss_in_callback_t fnc);
 void kiss_serial_poll(void);
+void kiss_parse(int c);
 void kiss_queue_message(uint8_t *buf, size_t len);
 void kiss_queue_process(void);
 void kiss_send_host(uint8_t ch, uint8_t *buf, size_t len);
