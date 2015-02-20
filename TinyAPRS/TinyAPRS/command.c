@@ -42,65 +42,42 @@ void console_init(Serial *ser){
 
 //FIXME check memory usage
 static uint8_t serialBuffer[CONSOLE_SERIAL_BUF_LEN+1]; 	// Buffer for holding incoming serial data
-static int sbyte;                               		// For holding byte read from serial port
 static size_t serialLen = 0;                    		// Counter for counting length of data from serial
-static bool readComplete = false;                      	// Flag signifying whether it's time to send data
-// received on the serial port.
-#define SER_BUFFER_FULL (serialLen < CONSOLE_SERIAL_BUF_LEN-1)
-void console_poll(void){
-	ticks_t start = timer_clock();
-	// Poll for incoming serial data
-	if (!readComplete && ser_available(pSerial)) {
-		// We then read a byte from the serial port.
-		// Notice that we use "_nowait" since we can't
-		// have this blocking execution until a byte
-		// comes in.
-		sbyte = ser_getchar_nowait(pSerial);
 
-		// If SERIAL_DEBUG is specified we'll handle
-		// serial data as direct human input and only
-		// transmit when we get a LF character
-		#if CONSOLE_SERIAL_DEBUG
-			// If we have not yet surpassed the maximum frame length
-			// and the byte is not a "transmit" (newline) character,
-			// we should store it for transmission.
-			if ((serialLen < CONSOLE_SERIAL_BUF_LEN) && (sbyte != 10) && (sbyte != 13) ) {
-				// Put the read byte into the buffer and increment the length counter
-				serialBuffer[serialLen++] = sbyte;
-			} else {
-				// If one of the above conditions were actually the
-				// case, it means we have to transmit, se we set
-				// transmission flag to true.
-				readComplete = true;
-			}
-		#else
-			// Otherwise we assume the modem is running
-			// in automated mode, and we push out data
-			// as it becomes available. We either transmit
-			// immediately when the max frame length has
-			// been reached, or when we get no input for
-			// a certain amount of time.
-
-			serialBuffer[serialLen++] = sbyte;
-			if (serialLen >= CONSOLE_SERIAL_BUF_LEN-1) {
-				readComplete = true;
-			}
-
-			start = timer_clock();
-		#endif
-	} else {
-		if (!CONSOLE_SERIAL_DEBUG && serialLen > 0 && timer_clock() - start > ms_to_ticks(CONSOLE_TX_MAXWAIT)) {
-			readComplete = true;
-		}
-	}
-
-	if (readComplete) {
-		serialBuffer[serialLen] = 0; // end of the command string
-		// parse serial input
-		if(serialLen > 0)
-			console_parse_command(pSerial,(char*)serialBuffer, serialLen);
-		readComplete = false;
+/*
+ * The console will always read console input char until met CRLF or buffer is full
+ */
+void console_parse(int c){
+#if CONSOLE_SERIAL_READ_TIMEOUT > 0
+	static ticks_t lastReadTick = 0;
+	if((serialLen > 0) && (timer_clock() - lastReadTick > ms_to_ticks(CONSOLE_SERIAL_READ_TIMEOUT)) ){
+		//LOG_INFO("Console - Timeout\n");
 		serialLen = 0;
+	}
+#endif
+
+	// read until met CR/LF/EOF or buffer is full
+	if ((serialLen >= CONSOLE_SERIAL_BUF_LEN) || (c == '\r') || (c == '\n') || (c == EOF) ) {
+		if(serialLen > 0){
+			serialBuffer[serialLen] = 0; // complete the buffered string
+			// parsing the command
+			console_parse_command(pSerial,(char*)serialBuffer, serialLen);
+			serialLen = 0;
+		}
+	} else {
+		// keep in buffer
+		serialBuffer[serialLen++] = c;
+#if CONSOLE_SERIAL_READ_TIMEOUT > 0
+		lastReadTick = timer_clock();
+#endif
+	}
+}
+
+void console_poll(void){
+	int c;
+	if(ser_available(pSerial)){
+		c = ser_getchar_nowait(pSerial);
+		console_parse(c);
 	}
 }
 

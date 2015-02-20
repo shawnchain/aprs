@@ -20,8 +20,7 @@
 
 #define CONSOLE_SERIAL_DEBUG true					// Debugging flag of the console serial port
 
-#define CONSOLE_TX_MAXWAIT 2UL                      // How many milliseconds should pass with no
-													// no incoming data before it is transmitted
+#define CONSOLE_SERIAL_READ_TIMEOUT 0UL             // Read timeout control. set 0 to disable
 
 #define CONSOLE_SERIAL_BUF_LEN 64 					// The serial console command buffer
 

@@ -92,7 +92,19 @@ typedef enum{
 	MODE_KISS,
 }RunMode;
 
+
 static RunMode runMode = MODE_CMD;
+
+// Free ram test
+INLINE uint16_t freeRam (void) {
+  extern int __heap_start, *__brkval;
+  uint8_t v;
+  uint16_t vaddr = (uint16_t)(&v);
+  return (uint16_t) (vaddr - (__brkval == 0 ? (uint16_t) &__heap_start : (uint16_t) __brkval));
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// Message Callbacks
 
 /*
  * Print on console the message that we have received.
@@ -158,6 +170,7 @@ static inline void _print_freemem(Serial *pSer){
 	uint16_t ram = freeRam();
 	SERIAL_PRINTF(pSer,"Free RAM: %u\r\n",ram);
 }
+
 ///////////////////////////////////////////////////////////////////////////////////
 // Command handlers
 
