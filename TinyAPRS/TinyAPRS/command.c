@@ -109,7 +109,7 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 #endif
 	*/
 
-	//AT+X=Y
+	//TinyAPRS AT Command Handler
 	if(commandLen >=6 && command[0] == 'A' && command[1] == 'T' && command[2] == '+' ){
 		const char s[2] = "=";
 		char* t = strtok((command + 3),s);
@@ -121,6 +121,27 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 				valueLen = strlen(value);
 			}
 		}
+	}
+
+	// Compatible OT2 KISS enable command
+	else if( (commandLen >=10) && (strcmp_P(command,PSTR("AMODE KISS")) == 0)){
+		// enter the kiss mode
+		// reuse the existing command buffer
+		key = command + 6;
+		key[4] = 0;
+		value = command;
+		value[0] = '1';
+		value[1] = 0;
+		valueLen = 1;
+	}
+	// Compatible other KISS TNC command
+	else if( (commandLen >=7) && (strcmp_P(command,PSTR("KISS ON")) == 0)){
+		key = command;
+		key[4] = 0;
+		value = command + 5;
+		value[0] = '1';
+		value[1] = 0;
+		valueLen = 1;
 	}
 
 	if(key == NULL && value == NULL){
