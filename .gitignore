@@ -31,3 +31,5 @@
 .project
 .cproject
 .DS_Store
+/ConfigTool/TinyAPRSConfigTool/TinyAPRSConfigTool/bin
+/ConfigTool/TinyAPRSConfigTool/TinyAPRSConfigTool/obj
