@@ -29,9 +29,20 @@
  * The setting types
  */
 typedef enum {
-	SETTINGS_CALLSIGN = 1,
-	SETTINGS_SSID
+	SETTINGS_MY_CALL = 1,
+	SETTINGS_MY_SSID,
+	SETTINGS_DEST_CALL,
+	SETTINGS_DEST_SSID,
+	SETTINGS_PATH1_CALL,
+	SETTINGS_PATH1_SSID,
+	SETTINGS_PATH2_CALL,
+	SETTINGS_PATH2_SSID,
+	SETTINGS_PHGD,
+	SETTINGS_SYMBOL,
+
 }SETTINGS_TYPE;
+
+#define SETTINGS_MAX_SSID 99
 
 /**
  * Load settings from EEPROM
@@ -48,6 +59,17 @@ bool settings_save(void);
  */
 void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* valueOutLen);
 
+/*
+ *
+ */
+bool settings_set_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType, char* callString, uint8_t callStringLen);
+
+/*
+ *
+ */
+void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType, char* buf, uint8_t bufLen);
+
+
 /**
  * Clear settings
  */
@@ -58,10 +80,25 @@ void settings_clear(void);
  */
 void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen);
 
+#define SETTINGS_SIZE 36
 typedef struct{
-	uint8_t callsign[6];
-	uint8_t ssid;
-	uint8_t unused[25];
+	uint8_t my_call[6]; 		// the call sign like BG5HHP
+	uint8_t my_ssid;		// the call ssid from 1-10
+
+	uint8_t dest_call[6];		// the destination callsign and ssid
+	uint8_t dest_ssid;
+
+	uint8_t path1_call[6];		// the path1 callsign and ssid
+	uint8_t path1_ssid;
+
+	uint8_t path2_call[6];		// the path2
+	uint8_t path2_ssid;
+
+	uint8_t phgd[4];		// the POWER,HEIGHT,GAIN,DIRECTIVITY index values
+
+	uint8_t symbol;
+
+	uint8_t unused[3];
 	/*
 #define NV_MAGIC_BYTE 0x69
 uint8_t EEMEM nvMagicByte;
