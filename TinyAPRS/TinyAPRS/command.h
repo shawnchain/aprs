@@ -22,6 +22,8 @@
 #include <cpu/pgm.h>     /* PROGMEM */
 #include <avr/pgmspace.h>
 
+#include "cfg/cfg_console.h"
+
 void console_init(Serial *ser);
 
 void console_poll(void);

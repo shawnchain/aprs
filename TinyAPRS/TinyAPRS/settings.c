@@ -70,47 +70,46 @@ void settings_clear(void){
 #define MIN(a,b)	(((a) < (b)) ? (a) : (b))
 #define MAX(a,b)	(((a) > (b)) ? (a) : (b))
 
-// The call might be 5 or 6 char length
-#define COPY_CALL_VALUE(X) \
-		memcpy(valueOut,X,MIN(outBufferSize,6)); \
-		while(valueLen<6){ \
-			if(((char*)valueOut)[valueLen] == 0){ \
-				break; \
-			} \
-			valueLen++; \
-		}; \
-		*pValueOutLen = valueLen;
+static void settings_copy_call_value(const char* call, char* buf, uint8_t *len){
+	memset(buf, 0, 7);
+	int i = 0;
+	while (i < 6 && call[i] != 0) {
+		buf[i] = call[i];
+		i++;
+	}
+	*len = i;
+}
+
 /*
  * Get settings value, fill up the valueOut buffer, and update the valueOutLen of the actual value lenth
  */
 void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 	if(*pValueOutLen <= 0) return;
 	uint8_t outBufferSize = *pValueOutLen;
-	uint8_t valueLen = 0;
 	switch(type){
 		case SETTINGS_MY_CALL:
-			COPY_CALL_VALUE(g_settings.my_call);
+			settings_copy_call_value((const char*)g_settings.my_call,valueOut,pValueOutLen);
 			break;
 		case SETTINGS_MY_SSID:
 			*((uint8_t*)valueOut) = g_settings.my_ssid;
 			*pValueOutLen = 1;
 			break;
 		case SETTINGS_DEST_CALL:
-			COPY_CALL_VALUE(g_settings.dest_call);
+			settings_copy_call_value((const char*)g_settings.dest_call,valueOut,pValueOutLen);
 			break;
 		case SETTINGS_DEST_SSID:
 			*((uint8_t*)valueOut) = g_settings.dest_ssid;
 			*pValueOutLen = 1;
 			break;
 		case SETTINGS_PATH1_CALL:
-			COPY_CALL_VALUE(g_settings.path1_call);
+			settings_copy_call_value((const char*)g_settings.path1_call,valueOut,pValueOutLen);
 			break;
 		case SETTINGS_PATH1_SSID:
 			*((uint8_t*)valueOut) = g_settings.path1_ssid;
 			*pValueOutLen = 1;
 			break;
 		case SETTINGS_PATH2_CALL:
-			COPY_CALL_VALUE(g_settings.path2_call);
+			settings_copy_call_value((const char*)g_settings.path2_call,valueOut,pValueOutLen);
 			break;
 		case SETTINGS_PATH2_SSID:
 			*((uint8_t*)valueOut) = g_settings.path2_ssid;
