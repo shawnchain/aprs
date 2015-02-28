@@ -176,6 +176,7 @@ static inline void _print_freemem(Serial *pSer){
 ///////////////////////////////////////////////////////////////////////////////////
 // Command handlers
 
+#if CONSOLE_TEST_COMMAND_ENABLED
 /*
  * !{n} - send {n} test packets
  */
@@ -191,6 +192,7 @@ static bool cmd_test(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINTF_P(pSer,PSTR("Sending %d test packet...\r\n"),repeats);
 	return true;
 }
+#endif
 
 static bool cmd_help(Serial* pSer, char* command, size_t len){
 	(void)command;
@@ -469,7 +471,11 @@ static inline void _init_console(void){
 
     // experimental commands
     console_add_command(PSTR("SEND"),cmd_send);
+
+#if CONSOLE_TEST_COMMAND_ENABLED
     console_add_command(PSTR("TEST"),cmd_test);
+#endif
+
 }
 
 static void init(void)
@@ -524,7 +530,6 @@ static void init(void)
 }
 
 
-#define APRS_TEST_SEND 1
 
 int main(void)
 {

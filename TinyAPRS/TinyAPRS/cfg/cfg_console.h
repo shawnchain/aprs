@@ -26,4 +26,6 @@
 
 #define CONSOLE_MAX_COMMAND	16						// How many AT commands to support
 
+#define CONSOLE_TEST_COMMAND_ENABLED 1				// enable test command "!n" or "AT+TEST=n"
+
 #endif /* CFG_CONSOLE_H_ */

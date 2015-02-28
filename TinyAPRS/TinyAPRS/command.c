@@ -18,11 +18,10 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include "sys_utils.h"
+#include <stdio.h>
 #include <string.h>
 
 #include <drv/timer.h>
-
-#include "cfg/cfg_console.h"
 
 static Serial *pSerial;
 static void console_parse_command(Serial *pSer, char* command, size_t commandLen);
@@ -108,6 +107,21 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 	}
 #endif
 	*/
+
+	// A simple hack to command "!5"
+#if CONSOLE_TEST_COMMAND_ENABLED
+	if(commandLen >0 && command[0] == '!'){
+		uint8_t repeats = 0;
+		if(commandLen > 1)
+			repeats = atoi((const char*)(command + 1));
+		if(repeats == 0){
+			repeats = 3;
+		}else if(repeats > 9){
+			repeats = 9;
+		}
+		commandLen = snprintf_P(command,11,PSTR("AT+TEST=%d\r"),repeats);
+	}
+#endif
 
 	//TinyAPRS AT Command Handler
 	if(commandLen >=6 && command[0] == 'A' && command[1] == 'T' && command[2] == '+' ){
