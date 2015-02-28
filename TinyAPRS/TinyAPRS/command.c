@@ -123,7 +123,7 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 		}
 	}
 
-	// Compatible OT2 KISS enable command
+	// Compatible with OT2/Other TNCs KISS init command
 	else if( (commandLen >=10) && (strcmp_P(command,PSTR("AMODE KISS")) == 0)){
 		// enter the kiss mode
 		// reuse the existing command buffer
@@ -134,7 +134,6 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 		value[1] = 0;
 		valueLen = 1;
 	}
-	// Compatible other KISS TNC command
 	else if( (commandLen >=7) && (strcmp_P(command,PSTR("KISS ON")) == 0)){
 		key = command;
 		key[4] = 0;
@@ -152,8 +151,13 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 
 	// look the command registry
 	PFUN_CMD_HANDLER fun = console_lookup_command(key);
-	if(fun && fun(pSer, value, valueLen)){
-		return;
+	if(fun){
+		if(!fun(pSer, value, valueLen)){
+			// handle failure, should be invalid values
+			SERIAL_PRINT_P(pSer,PSTR("INVALID CMD VALUE\r\n")); // user input command is parsed but the value is not valid
+		}
+	}else{
+		SERIAL_PRINTF_P(pSer,PSTR("UNKNOWN CMD: %.*s\r\n"),commandLen,command);
 	}
 
 /*
@@ -197,10 +201,6 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 	}
 */
 
-	// Unknown
-	//else{
-		SERIAL_PRINTF_P(pSer,PSTR("UNKNOWN CMD: %.*s\r\n"),commandLen,command);
-	//}
 
 //	if(settingsChanged){
 //		settings_save();
