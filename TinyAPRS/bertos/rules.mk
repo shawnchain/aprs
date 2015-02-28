@@ -46,7 +46,7 @@ RECURSIVE_TARGETS = all-recursive install-recursive clean-recursive
 
 # The default target
 .PHONY: all
-all:: all-recursive $(TRG_TGT)
+all:: all-recursive $(TRG_TGT) print_size
 
 # Generate project documentation
 .PHONY: docs
@@ -245,7 +245,7 @@ flash_$(1): $(OUTDIR)/$(1).hex flash_$(1)_local
 	fi
 	$Q if [ ! "$$($(1)_PROGRAMMER_TYPE)" == "none" ] ; then \
 		PROGRAMMER_CPU=$$($(1)_PROGRAMMER_CPU) PROGRAMMER_TYPE=$$($(1)_PROGRAMMER_TYPE) \
-		PROGRAMMER_PORT=$$($(1)_PROGRAMMER_PORT) IMAGE_FILE=$$< \
+		PROGRAMMER_PORT=$$($(1)_PROGRAMMER_PORT) PROGRAMMER_BAUD=$$($(1)_PROGRAMMER_BAUD) IMAGE_FILE=$$< \
 		$$($(1)_FLASH_SCRIPT) ; \
 	else \
 		printf "CLDLG: No programmer interface configured, see http://dev.bertos.org/wiki/ProgrammerInterface\n" ; \

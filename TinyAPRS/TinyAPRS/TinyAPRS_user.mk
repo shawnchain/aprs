@@ -4,8 +4,11 @@
 #
 
 # Programmer interface configuration, see http://dev.bertos.org/wiki/ProgrammerInterface for help
-TinyAPRS_PROGRAMMER_TYPE = usbasp
-TinyAPRS_PROGRAMMER_PORT = asp
+#TinyAPRS_PROGRAMMER_TYPE = usbasp
+#TinyAPRS_PROGRAMMER_PORT = asp
+TinyAPRS_PROGRAMMER_TYPE = arduino
+TinyAPRS_PROGRAMMER_PORT = /dev/cu.usbserial
+TinyAPRS_PROGRAMMER_BAUD = 57600
 
 # Files included by the user.
 TinyAPRS_USER_CSRC = \
@@ -49,3 +52,16 @@ TinyAPRS_USER_CPPFLAGS = \
 	-fno-strict-aliasing \
 	-fwrapv \
 	#
+
+# Print binary size, make sure avr-size is in the PATH env
+AVRSIZE=avr-size
+print_size:
+	$(AVRSIZE) --format=avr --mcu=$(TinyAPRS_MCU) $(OUTDIR)/$(TRG).elf
+
+# Just flash the image, make sure avrdude is in the path
+flash_image:
+	$(AVRDUDE) -p $(TinyAPRS_MCU) -c $(TinyAPRS_PROGRAMMER_TYPE) -P $(TinyAPRS_PROGRAMMER_PORT) -b $(TinyAPRS_PROGRAMMER_BAUD) -F -U flash:w:$(OUTDIR)/$(TRG).hex:i
+
+# Build and flash to the target
+flash: flash_$(TRG)
+	
