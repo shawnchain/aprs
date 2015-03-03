@@ -38,7 +38,8 @@ enum {
 	KISS_QUEUE_DELAYED,
 };
 
-typedef void (*kiss_in_callback_t)(uint8_t *buf, size_t len);
+//typedef void (*kiss_in_callback_t)(uint8_t *buf, size_t len);
+typedef void (*kiss_exit_callback_t)(void);
 
 struct Kiss_msg {
 	uint8_t buf[ CONFIG_AX25_FRAME_BUF_LEN ];
@@ -46,15 +47,13 @@ struct Kiss_msg {
 	ticks_t last_tick;     // timestamp of last byte into buf
 };
 
-void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk);
-void kiss_set_in_callback(uint8_t port, kiss_in_callback_t fnc);
+void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook);
+
 void kiss_serial_poll(void);
 void kiss_parse(int c);
 void kiss_queue_message(uint8_t *buf, size_t len);
 void kiss_queue_process(void);
-void kiss_send_host(uint8_t ch, uint8_t *buf, size_t len);
-bool kiss_enabled(void);
-void kiss_set_enabled(bool flag);
+void kiss_send_host(uint8_t port, uint8_t *buf, size_t len);
 
 #endif
 

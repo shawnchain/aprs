@@ -8,11 +8,12 @@
 
 
 #define KISS_QUEUE CONFIG_KISS_QUEUE
-#define KISS_PORT CONFIG_KISS_PORT
 
 Serial *kiss_ser;
 AX25Ctx *kiss_ax25;
 Afsk *kiss_afsk;
+
+static kiss_exit_callback_t exitCallback = 0;
 
 #if KISS_QUEUE > 0
 ticks_t kiss_queue_ts;
@@ -21,8 +22,7 @@ size_t kiss_queue_len = 0;
 struct Kiss_msg kiss_queue[KISS_QUEUE];
 #endif
 
-#define KISS_PORTS CONFIG_KISS_PORT /*4*/
-kiss_in_callback_t kiss_in_callbacks[KISS_PORTS];
+
 
 uint8_t kiss_txdelay;
 uint8_t kiss_txtail;
@@ -30,10 +30,9 @@ uint8_t kiss_persistence;
 uint8_t kiss_slot_time;
 uint8_t kiss_duplex;
 
-static bool s_kiss_enabled = false;
 static void kiss_cmd_process(struct Kiss_msg *k);
 
-void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk)
+void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook)
 {
 	kiss_txdelay = 50;
 	kiss_persistence = 63;
@@ -44,17 +43,8 @@ void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk)
 	kiss_ser = ser;
 	kiss_ax25 = ax25;
 	kiss_afsk = afsk;
-}
 
-/*
- * port number starts from 1
- */
-void kiss_set_in_callback(uint8_t port, kiss_in_callback_t fnc)
-{
-	if ((port == 0) || ((port - 1) > KISS_PORTS))
-		return;
-
-	kiss_in_callbacks[port - 1] = fnc;
+	exitCallback = hook;
 }
 
 static struct Kiss_msg k = {.pos = 0};
@@ -114,14 +104,6 @@ void kiss_serial_poll()
 	kiss_parse(c);
 }
 
-void kiss_set_enabled(bool flag){
-	s_kiss_enabled = flag;
-}
-
-bool kiss_enabled(void){
-	return s_kiss_enabled;
-}
-
 static void kiss_cmd_process(struct Kiss_msg *k)
 {
 	uint8_t cmd;
@@ -130,7 +112,10 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 	// Check return command
 	if(k->pos == 1 && k->buf[0] == KISS_CMD_Return){
 		LOG_INFO("Kiss - exiting");
-		s_kiss_enabled = false;
+		k->pos=0;
+		if(exitCallback){
+			exitCallback();
+		}
 		return;
 	}
 
@@ -138,25 +123,8 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 	cmd = k->buf[0] & 0x0f;
 	port = k->buf[0] >> 4;
 
-	if (port != 0) {
-		kiss_in_callback_t fnc;
-
-		if (port > (KISS_PORT + 1)/*4 + 1 = 5*/)
-			return;
-
-		if (cmd != KISS_CMD_DATA)
-			return;
-
-		fnc = kiss_in_callbacks[port - 1];
-		if (fnc) {
-			fnc(k->buf + 1, k->pos - 1);
-		}
-		return;
-	}
-
-	if (cmd == KISS_CMD_DATA) {
-		LOG_INFO("Kiss - queueing message\n");
-		kiss_queue_message(k->buf + 1, k->pos - 1);
+	if (port > 0) {
+		// not supported yet.
 		return;
 	}
 
@@ -164,31 +132,53 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 		LOG_INFO("Kiss - discarding packet - too short\n");
 		return;
 	}
-	
-	if (cmd == KISS_CMD_TXDELAY) {
-		LOG_INFO("Kiss - setting txdelay %d\n", k->buf[1]);
-		if(k->buf[1] > 0){
-			kiss_txdelay = k->buf[1];
+
+	switch(cmd){
+		case KISS_CMD_DATA:{
+			LOG_INFO("Kiss - queuing message\n");
+			kiss_queue_message(/*port = 0*/ k->buf + 1, k->pos - 1);
+			break;
 		}
-	} else if (cmd == KISS_CMD_P) {
-		LOG_INFO("Kiss - setting persistence %d\n", k->buf[1]);
-		if(k->buf[1] > 0){
-			kiss_persistence = k->buf[1];
+
+		case KISS_CMD_TXDELAY:{
+			LOG_INFO("Kiss - setting txdelay %d\n", k->buf[1]);
+			if(k->buf[1] > 0){
+				kiss_txdelay = k->buf[1];
+			}
+			break;
 		}
-	} else if (cmd == KISS_CMD_SlotTime) {
-		LOG_INFO("Kiss - setting slot_time %d\n", k->buf[1]);
-		if(k->buf[1] > 0){
-			kiss_slot_time = k->buf[1];
+
+
+		case KISS_CMD_P:{
+			LOG_INFO("Kiss - setting persistence %d\n", k->buf[1]);
+			if(k->buf[1] > 0){
+				kiss_persistence = k->buf[1];
+			}
+			break;
 		}
-	} else if (cmd == KISS_CMD_TXtail) {
-		LOG_INFO("Kiss - setting txtail %d\n", k->buf[1]);
-		if(k->buf[1] > 0){
-			kiss_txtail = k->buf[1];
+
+		case KISS_CMD_SlotTime:{
+			LOG_INFO("Kiss - setting slot_time %d\n", k->buf[1]);
+			if(k->buf[1] > 0){
+				kiss_slot_time = k->buf[1];
+			}
+			break;
 		}
-	} else if (cmd == KISS_CMD_FullDuplex) {
-		LOG_INFO("Kiss - setting duplex %d\n", k->buf[1]);
-		kiss_duplex = k->buf[1];
-	}
+
+		case KISS_CMD_TXtail:{
+			LOG_INFO("Kiss - setting txtail %d\n", k->buf[1]);
+			if(k->buf[1] > 0){
+				kiss_txtail = k->buf[1];
+			}
+			break;
+		}
+
+		case KISS_CMD_FullDuplex:{
+			LOG_INFO("Kiss - setting duplex %d\n", k->buf[1]);
+			kiss_duplex = k->buf[1];
+			break;
+		}
+	}// end of switch(cmd)
 }
 
 #define ACTIVE_CSMA_ENABLED 1
@@ -226,7 +216,7 @@ static void kiss_csma(AX25Ctx *ctx, uint8_t *buf, size_t len) {
 }
 #endif
 
-void kiss_queue_message(uint8_t *buf, size_t len){
+void kiss_queue_message(/*channel = 0*/ uint8_t *buf, size_t len){
 #if KISS_QUEUE > 0
 	if (kiss_queue_len == KISS_QUEUE)
 		return;
@@ -292,12 +282,12 @@ void kiss_queue_process()
 }
 
 
-void kiss_send_host(uint8_t ch, uint8_t *buf, size_t len)
+void kiss_send_host(uint8_t port, uint8_t *buf, size_t len)
 {
 	size_t i;
 
 	kfile_putc(KISS_FEND, &kiss_ser->fd);
-	kfile_putc((ch << 4) & 0xf0, &kiss_ser->fd);
+	kfile_putc((port << 4) & 0xf0, &kiss_ser->fd);
 
 	for (i = 0; i < len; i++) {
 

@@ -85,14 +85,15 @@ static Serial ser;
 #define SER_BAUD_RATE_115200 115200L
 
 typedef enum{
-	MODE_CMD = 0,
-	MODE_KISS,
-	MODE_DIGI,
-	MODE_TRAC,
+	MODE_CFG  = 0,
+	MODE_KISS = 1,
+	MODE_DIGI = 2,
+	MODE_TRACKER_BEACON = 3,
+	MODE_TEST_BEACON = 0xf
 }RunMode;
 
 
-static RunMode runMode = MODE_CMD;
+static RunMode currentMode = MODE_CFG;
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Message Callbacks
@@ -101,8 +102,8 @@ static RunMode runMode = MODE_CMD;
  * Print on console the message that we have received.
  */
 static void ax25_msg_callback(struct AX25Msg *msg){
-	switch(runMode){
-	case MODE_CMD:{
+	switch(currentMode){
+	case MODE_CFG:{
 #if 1
 		// Print received message to serial
 		SERIAL_PRINTF_P((&ser), PSTR("\r\n>[%.6s-%d]->[%.6s-%d]"), msg->src.call, msg->src.ssid, msg->dst.call, msg->dst.ssid);
@@ -121,13 +122,18 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 		break;
 	}
 	case MODE_KISS:
-		kiss_send_host(0x00/*channel ID*/,ax25.buf,ax25.frm_len - 2);
+		kiss_send_host(0x00/*kiss port id*/,ax25.buf,ax25.frm_len - 2);
 		break;
 
 	default:
 		break;
 
 	}
+}
+
+static void kiss_mode_exit_callback(void){
+	currentMode = MODE_CFG;
+	SERIAL_PRINT_P((&ser),PSTR("Exit KISS mode\r\n"));
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -140,27 +146,25 @@ static bool cmd_mode(Serial* pSer, char* value, size_t len){
 	bool modeOK = false;
 	if(len > 0 ){
 		int i = atoi(value);
-		if(i == (int)runMode){
+		if(i == (int)currentMode){
 			// already in this mode, bail out.
 			return true;
 		}
 
 		modeOK = true;
 		switch(i){
-		case MODE_CMD:
+		case MODE_CFG:
 			// COMMAND/CONFIG MODE
-			runMode = MODE_CMD;
+			currentMode = MODE_CFG;
 			ax25.pass_through = 0;		// parse ax25 frames
-			kiss_set_enabled(false);	// kiss off
 			beacon_set_enabled(false); 	// beacon off
 			ser_purge(pSer);  			// clear all rx/tx buffer
 			break;
 
 		case MODE_KISS:
 			// KISS MODE
-			runMode = MODE_KISS;
+			currentMode = MODE_KISS;
 			ax25.pass_through = 1;		// don't parse ax25 frames
-			kiss_set_enabled(true);		// kiss on
 			beacon_set_enabled(false); 	// beacon off
 			ser_purge(pSer);  			// clear serial rx/tx buffer
 			SERIAL_PRINT_P(pSer,PSTR("Enter KISS mode\r\n"));
@@ -175,7 +179,7 @@ static bool cmd_mode(Serial* pSer, char* value, size_t len){
 			ser_purge(pSer);  			// clear serial rx/tx buffer
 			break;
 
-		case MODE_TRAC:
+		case MODE_TRACKER_BEACON:
 			// TRACKER MODE
 			runMode = MODE_TRAC;
 			// disable the ax25 module
@@ -206,8 +210,7 @@ static bool cmd_mode(Serial* pSer, char* value, size_t len){
  */
 static bool cmd_kiss(Serial* pSer, char* value, size_t len){
 	if(len > 0 && value[0] == '1'){
-		runMode = MODE_KISS;
-		kiss_set_enabled(true);
+		currentMode = MODE_KISS;
 		ax25.pass_through = 1;
 		ser_purge(pSer);  // clear all rx/tx buffer
 
@@ -270,7 +273,7 @@ static void init(void)
 //FIXME - should both support KISS mode and CONFIG mode
 	// passthrough(don't decode the frame) only when debug disabled
 	ax25.pass_through = !SERIAL_DEBUG;
-	kiss_init(&ser,&ax25,&afsk);
+	kiss_init(&ser,&ax25,&afsk,kiss_mode_exit_callback);
 
 #if CONFIG_BEACON_ENABLED
     beacon_init(&ax25);
@@ -304,20 +307,28 @@ int main(void)
 		 */
 		ax25_poll(&ax25);
 
-		switch(runMode){
-		case MODE_CMD:{
+		switch(currentMode){
+
+		case MODE_CFG:{
 			console_poll();
 			break;
 		}
 
 		case MODE_KISS:{
-			if(!kiss_enabled()){
-				runMode = MODE_CMD;
-				SERIAL_PRINT_P((&ser),PSTR("Exit KISS mode\r\n"));
-				break;
-			}
 			kiss_serial_poll();
 			kiss_queue_process();
+			break;
+		}
+
+		case MODE_DIGI:{
+			break;
+		}
+
+		case MODE_TEST_BEACON:{
+			break;
+		}
+
+		case MODE_TRACKER_BEACON:{
 			break;
 		}
 
