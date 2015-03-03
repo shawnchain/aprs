@@ -85,9 +85,10 @@ void beacon_send(void){
 	settings_get(SETTINGS_MY_SSID,&(path[1].ssid),&len);
 
 	#define APRS_TEST_MSG "!3011.47N/12009.10E>000/000/A=000087Rolling! 3.6V 1011.0pa"
+	const char* testMsg = APRS_TEST_MSG;
 	//#define APRS_TEST_MSG ">Test Tiny APRS "
 
-	ax25_sendVia(ax25Ctx, path, countof(path), APRS_TEST_MSG, sizeof(APRS_TEST_MSG));
+	ax25_sendVia(ax25Ctx, path, countof(path), APRS_TEST_MSG, sizeof(testMsg));
 #endif
 }
 

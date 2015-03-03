@@ -133,24 +133,6 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 ///////////////////////////////////////////////////////////////////////////////////
 // Command handlers
 
-#if CONSOLE_TEST_COMMAND_ENABLED
-/*
- * !{n} - send {n} test packets
- */
-static bool cmd_test(Serial* pSer, char* command, size_t len){
-	#define DEFAULT_REPEATS 5
-	uint8_t repeats = 0;
-	if(len > 0){
-		repeats = atoi((const char*)command);
-	}
-	if(repeats == 0) repeats = DEFAULT_REPEATS;
-	beacon_send_test(repeats);
-
-	SERIAL_PRINTF_P(pSer,PSTR("Sending %d test packet...\r\n"),repeats);
-	return true;
-}
-#endif
-
 /*
  * AT+MODE=[0|1|2]
  */
@@ -256,44 +238,6 @@ static bool cmd_beacon(Serial* pSer, char* value, size_t len){
 	return true;
 }
 
-/*
- * AT+SEND - just send the beacon message once
- */
-static bool cmd_send(Serial* pSer, char* value, size_t len){
-	(void)value;
-	(void)len;
-	if(len == 0){
-		// send test message
-		beacon_send();
-	}else{
-		//TODO send user input message out
-		//TODO build the ax25 path according settings
-	}
-	SERIAL_PRINT_P(pSer,PSTR("SEND OK\r\n"));
-	return true;
-}
-
-
-
-static inline void _init_console(void){
-    console_init(&ser);
-
-    console_add_command(PSTR("BEACON"),cmd_beacon); 	// setup beacon text
-
-    console_add_command(PSTR("MODE"),cmd_mode);					// setup tnc run mode
-    console_add_command(PSTR("KISS"),cmd_kiss);					// enable KISS mode
-    console_add_command(PSTR("DIGI"),cmd_kiss);					// enable DIGI mode
-
-
-    // experimental commands
-    console_add_command(PSTR("SEND"),cmd_send);
-
-#if CONSOLE_TEST_COMMAND_ENABLED
-    console_add_command(PSTR("TEST"),cmd_test);
-#endif
-
-}
-
 static void init(void)
 {
 	IRQ_ENABLE;
@@ -324,25 +268,24 @@ static void init(void)
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //FIXME - should both support KISS mode and CONFIG mode
-#if CONFIG_KISS_ENABLED
 	// passthrough(don't decode the frame) only when debug disabled
 	ax25.pass_through = !SERIAL_DEBUG;
 	kiss_init(&ser,&ax25,&afsk);
-#else
-	// Initialize the serial console
-    ss_init(&ax25,&ser);
-#endif
 
 #if CONFIG_BEACON_ENABLED
     beacon_init(&ax25);
 #endif
 
-    //////////////////////////////////////////////////////////////
-    // Initialize the console & commands
-    _init_console();
-
     // Load settings
     settings_load();
+
+    //////////////////////////////////////////////////////////////
+    // Initialize the console & commands
+    console_init(&ser);
+    console_add_command(PSTR("MODE"),cmd_mode);			// setup tnc run mode
+    console_add_command(PSTR("BEACON"),cmd_beacon); 	// setup beacon text
+    console_add_command(PSTR("KISS"),cmd_kiss);			// enable KISS mode
+    console_add_command(PSTR("DIGI"),cmd_kiss);			// enable DIGI mode
 }
 
 
@@ -367,7 +310,6 @@ int main(void)
 			break;
 		}
 
-#if CONFIG_KISS_ENABLED
 		case MODE_KISS:{
 			if(!kiss_enabled()){
 				runMode = MODE_CMD;
@@ -378,7 +320,6 @@ int main(void)
 			kiss_queue_process();
 			break;
 		}
-#endif
 
 		default:
 			break;

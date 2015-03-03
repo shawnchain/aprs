@@ -9,6 +9,9 @@
 #include <string.h>
 #include "settings.h"
 
+#include <net/ax25.h>
+#include "beacon.h"
+
 #include <cfg/cfg_afsk.h> // afst configuration info
 #include <cfg/cfg_kiss.h> // kiss config
 
@@ -39,7 +42,6 @@ void console_init(Serial *ser){
 	cmdCount = 0;
 
 	console_init_command();
-
 
 	// Initialization done, display the welcome banner and settings info
 	cmd_info(ser,0,0);
@@ -157,7 +159,7 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 
 	if(key == NULL && value == NULL){
 		// bail out
-		//SERIAL_PRINTF_P(pSer,PSTR("INVALID CMD: %.*s\r\n"),commandLen,command);
+		SERIAL_PRINTF_P(pSer,PSTR("INVALID CMD: %.*s\r\n"),commandLen,command);
 		return;
 	}
 
@@ -205,18 +207,6 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	return true;
 }
 
-/*
- * Print the settings to console
- */
-static void _print_settings(void){
-	// DEBUG Purpose
-	char buf[7];
-	memset(buf,0,7);
-	uint8_t bufLen = 6;
-	settings_get(SETTINGS_MY_CALL,buf,&bufLen);
-	SERIAL_PRINTF_P(pSerial, PSTR("Beacon: %s-%d\r\n"),buf,g_settings.my_ssid);
-}
-
 // Free ram test
 INLINE uint16_t freeRam (void) {
   extern int __heap_start, *__brkval;
@@ -225,23 +215,23 @@ INLINE uint16_t freeRam (void) {
   return (uint16_t) (vaddr - (__brkval == 0 ? (uint16_t) &__heap_start : (uint16_t) __brkval));
 }
 
-static inline void _print_freemem(Serial *pSer){
-	// Print free ram
-	uint16_t ram = freeRam();
-	SERIAL_PRINTF(pSer,"Free RAM: %u\r\n",ram);
-}
-
 static bool cmd_info(Serial* pSer, char* value, size_t len){
 	(void)value;
 	(void)len;
-#if CONFIG_KISS_ENABLED
-	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS TNC (KISS) 1.0 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
-#else
-	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS TNC (Demo) 1.0 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
-#endif
 
-	_print_settings();
-	_print_freemem(pSer);
+	// print welcome banner
+	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS TNC (KISS) 1.0 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+
+	// print settings
+	char buf[7];
+	memset(buf,0,7);
+	uint8_t bufLen = 6;
+	settings_get(SETTINGS_MY_CALL,buf,&bufLen);
+	SERIAL_PRINTF_P(pSerial, PSTR("Beacon: %s-%d\r\n"),buf,g_settings.my_ssid);
+
+	// print free memory
+	SERIAL_PRINTF_P(pSer,PSTR("Free RAM: %u\r\n"),freeRam());
+
 	return true;
 }
 
@@ -352,6 +342,42 @@ static bool cmd_settings_reset(Serial* pSer, char* value, size_t len){
 	return true;
 }
 
+
+#if CONSOLE_TEST_COMMAND_ENABLED
+/*
+ * !{n} - send {n} test packets
+ */
+static bool cmd_test(Serial* pSer, char* command, size_t len){
+	#define DEFAULT_REPEATS 5
+	uint8_t repeats = 0;
+	if(len > 0){
+		repeats = atoi((const char*)command);
+	}
+	if(repeats == 0) repeats = DEFAULT_REPEATS;
+	beacon_send_test(repeats);
+
+	SERIAL_PRINTF_P(pSer,PSTR("Sending %d test packet...\r\n"),repeats);
+	return true;
+}
+#endif
+
+/*
+ * AT+SEND - just send the beacon message once
+ */
+static bool cmd_send(Serial* pSer, char* value, size_t len){
+	(void)value;
+	(void)len;
+	if(len == 0){
+		// send test message
+		beacon_send();
+	}else{
+		//TODO send user input message out
+		//TODO build the ax25 path according settings
+	}
+	SERIAL_PRINT_P(pSer,PSTR("SEND OK\r\n"));
+	return true;
+}
+
 static void console_init_command(void){
 	// device info
 	console_add_command(PSTR("HELP"),cmd_help);
@@ -364,4 +390,10 @@ static void console_init_command(void){
     console_add_command(PSTR("PATH"),cmd_settings_path);		// setup path like WIDEn-N for beaco
     console_add_command(PSTR("RESET"),cmd_settings_reset);				// reset the tnc
 
+#if CONSOLE_TEST_COMMAND_ENABLED
+    console_add_command(PSTR("TEST"),cmd_test);
+#endif
+
+    // experimental commands
+    console_add_command(PSTR("SEND"),cmd_send);
 }

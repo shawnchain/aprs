@@ -18,12 +18,6 @@
  */
 #define KISS_LOG_FORMAT     LOG_FMT_TERSE
 
-
-/**
- * Module Enable/Disable flag
- */
-#define CONFIG_KISS_ENABLED 1
-
 /**
  * KISS queue length
  * for AVR chip with 4k ram, 1 or 2 is enough
