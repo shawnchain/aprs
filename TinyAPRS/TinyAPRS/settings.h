@@ -86,34 +86,7 @@ typedef struct{
 	uint8_t raw_packet_text[SETTINGS_RAW_PACKET_TEXT_MAX]; //!3014.00N/12009.00E>000/000/A=000087Rolling! 3.6V 1011.0pa
 #endif
 	uint8_t unused[2];
-	/*
-#define NV_MAGIC_BYTE 0x69
-uint8_t EEMEM nvMagicByte;
-uint8_t EEMEM nvCALL[6];
-uint8_t EEMEM nvDST[6];
-uint8_t EEMEM nvPATH1[6];
-uint8_t EEMEM nvPATH2[6];
-uint8_t EEMEM nvCALL_SSID;
-uint8_t EEMEM nvDST_SSID;
-uint8_t EEMEM nvPATH1_SSID;
-uint8_t EEMEM nvPATH2_SSID;
-bool EEMEM nvPRINT_SRC;
-bool EEMEM nvPRINT_DST;
-bool EEMEM nvPRINT_PATH;
-bool EEMEM nvPRINT_DATA;
-bool EEMEM nvPRINT_INFO;
-bool EEMEM nvVERBOSE;
-bool EEMEM nvSILENT;
-uint8_t EEMEM nvPOWER;
-uint8_t EEMEM nvHEIGHT;
-uint8_t EEMEM nvGAIN;
-uint8_t EEMEM nvDIRECTIVITY;
-uint8_t EEMEM nvSYMBOL_TABLE;
-uint8_t EEMEM nvSYMBOL;
-uint8_t EEMEM nvAUTOACK;
-*/
 } SettingsData;
-
 
 
 extern SettingsData g_settings;
@@ -129,34 +102,41 @@ bool settings_load(void);
 bool settings_save(void);
 
 /**
- *
+ * Clear all settings
+ */
+void settings_clear(void);
+
+
+
+/**
+ * Get value of a specific settings
+ * @type the type of setting to get
+ * @valueOut out buffer to store the settings
+ * @valueOutLen max out buffer len and will be set to the actual value length when function returned.
  */
 void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* valueOutLen);
+/**
+ * Set value of a specific setting
+ */
+void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen);
+
 
 /*
- *
+ * Accept CALL string like "BG5HHP-1" and update specific setting values
  */
 bool settings_set_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType, char* callString, uint8_t callStringLen);
 
 /*
- *
+ * Get specific CALL setting values and format to a string like "BG5HHP-1"
  */
 void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType, char* buf, uint8_t bufLen);
 
 
 /*
- *
+ * Get location like "DDMM.mmN/DDDMM.mmE" and update specific setting values.
  */
 void settings_get_location_string(char* buf, uint8_t bufLen);
 
-/**
- * Clear settings
- */
-void settings_clear(void);
-
-/**
- * Set value of a specific setting
- */
-void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen);
+void settings_set_location_string(char* buf, uint8_t bufLen);
 
 #endif /* SETTINGS_H_ */

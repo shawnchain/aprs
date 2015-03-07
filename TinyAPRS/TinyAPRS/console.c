@@ -18,6 +18,7 @@
 #include <drv/timer.h>
 #include "sys_utils.h"
 #include "buildrev.h"
+#include "config.h"
 
 
 // Internal console command prototype
@@ -194,28 +195,6 @@ void console_add_command(PGM_P cmd, PFUN_CMD_HANDLER handler){
 }
 
 
-static bool cmd_help(Serial* pSer, char* command, size_t len){
-	(void)command;
-	(void)len;
-	SERIAL_PRINT_P(pSer,PSTR("\r\nAT commands supported\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("-----------------------------------------------\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+INFO\t\t\t;Display modem info\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+MYCALL=[CALLSIGN]-[SSID]\t;Set my callsign\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+MYSSID=[SSID]\t\t;Set my ssid only\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN]-[SSID]\t;Set destination callsign only\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[PATH1],[PATH2]\t\t;Set PATH, max 2 allowed\r\n"));
-
-	SERIAL_PRINT_P(pSer,PSTR("AT+LOCA=[DDMM.mmN/DDDMM.mmE]\t;Set location \r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+COMNT=[beacon comments]\t;Set beacon comments \r\n"));
-
-	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=1\t\t\t;Enter kiss mode\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+HELP\t\t\t\t;Display help messages\r\n"));
-
-	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyRights 2015, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
-
-	return true;
-}
-
 // Free ram test
 INLINE uint16_t freeRam (void) {
   extern int __heap_start, *__brkval;
@@ -242,6 +221,34 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 
 	return true;
 }
+
+static bool cmd_help(Serial* pSer, char* command, size_t len){
+	(void)command;
+	(void)len;
+	SERIAL_PRINT_P(pSer,PSTR("\r\nAT commands supported\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("-----------------------------------------------\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+INFO\t\t\t;Display modem info\r\n"));
+
+#if CONSOLE_SETTINGS_COMMANDS_ENABLED
+	SERIAL_PRINT_P(pSer,PSTR("AT+MYCALL=[CALLSIGN]-[SSID]\t;Set my callsign\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+MYSSID=[SSID]\t\t;Set my ssid only\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN]-[SSID]\t;Set destination callsign only\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[PATH1],[PATH2]\t\t;Set PATH, max 2 allowed\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+LOCA=[DDMM.mmN/DDDMM.mmE]\t;Set location \r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+COMNT=[beacon comments]\t;Set beacon comments \r\n"));
+#endif
+
+	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=1\t\t\t;Enter kiss mode\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+HELP\t\t\t\t;Display help messages\r\n"));
+
+	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyRights 2015, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
+
+	return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+// AT SETTINGS COMMAND SUPPORT
+#if CONSOLE_SETTINGS_COMMANDS_ENABLED
 
 static bool cmd_settings_myssid(Serial* pSer, char* value, size_t len){
 	if(len > 0){
@@ -410,6 +417,8 @@ static bool cmd_settings_raw_packet(Serial* pSer, char* value, size_t valueLen){
 }
 #endif
 
+#endif // end of #if ENABLE_CONSOLE_AT_COMMANDS
+
 #if CONSOLE_TEST_COMMAND_ENABLED
 /*
  * !{n} - send {n} test packets
@@ -450,6 +459,7 @@ static void console_init_command(void){
 	console_add_command(PSTR("HELP"),cmd_help);
 	console_add_command(PSTR("INFO"),cmd_info);
 
+#if CONSOLE_SETTINGS_COMMANDS_ENABLED
 	// settings
     console_add_command(PSTR("MYCALL"),cmd_settings_mycall);	// setup my callsign-ssid
     console_add_command(PSTR("MYSSID"),cmd_settings_myssid);	// setup callsign-ssid
@@ -463,6 +473,7 @@ static void console_init_command(void){
 
 #if SETTINGS_SUPPORT_RAW_PACKET
     console_add_command(PSTR("RAW"),cmd_settings_raw_packet);
+#endif
 #endif
 
 #if CONSOLE_TEST_COMMAND_ENABLED

@@ -138,11 +138,10 @@ static void kiss_mode_exit_callback(void){
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Command handlers
-
 /*
  * AT+MODE=[0|1|2]
  */
-static bool cmd_mode(Serial* pSer, char* value, size_t len){
+static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 	bool modeOK = false;
 	if(len > 0 ){
 		int i = atoi(value);
@@ -208,7 +207,7 @@ static bool cmd_mode(Serial* pSer, char* value, size_t len){
 /*
  * AT+KISS=1 - enable the KISS mode
  */
-static bool cmd_kiss(Serial* pSer, char* value, size_t len){
+static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
 	if(len > 0 && value[0] == '1'){
 		currentMode = MODE_KISS;
 		ax25.pass_through = 1;
@@ -223,30 +222,15 @@ static bool cmd_kiss(Serial* pSer, char* value, size_t len){
 	return true;
 }
 
-/*
- * AT+BEACON=[1|0] - enable the Beacon mode.
- */
-static bool cmd_beacon(Serial* pSer, char* value, size_t len){
-	(void)len;
-	//FIXME - also support KISS mode when BEACON = 1
-	if(value[0] == '0'){
-		beacon_set_enabled(false);
-		SERIAL_PRINT_P(pSer,PSTR("Beacon mode disabled\r\n"));
-	}else if(value[0] == '1'){
-		beacon_set_enabled(true);
-		SERIAL_PRINT_P(pSer,PSTR("Beacon mode enabled\r\n"));
-	}else{
-		SERIAL_PRINTF_P(pSer,PSTR("Invalid value %s, only value 0 and 1 is accepted\r\n"),value);
-	}
-	return true;
-}
-
 static void init(void)
 {
 	IRQ_ENABLE;
 
 	kdbg_init();
 	timer_init();
+
+    // Load settings first
+    settings_load();
 
 	/* Initialize serial port, we are going to use it to show APRS messages*/
 	ser_init(&ser, SER_UART0);
@@ -269,26 +253,19 @@ static void init(void)
 	 */
 	ax25_init(&ax25, &afsk.fd, ax25_msg_callback);
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//FIXME - should both support KISS mode and CONFIG mode
-	// passthrough(don't decode the frame) only when debug disabled
-	ax25.pass_through = !SERIAL_DEBUG;
+	// Initialize the kiss module
 	kiss_init(&ser,&ax25,&afsk,kiss_mode_exit_callback);
 
+	//TODO refactoring me
 #if CONFIG_BEACON_ENABLED
     beacon_init(&ax25);
 #endif
 
-    // Load settings
-    settings_load();
-
     //////////////////////////////////////////////////////////////
     // Initialize the console & commands
     console_init(&ser);
-    console_add_command(PSTR("MODE"),cmd_mode);			// setup tnc run mode
-    console_add_command(PSTR("BEACON"),cmd_beacon); 	// setup beacon text
-    console_add_command(PSTR("KISS"),cmd_kiss);			// enable KISS mode
-    console_add_command(PSTR("DIGI"),cmd_kiss);			// enable DIGI mode
+    console_add_command(PSTR("MODE"),cmd_switch_mode);			// setup tnc run mode
+    console_add_command(PSTR("KISS"),cmd_enter_kiss_mode);		// enable KISS mode
 }
 
 
