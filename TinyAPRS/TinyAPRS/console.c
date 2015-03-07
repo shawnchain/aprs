@@ -130,11 +130,10 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 
 
 	if(commandLen >0 && command[0] == '?'){
+		cmd_info(pSer,0,0);
 #if CONSOLE_HELP_COMMAND_ENABLED
 		cmd_help(pSer,0,0);
-#else
 #endif
-		cmd_info(pSer,0,0);
 		return;
 	}
 
@@ -249,7 +248,7 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 #endif
 
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=1\t\t\t;Enter kiss mode\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+HELP\t\t\t\t;Display help messages\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("?\t\t\t\t;Display help messages\r\n"));
 
 	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyRights 2015, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
 
@@ -404,7 +403,9 @@ static bool cmd_settings_comments_text(Serial* pSer, char* value, size_t valueLe
 	uint8_t bufLen = SETTINGS_COMMENTS_TEXT_MAX - 1;
 	buf[0] = '>';
 	settings_get(SETTINGS_COMMENTS_TEXT,buf + 1,&bufLen);
-	buf[bufLen] = '\r';
+	buf[bufLen++] = '\r';
+	buf[bufLen++] = '\n';
+	buf[bufLen] = 0;
 	kfile_print((&(pSer->fd)),buf);
 	return true;
 }
@@ -466,13 +467,14 @@ static bool cmd_send(Serial* pSer, char* value, size_t len){
 }
 
 static void console_init_command(void){
+	/* - DEPRECATED, USE "?" instead
 	// device info and help command
 	console_add_command(PSTR("INFO"),cmd_info);
 
 #if CONSOLE_HELP_COMMAND_ENABLED
 	console_add_command(PSTR("HELP"),cmd_help);
 #endif
-
+	*/
 
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
 	// settings
