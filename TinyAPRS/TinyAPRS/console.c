@@ -47,6 +47,11 @@ void console_init(Serial *ser){
 	cmd_info(ser,0,0);
 }
 
+// Increase the console read buffer for the raw package text input
+#if SETTINGS_SUPPORT_RAW_PACKET
+#undef CONSOLE_SERIAL_BUF_LEN
+#define CONSOLE_SERIAL_BUF_LEN 128
+#endif
 
 /*
  * The console will always read console input char until met CRLF or buffer is full
@@ -199,6 +204,10 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("AT+MYSSID=[SSID]\t\t;Set my ssid only\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN]-[SSID]\t;Set destination callsign only\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[PATH1],[PATH2]\t\t;Set PATH, max 2 allowed\r\n"));
+
+	SERIAL_PRINT_P(pSer,PSTR("AT+LOCA=[DDMM.mmN/DDDMM.mmE]\t;Set location \r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+COMNT=[beacon comments]\t;Set beacon comments \r\n"));
+
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=1\t\t\t;Enter kiss mode\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+HELP\t\t\t\t;Display help messages\r\n"));
 
@@ -223,11 +232,10 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS TNC (KISS) 1.0 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 
 	// print settings
-	char buf[7];
-	memset(buf,0,7);
-	uint8_t bufLen = 6;
-	settings_get(SETTINGS_MY_CALL,buf,&bufLen);
-	SERIAL_PRINTF_P(pSerial, PSTR("Beacon: %s-%d\r\n"),buf,g_settings.my_ssid);
+	char buf[16];
+	uint8_t bufLen = sizeof(buf);
+	settings_get_call_fullstring(SETTINGS_MY_CALL,SETTINGS_MY_SSID,buf,bufLen);
+	SERIAL_PRINTF_P(pSerial, PSTR("MyCall: %s\r\n"),buf);
 
 	// print free memory
 	SERIAL_PRINTF_P(pSer,PSTR("Free RAM: %u\r\n"),freeRam());
@@ -332,16 +340,75 @@ static bool cmd_settings_path(Serial* pSer, char* value, size_t valueLen){
 }
 
 static bool cmd_settings_reset(Serial* pSer, char* value, size_t len){
-	if(len > 0 && value[0] == '1'){
-		// clear the settings if AT+RESET=1
-		SERIAL_PRINT_P(pSer,PSTR("Settings cleared\r\n"));
-		settings_clear();
+	if(len > 0 && (value[0] == '1' || value[0] == '2' )){
+		if(value[0] == '2'){
+			// clear the settings if AT+RESET=1
+			settings_clear();
+			SERIAL_PRINT_P(pSer,PSTR("Settings cleared, "));
+		}
+		SERIAL_PRINT_P(pSer,PSTR("Restarting...\r\n"));
+		//reboot the device
+		soft_reset();
 	}
-	//TODO - reboot the device
-	//soft_reset();
 	return true;
 }
 
+//TODO -implement me
+static bool cmd_settings_symbol(Serial* pSer, char* value, size_t len){
+	(void)value;
+	(void)len;
+
+	SERIAL_PRINT_P(pSer, PSTR("Not implemented yet"));
+	return true;
+}
+
+static bool cmd_settings_location(Serial* pSer, char* value, size_t len){
+	(void)value;
+	(void)len;
+	//TODO - parse input and store back
+	//3014.00N,12009.00E
+
+	char buf[32];
+	uint8_t bufLen = sizeof(buf);
+	settings_get_location_string(buf,bufLen);
+	SERIAL_PRINTF_P(pSer, PSTR("Location:%s\r\n"),buf);
+	return true;
+}
+
+static bool cmd_settings_comments_text(Serial* pSer, char* value, size_t valueLen){
+	if(valueLen > 0){
+		// set the beacon text
+		settings_set(SETTINGS_COMMENTS_TEXT,value,valueLen);
+		settings_save();
+	}
+
+	char buf[SETTINGS_COMMENTS_TEXT_MAX + 3];
+	uint8_t bufLen = SETTINGS_COMMENTS_TEXT_MAX - 1;
+	buf[0] = '>';
+	settings_get(SETTINGS_COMMENTS_TEXT,buf + 1,&bufLen);
+	buf[bufLen] = '\r';
+	kfile_print((&(pSer->fd)),buf);
+	return true;
+}
+
+#if SETTINGS_SUPPORT_RAW_PACKET
+static bool cmd_settings_raw_packet(Serial* pSer, char* value, size_t valueLen){
+	if(valueLen > 0){
+		// set the beacon text
+		settings_set(SETTINGS_RAW_PACKET_TEXT,value,valueLen);
+		settings_save();
+	}
+
+	char buf[SETTINGS_RAW_PACKET_TEXT_MAX + 3];
+	uint8_t bufLen = SETTINGS_RAW_PACKET_TEXT_MAX - 1;
+	buf[0] = '>';
+	settings_get(SETTINGS_RAW_PACKET_TEXT,buf+1,&bufLen);
+	kfile_print((&(pSer->fd)),buf);
+	buf[bufLen] = '\r';
+	kfile_print((&(pSer->fd)),buf);
+	return true;
+}
+#endif
 
 #if CONSOLE_TEST_COMMAND_ENABLED
 /*
@@ -389,6 +456,14 @@ static void console_init_command(void){
     console_add_command(PSTR("DEST"),cmd_settings_destcall);		// setup destination call-ssid
     console_add_command(PSTR("PATH"),cmd_settings_path);		// setup path like WIDEn-N for beaco
     console_add_command(PSTR("RESET"),cmd_settings_reset);				// reset the tnc
+
+    console_add_command(PSTR("SYMBL"),cmd_settings_symbol);	// setup the beacon symbol
+    console_add_command(PSTR("LOCA"),cmd_settings_location);	// setup the fixed location
+    console_add_command(PSTR("COMMT"),cmd_settings_comments_text);	// setup the beacon comment
+
+#if SETTINGS_SUPPORT_RAW_PACKET
+    console_add_command(PSTR("RAW"),cmd_settings_raw_packet);
+#endif
 
 #if CONSOLE_TEST_COMMAND_ENABLED
     console_add_command(PSTR("TEST"),cmd_test);

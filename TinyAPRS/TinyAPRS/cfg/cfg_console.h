@@ -24,7 +24,7 @@
 
 #define CONSOLE_SERIAL_BUF_LEN 64 					// The serial console command buffer
 
-#define CONSOLE_MAX_COMMAND	16						// How many AT commands to support
+#define CONSOLE_MAX_COMMAND	12						// How many AT commands to support
 
 #define CONSOLE_TEST_COMMAND_ENABLED 1				// enable test command "!n" or "AT+TEST=n"
 

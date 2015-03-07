@@ -20,22 +20,26 @@
 SettingsData g_settings = {
 		.my_call="NOCALL",
 		.my_ssid=0,
-		.dest_call="",
+		.dest_call="APTI01",
 		.dest_ssid=0,
-		.path1_call="",
-		.path1_ssid=0,
+		.path1_call="WIDE1",
+		.path1_ssid=1,
 		.path2_call="",
-		.path2_ssid=0
+		.path2_ssid=0,
+		//.location="3014.00N,12009.00E",
+		.location={30,14,0,'N',120,0,9,'E'},
+		.phgd={0,0,0,0},
+		.comments="TinyAPRS Rocks!",
+#if SETTINGS_SUPPORT_RAW_PACKET
+		.raw_packet_text="!3014.00N/12009.00E>000/000/A=000087Rolling! 3.6V 1011.0pa",
+#endif
 };
 
 #define NV_SETTINGS_BLOCK_SIZE SETTINGS_SIZE
-#define NV_SETTINGS_BEACON_TEXT_SIZE 32
-
 #define NV_SETTINGS_HEAD_BYTE_VALUE 0x88
 
 uint8_t EEMEM nvSetHeadByte;
 uint8_t EEMEM nvSettings[NV_SETTINGS_BLOCK_SIZE];
-//uint8_t EEMEM nvBeaconText[NV_SETTINGS_BEACON_TEXT_SIZE];
 
 /*
  * Load settings
@@ -78,6 +82,16 @@ static void settings_copy_call_value(const char* call, char* buf, uint8_t *len){
 		i++;
 	}
 	*len = i;
+}
+
+static uint8_t settings_copy_n_string_value(char* dst, const char* src, uint8_t n){
+	memset(dst, 0, n);
+	int i = 0;
+	while (i < (n - 1) && src[i] != 0) {
+		dst[i] = src[i];
+		i++;
+	}
+	return i;
 }
 
 /*
@@ -123,6 +137,14 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 			*((uint8_t*)valueOut) = g_settings.symbol;
 			*pValueOutLen = 1;
 			break;
+		case SETTINGS_COMMENTS_TEXT:
+			*pValueOutLen = settings_copy_n_string_value(valueOut, (const char*)g_settings.comments,outBufferSize);
+			break;
+#if SETTINGS_SUPPORT_RAW_PACKET
+		case SETTINGS_RAW_PACKET_TEXT:
+			*pValueOutLen = settings_copy_n_string_value(valueOut, (const char*)g_settings.raw_packet_text,outBufferSize);
+			break;
+#endif
 		default:
 			*pValueOutLen = 0;
 			break;
@@ -169,7 +191,16 @@ void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
 		case SETTINGS_SYMBOL:
 			g_settings.symbol = *((uint8_t*)value);
 			break;
-
+		case SETTINGS_COMMENTS_TEXT:
+			memset(g_settings.comments,0,SETTINGS_COMMENTS_TEXT_MAX);
+			memcpy(g_settings.comments,value,MIN(SETTINGS_COMMENTS_TEXT_MAX - 1,valueLen));
+			break;
+#if SETTINGS_SUPPORT_RAW_PACKET
+		case SETTINGS_RAW_PACKET_TEXT:
+			memset(g_settings.raw_packet_text,0,SETTINGS_RAW_PACKET_TEXT_MAX);
+			memcpy(g_settings.raw_packet_text,value,MIN(SETTINGS_RAW_PACKET_TEXT_MAX - 1,valueLen));
+			break;
+#endif
 		default:
 			break;
 	}
@@ -217,5 +248,10 @@ void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType
 			itoa(ssid,(char*)(buf + call_len),10);
 		}
 	}
+}
 
+void settings_get_location_string(char* buf, uint8_t bufLen){
+	memset(buf,0,bufLen);
+	uint8_t* loc = g_settings.location;
+	snprintf_P(buf,bufLen-1,PSTR("%d%02d.%02d%c,%d%02d.%02d%c"),loc[0],loc[1],loc[2],loc[3],loc[4],loc[5],loc[6],loc[7]);
 }
