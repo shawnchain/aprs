@@ -25,7 +25,13 @@
 static void console_parse_command(Serial *pSer, char* command, size_t commandLen);
 static void console_init_command(void);
 
+#if CONSOLE_HELP_COMMAND_ENABLED
+static bool cmd_help(Serial* pSer, char* command, size_t len);
+#endif
+
 static bool cmd_info(Serial* pSer, char* value, size_t len);
+static bool cmd_send(Serial* pSer, char* command, size_t len);
+static bool cmd_test(Serial* pSer, char* command, size_t len);
 
 static Serial *pSerial;
 
@@ -116,18 +122,21 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 
 	// A simple hack to command "!5"
 #if CONSOLE_TEST_COMMAND_ENABLED
-	if(commandLen >0 && command[0] == '!'){
-		uint8_t repeats = 0;
-		if(commandLen > 1)
-			repeats = atoi((const char*)(command + 1));
-		if(repeats == 0){
-			repeats = 3;
-		}else if(repeats > 9){
-			repeats = 9;
-		}
-		commandLen = snprintf_P(command,11,PSTR("AT+TEST=%d\r"),repeats);
+	if(commandLen > 0 && command[0] == '!'){
+		cmd_test(pSer, command+1,commandLen - 1);
+		return;
 	}
 #endif
+
+
+	if(commandLen >0 && command[0] == '?'){
+#if CONSOLE_HELP_COMMAND_ENABLED
+		cmd_help(pSer,0,0);
+#else
+#endif
+		cmd_info(pSer,0,0);
+		return;
+	}
 
 	//TinyAPRS AT Command Handler
 	if(commandLen >=6 && command[0] == 'A' && command[1] == 'T' && command[2] == '+' ){
@@ -222,6 +231,7 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 	return true;
 }
 
+#if CONSOLE_HELP_COMMAND_ENABLED
 static bool cmd_help(Serial* pSer, char* command, size_t len){
 	(void)command;
 	(void)len;
@@ -235,7 +245,7 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN]-[SSID]\t;Set destination callsign only\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[PATH1],[PATH2]\t\t;Set PATH, max 2 allowed\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+LOCA=[DDMM.mmN/DDDMM.mmE]\t;Set location \r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+COMNT=[beacon comments]\t;Set beacon comments \r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+CMNTS=[BEACON COMMENTS]\t;Set beacon comments \r\n"));
 #endif
 
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=1\t\t\t;Enter kiss mode\r\n"));
@@ -245,6 +255,7 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 
 	return true;
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // AT SETTINGS COMMAND SUPPORT
@@ -424,12 +435,12 @@ static bool cmd_settings_raw_packet(Serial* pSer, char* value, size_t valueLen){
  * !{n} - send {n} test packets
  */
 static bool cmd_test(Serial* pSer, char* command, size_t len){
-	#define DEFAULT_REPEATS 5
+	#define DEFAULT_REPEATS 3
 	uint8_t repeats = 0;
 	if(len > 0){
 		repeats = atoi((const char*)command);
 	}
-	if(repeats == 0) repeats = DEFAULT_REPEATS;
+	if(repeats == 0 || repeats > 9) repeats = DEFAULT_REPEATS;
 	beacon_send_test(repeats);
 
 	SERIAL_PRINTF_P(pSer,PSTR("Sending %d test packet...\r\n"),repeats);
@@ -455,9 +466,13 @@ static bool cmd_send(Serial* pSer, char* value, size_t len){
 }
 
 static void console_init_command(void){
-	// device info
-	console_add_command(PSTR("HELP"),cmd_help);
+	// device info and help command
 	console_add_command(PSTR("INFO"),cmd_info);
+
+#if CONSOLE_HELP_COMMAND_ENABLED
+	console_add_command(PSTR("HELP"),cmd_help);
+#endif
+
 
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
 	// settings
@@ -469,7 +484,7 @@ static void console_init_command(void){
 
     console_add_command(PSTR("SYMBL"),cmd_settings_symbol);	// setup the beacon symbol
     console_add_command(PSTR("LOCA"),cmd_settings_location);	// setup the fixed location
-    console_add_command(PSTR("COMMT"),cmd_settings_comments_text);	// setup the beacon comment
+    console_add_command(PSTR("CMNTS"),cmd_settings_comments_text);	// setup the beacon comment
 
 #if SETTINGS_SUPPORT_RAW_PACKET
     console_add_command(PSTR("RAW"),cmd_settings_raw_packet);
