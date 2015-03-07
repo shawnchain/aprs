@@ -24,7 +24,7 @@
  #define soft_reset()        \
  do                          \
  {                           \
-     wdt_enable(WDTO_15MS);  \
+     wdt_enable(WDTO_2S);    \
      for(;;)                 \
      {                       \
      }                       \
