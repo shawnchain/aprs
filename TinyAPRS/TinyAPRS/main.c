@@ -229,9 +229,6 @@ static void init(void)
 	kdbg_init();
 	timer_init();
 
-    // Load settings first
-    settings_load();
-
 	/* Initialize serial port, we are going to use it to show APRS messages*/
 	ser_init(&ser, SER_UART0);
 	ser_setbaudrate(&ser, SER_BAUD_RATE_9600);
@@ -252,6 +249,7 @@ static void init(void)
 	 * from and the callback that will be called on incoming messages.
 	 */
 	ax25_init(&ax25, &afsk.fd, ax25_msg_callback);
+	ax25.pass_through = false;
 
 	// Initialize the kiss module
 	kiss_init(&ser,&ax25,&afsk,kiss_mode_exit_callback);
@@ -260,6 +258,9 @@ static void init(void)
 #if CONFIG_BEACON_ENABLED
     beacon_init(&ax25);
 #endif
+
+    // Load settings first
+    settings_load();
 
     //////////////////////////////////////////////////////////////
     // Initialize the console & commands
