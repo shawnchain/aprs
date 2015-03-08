@@ -243,7 +243,7 @@ void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType
 		// read ssid only when buffer is available
 		uint8_t ssid = 0, ssid_len = 1;
 		settings_get(ssidType,&ssid,&ssid_len);
-		if(true/*ssid > 0*/){
+		if(ssid > 0){
 			buf[call_len++] = '-';
 			itoa(ssid,(char*)(buf + call_len),10);
 		}
