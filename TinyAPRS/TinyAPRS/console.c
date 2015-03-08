@@ -216,7 +216,7 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 	(void)len;
 
 	// print welcome banner
-	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS TNC (KISS) 1.0 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS TNC (KISS) 1.0-RC1 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 
 	// print settings
 	char buf[16];
@@ -236,8 +236,6 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	(void)len;
 	SERIAL_PRINT_P(pSer,PSTR("\r\nAT commands supported\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("-----------------------------------------------\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+INFO\t\t\t;Display modem info\r\n"));
-
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
 	SERIAL_PRINT_P(pSer,PSTR("AT+MYCALL=[CALLSIGN]-[SSID]\t;Set my callsign\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+MYSSID=[SSID]\t\t;Set my ssid only\r\n"));
@@ -250,7 +248,7 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=1\t\t\t;Enter kiss mode\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("?\t\t\t\t;Display help messages\r\n"));
 
-	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyRights 2015, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
+	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyrights 2015, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
 
 	return true;
 }

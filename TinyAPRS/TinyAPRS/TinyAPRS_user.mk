@@ -6,9 +6,20 @@
 # Programmer interface configuration, see http://dev.bertos.org/wiki/ProgrammerInterface for help
 #TinyAPRS_PROGRAMMER_TYPE = usbasp
 #TinyAPRS_PROGRAMMER_PORT = asp
+
 TinyAPRS_PROGRAMMER_TYPE = arduino
+
+# USB = PL2303
 TinyAPRS_PROGRAMMER_PORT = /dev/cu.usbserial
 TinyAPRS_PROGRAMMER_BAUD = 57600
+
+# USB = CP2102
+#TinyAPRS_PROGRAMMER_PORT = /dev/cu.SLAB_USBtoUART
+#TinyAPRS_PROGRAMMER_BAUD = 57600 
+
+# USB = FT232
+#TinyAPRS_PROGRAMMER_PORT = /dev/cu.usbserial-AH02KRAG
+#TinyAPRS_PROGRAMMER_BAUD = 115200
 
 # Files included by the user.
 TinyAPRS_USER_CSRC = \
