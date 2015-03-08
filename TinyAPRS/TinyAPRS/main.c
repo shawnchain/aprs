@@ -46,6 +46,8 @@
  * how to parse input messages using ax25 module.
  */
 
+#include <cfg/compiler.h>
+
 #include <cpu/irq.h>
 
 #include <net/afsk.h>
@@ -57,6 +59,7 @@
 
 #include <stdio.h>
 #include <string.h>
+
 
 #include "console.h"
 
@@ -97,6 +100,41 @@ static RunMode currentMode = MODE_CFG;
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Message Callbacks
+static void print_call_P(KFile *ch, const AX25Call *call)
+{
+	char buf[16];
+	sprintf_P(buf,PSTR("%.6s"),call->call);
+	kfile_print(ch, buf);
+	if (call->ssid){
+		sprintf_P(buf,PSTR("-%d"),call->ssid);
+		kfile_print(ch, buf);
+	}
+}
+
+INLINE void print_ax25_message(Serial *pSer, AX25Msg *msg){
+	#if 0
+		ax25_print(&(pSer->fd),msg); // less code but need 16 bytes of ram
+	#else
+		KFile *ch = &(pSer->fd);
+		print_call_P(ch, &msg->src);
+		kfile_putc('>', ch);
+		print_call_P(ch, &msg->dst);
+
+		#if CONFIG_AX25_RPT_LST
+		for (int i = 0; i < msg->rpt_cnt; i++)
+		{
+			kfile_putc(',', ch);
+			print_call_P(ch, &msg->rpt_lst[i]);
+			/* Print a '*' if packet has already been transmitted
+			 * by this repeater */
+			if (AX25_REPEATED(msg, i))
+				kfile_putc('*', ch);
+		}
+		#endif
+		// DATA PART
+		SERIAL_PRINTF_P(pSer, PSTR(":%.*s\n"), msg->len, msg->info);
+	#endif
+}
 
 /*
  * Print on console the message that we have received.
@@ -104,21 +142,8 @@ static RunMode currentMode = MODE_CFG;
 static void ax25_msg_callback(struct AX25Msg *msg){
 	switch(currentMode){
 	case MODE_CFG:{
-#if 1
 		// Print received message to serial
-		SERIAL_PRINTF_P((&ser), PSTR("\r\n>[%.6s-%d]->[%.6s-%d]"), msg->src.call, msg->src.ssid, msg->dst.call, msg->dst.ssid);
-		if(msg->rpt_cnt > 0){
-			SERIAL_PRINT_P((&ser),PSTR(", via["));
-			for (int i = 0; i < msg->rpt_cnt; i++){
-				SERIAL_PRINTF_P((&ser), PSTR("%.6s-%d,"), msg->rpt_lst[i].call, msg->rpt_lst[i].ssid);
-			}
-			SERIAL_PRINTF((&ser),"]");
-		}
-		// DATA part
-		SERIAL_PRINTF_P((&ser), PSTR("\r\n%.*s\r\n"), msg->len, msg->info);
-#else
-		if(msg) ss_messageCallback(msg,&ser);
-#endif
+		print_ax25_message(&ser,msg);
 		break;
 	}
 	case MODE_KISS:
