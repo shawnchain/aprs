@@ -78,6 +78,9 @@
 
 #include "beacon.h"
 
+// TEST for SoftSerial
+#include "hw_soft_ser.h"
+
 
 static Afsk afsk;
 static AX25Ctx ax25;
@@ -247,9 +250,12 @@ static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
 	return true;
 }
 
+static SoftSerial softSer;
+
 static void init(void)
 {
-	IRQ_ENABLE;
+
+    IRQ_ENABLE;
 
 	kdbg_init();
 	timer_init();
@@ -292,9 +298,18 @@ static void init(void)
     console_init(&ser);
     console_add_command(PSTR("MODE"),cmd_switch_mode);			// setup tnc run mode
     console_add_command(PSTR("KISS"),cmd_enter_kiss_mode);		// enable KISS mode
+
+    hw_soft_ser_init(&softSer, 10,11);
+    hw_soft_ser_start(&softSer,9600);
 }
 
-
+// Free ram test
+INLINE uint16_t freeRam (void) {
+  extern int __heap_start, *__brkval;
+  uint8_t v;
+  uint16_t vaddr = (uint16_t)(&v);
+  return (uint16_t) (vaddr - (__brkval == 0 ? (uint16_t) &__heap_start : (uint16_t) __brkval));
+}
 
 int main(void)
 {
@@ -344,16 +359,67 @@ int main(void)
 		beacon_poll();
 #endif
 
-#define FREE_RAM_DEBUG 0
+#define FREE_RAM_DEBUG 1
 #if FREE_RAM_DEBUG
-		static uint32_t i = 0;
-		if(i++ == 100000){
-			i = 0;
-			// log the stack size
-			uint16_t ram = freeRam();
-			SERIAL_PRINTF((&ser),"%u\r\n",ram);
+		{
+			static uint32_t i = 0;
+			if(i++ == 100000){
+				i = 0;
+				// log the stack size
+				uint16_t ram = freeRam();
+				SERIAL_PRINTF((&ser),"%u\r\n",ram);
+			}
 		}
 #endif
+
+		// Dump the isr changes
+		{
+			static uint32_t i = 0;
+			//static uint32_t j = 0;
+			if(i++ == 30000){
+				i = 0;
+
+//				// log the stack size
+				char c;
+				while(hw_soft_ser_available(&softSer)){
+					c = hw_soft_ser_read(&softSer);
+					kfile_putc(c,&(ser.fd));
+//					j++;
+				}
+//				c = 'B';
+				hw_soft_ser_write(&softSer,'0');
+				hw_soft_ser_write(&softSer,'K');
+				hw_soft_ser_write(&softSer,'\n');
+				hw_soft_ser_write(&softSer,'\r');
+				/*
+				c = 'K';
+				hw_soft_ser_write(&softSer,c);
+//				hw_soft_ser_write(&softSer,'\r');
+				c = '\n';
+				hw_soft_ser_write(&softSer,c);
+				*/
+//				if(hw_soft_ser_available(&softSer)){
+//					int8_t c = hw_soft_ser_read(&softSer);
+//					SERIAL_PRINTF_P((&ser),PSTR("softser read 0x%x! \r\n"),c);
+//					//j = 0;
+//				}
+//				uint16_t avail = hw_soft_ser_available();
+//				if(avail){
+//
+//					SERIAL_PRINTF((&ser),"changed! \r\n");
+//
+//					if(++j == 10){
+//						SERIAL_PRINTF((&ser),"stopped! \r\n");
+//						hw_soft_ser_stop(&softSer);
+//					}
+//				}
+//				else{
+//					SERIAL_PRINTF((&ser),"not changed \r\n");
+//				}
+
+			}
+		}
+
 	} // end of while(1)
 	return 0;
 }
