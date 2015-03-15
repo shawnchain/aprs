@@ -31,7 +31,10 @@ static bool cmd_help(Serial* pSer, char* command, size_t len);
 
 static bool cmd_info(Serial* pSer, char* value, size_t len);
 static bool cmd_send(Serial* pSer, char* command, size_t len);
+
+#if CONSOLE_TEST_COMMAND_ENABLED
 static bool cmd_test(Serial* pSer, char* command, size_t len);
+#endif
 
 static Serial *pSerial;
 
@@ -216,7 +219,7 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 	(void)len;
 
 	// print welcome banner
-	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS TNC (KISS) 1.0-RC1 (f%da%dr%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS TNC (KISS) 1.0.0 (f%da%d-%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 
 	// print settings
 	char buf[16];
@@ -465,14 +468,6 @@ static bool cmd_send(Serial* pSer, char* value, size_t len){
 }
 
 static void console_init_command(void){
-	/* - DEPRECATED, USE "?" instead
-	// device info and help command
-	console_add_command(PSTR("INFO"),cmd_info);
-
-#if CONSOLE_HELP_COMMAND_ENABLED
-	console_add_command(PSTR("HELP"),cmd_help);
-#endif
-	*/
 
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
 	// settings

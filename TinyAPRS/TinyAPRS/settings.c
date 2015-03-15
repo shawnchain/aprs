@@ -18,7 +18,7 @@
 
 // Instance of the settings data. // TODO - Store default settings in the PROGMEM
 SettingsData g_settings = {
-		.my_call="NOCALL",
+		.my_call="N0CALL",
 		.my_ssid=0,
 		.dest_call="APTI01",
 		.dest_ssid=0,

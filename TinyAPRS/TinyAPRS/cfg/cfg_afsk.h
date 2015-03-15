@@ -120,7 +120,7 @@
 #define CONFIG_AFSK_TRAILER_LEN 75UL
 
 /**
- * AFSK Enable to use external 3.3v AREF for improving the ADC sensitivity
+ * AFSK Enable AREF pin to use external reference voltage (likely 3.3V) for improving the ADC sensitivity
  */
 #define CONFIG_AFSK_ADC_USE_EXTERNAL_AREF 0
 

@@ -1,2 +1,2 @@
-#define VERS_BUILD 4
-#define VERS_HOST  "Shawns-RMBP.local"
+#define VERS_BUILD 1830
+#define VERS_HOST  "ShawnsMac-bpro.home"

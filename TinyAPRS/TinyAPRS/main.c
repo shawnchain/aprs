@@ -84,6 +84,7 @@ static AX25Ctx ax25;
 static Serial ser;
 
 #define ADC_CH 0
+#define DAC_CH 0
 #define SER_BAUD_RATE_9600 9600L
 #define SER_BAUD_RATE_115200 115200L
 
@@ -100,9 +101,7 @@ static RunMode currentMode = MODE_CFG;
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Message Callbacks
-static void print_call_P(KFile *ch, const AX25Call *call)
-{
-	char buf[16];
+static void print_call_P(KFile *ch, const AX25Call *call,char* buf) {
 	sprintf_P(buf,PSTR("%.6s"),call->call);
 	kfile_print(ch, buf);
 	if (call->ssid){
@@ -115,23 +114,24 @@ INLINE void print_ax25_message(Serial *pSer, AX25Msg *msg){
 	#if 0
 		ax25_print(&(pSer->fd),msg); // less code but need 16 bytes of ram
 	#else
+		char buf[16];
 		KFile *ch = &(pSer->fd);
-		print_call_P(ch, &msg->src);
+		// CALL/RPT/DEST
+		print_call_P(ch, &msg->src,buf);
 		kfile_putc('>', ch);
-		print_call_P(ch, &msg->dst);
-
+		print_call_P(ch, &msg->dst,buf);
 		#if CONFIG_AX25_RPT_LST
 		for (int i = 0; i < msg->rpt_cnt; i++)
 		{
 			kfile_putc(',', ch);
-			print_call_P(ch, &msg->rpt_lst[i]);
+			print_call_P(ch, &msg->rpt_lst[i],buf);
 			/* Print a '*' if packet has already been transmitted
 			 * by this repeater */
 			if (AX25_REPEATED(msg, i))
 				kfile_putc('*', ch);
 		}
 		#endif
-		// DATA PART
+		// DATA PAYLOAD
 		SERIAL_PRINTF_P(pSer, PSTR(":%.*s\n"), msg->len, msg->info);
 	#endif
 }
@@ -219,7 +219,6 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 		}
 	}
 
-
 	if(!modeOK){
 		SERIAL_PRINTF_P(pSer,PSTR("Invalid value %s, only int value [0|1|2] is accepted\r\n"),value);
 	}
@@ -267,7 +266,7 @@ static void init(void)
 	 * is the hardware abstraction layer.
 	 * We do not need transmission for now, so we set transmission DAC channel to 0.
 	 */
-	afsk_init(&afsk, ADC_CH, 0);
+	afsk_init(&afsk, ADC_CH, DAC_CH);
 
 	/*
 	 * Here we initialize AX25 context, the channel (KFile) we are going to read messages
@@ -294,8 +293,6 @@ static void init(void)
     console_add_command(PSTR("KISS"),cmd_enter_kiss_mode);		// enable KISS mode
 }
 
-
-
 int main(void)
 {
 
@@ -311,32 +308,31 @@ int main(void)
 		ax25_poll(&ax25);
 
 		switch(currentMode){
+			case MODE_CFG:{
+				console_poll();
+				break;
+			}
 
-		case MODE_CFG:{
-			console_poll();
-			break;
-		}
+			case MODE_KISS:{
+				kiss_serial_poll();
+				kiss_queue_process();
+				break;
+			}
 
-		case MODE_KISS:{
-			kiss_serial_poll();
-			kiss_queue_process();
-			break;
-		}
+			case MODE_DIGI:{
+				break;
+			}
 
-		case MODE_DIGI:{
-			break;
-		}
+			case MODE_TEST_BEACON:{
+				break;
+			}
 
-		case MODE_TEST_BEACON:{
-			break;
-		}
+			case MODE_TRACKER_BEACON:{
+				break;
+			}
 
-		case MODE_TRACKER_BEACON:{
-			break;
-		}
-
-		default:
-			break;
+			default:
+				break;
 		}// end of switch(runMode)
 
 // BEACON ROUTINS
