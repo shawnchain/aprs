@@ -7,9 +7,9 @@
 
 TinyAPRS is my experiment on APRS after became a HAM in middle of 2014.
 
-Like most of the APRS TNCs, TinyAPRS is an AFSK1200 modem that decodes radio signals into AX25 data packets. TinyAP==RS also supports KISS protocol, so you can use it with most of the APRS applications.
+Like most of the APRS TNCs, TinyAPRS is an AFSK1200 modem that decodes radio signals into AX25 data packets. TinyAPRS also supports KISS protocol, so you can use it with most of the APRS applications.
 
-Unlike most the APRS TNCs, tinyAPRS is VERY VERY CHEAP. It will only cost $10 to build one. That means you can build your own APRS IGATE or tracking beacon with very low price.
+Unlike most the APRS TNCs, tinyAPRS is VERY VERY CHEAP. It will only cost $10 to build one. That means you can build your own APRS IGATE or tracking beacon with very low cost.
 
 ### How TinyAPRS works ###
 
