@@ -20,7 +20,10 @@
 #include <stdlib.h>
 #include <avr/wdt.h>
 
+#define SOFT_RESET_ENABLED 0
+
 // Software reset
+#if SOFT_RESET_ENABLED
  #define soft_reset()        \
  do                          \
  {                           \
@@ -29,6 +32,9 @@
      {                       \
      }                       \
  } while(0)
+#else
+#define soft_reset()
+#endif
 
 
 /////////////////////////////////////////////////////////////////////////

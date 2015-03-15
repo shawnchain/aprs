@@ -26,6 +26,7 @@
 //}
 
 
+#if SOFT_RESET_ENABLED
 // need to disable watch dog after reset on XMega
 void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
 void wdt_init(void)
@@ -34,3 +35,4 @@ void wdt_init(void)
     wdt_disable();
     return;
 }
+#endif
