@@ -39,6 +39,8 @@ TinyAPRS is released under GPL license, **but with the following restriction** :
  - No commercial use.
  - All GPL restrictions
 
+### Pictures ###
+Visit my [weibo album](http://www.weibo.com/p/1005052321043580/album?from=page_100505&mod=TAB#place "Weibo Album") for pictures.
 
 Cheers,
 
