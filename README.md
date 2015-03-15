@@ -1,11 +1,11 @@
-# TinyAPRS - A cheap APRS TNC for HAMs #
+# TinyAPRS - A cheap APRS TNC for HAM #
 
 
 
 ### What is TinyAPRS ###
 
 
-TinyAPRS is my experiment on APRS after became a HAM in middle of 2014.
+TinyAPRS is my experiment on APRS after became a HAM, since middle of 2014.
 
 Like most of the APRS TNCs, TinyAPRS is an AFSK1200 modem that decodes radio signals into AX25 data packets. TinyAPRS also supports KISS protocol, so you can use it with most of the APRS applications.
 
