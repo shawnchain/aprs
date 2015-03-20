@@ -79,7 +79,7 @@
 #include "beacon.h"
 
 // TEST for SoftSerial
-#include "hw_soft_ser.h"
+#include "hw/hw_softser.h"
 
 
 static Afsk afsk;
@@ -363,7 +363,7 @@ int main(void)
 		beacon_poll();
 #endif
 
-#define FREE_RAM_DEBUG 1
+#define FREE_RAM_DEBUG 0
 #if FREE_RAM_DEBUG
 		{
 			static uint32_t i = 0;
@@ -383,44 +383,15 @@ int main(void)
 			if(i++ == 30000){
 				i = 0;
 
-//				// log the stack size
 				char c;
-				while(hw_soft_ser_available(&softSer)){
-					c = hw_soft_ser_read(&softSer);
+				while(softser_avail(&softSer)){
+					c = softser_read(&softSer);
 					kfile_putc(c,&(ser.fd));
-//					j++;
 				}
-//				c = 'B';
-				hw_soft_ser_write(&softSer,'0');
-				hw_soft_ser_write(&softSer,'K');
-				hw_soft_ser_write(&softSer,'\n');
-				hw_soft_ser_write(&softSer,'\r');
-				/*
-				c = 'K';
-				hw_soft_ser_write(&softSer,c);
-//				hw_soft_ser_write(&softSer,'\r');
-				c = '\n';
-				hw_soft_ser_write(&softSer,c);
-				*/
-//				if(hw_soft_ser_available(&softSer)){
-//					int8_t c = hw_soft_ser_read(&softSer);
-//					SERIAL_PRINTF_P((&ser),PSTR("softser read 0x%x! \r\n"),c);
-//					//j = 0;
-//				}
-//				uint16_t avail = hw_soft_ser_available();
-//				if(avail){
-//
-//					SERIAL_PRINTF((&ser),"changed! \r\n");
-//
-//					if(++j == 10){
-//						SERIAL_PRINTF((&ser),"stopped! \r\n");
-//						hw_soft_ser_stop(&softSer);
-//					}
-//				}
-//				else{
-//					SERIAL_PRINTF((&ser),"not changed \r\n");
-//				}
-
+				softser_write(&softSer,'0');
+				softser_write(&softSer,'K');
+				softser_write(&softSer,'\n');
+				softser_write(&softSer,'\r');
 			}
 		}
 

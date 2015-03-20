@@ -20,6 +20,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include "cfg/cfg_softser.h"
 
 #define _SS_MAX_RX_BUFF 64 // RX buffer size
 #ifndef GCC_VERSION
@@ -38,14 +39,24 @@ typedef struct {
 	uint16_t _rx_delay_stopbit;
 	uint16_t _tx_delay;
 
-	bool _buffer_overflow;bool _inverse_logic;
+	bool _buffer_overflow;
+	bool _inverse_logic;
 } SoftSerial;
 
-void hw_soft_ser_init(SoftSerial *pSSer, uint8_t pinRX, uint8_t pinTX);
+void hw_softser_init(SoftSerial *pSSer, uint8_t pinRX, uint8_t pinTX);
 
-void hw_soft_ser_start(SoftSerial *pSSer, long speed);
-void hw_soft_ser_stop(SoftSerial *pSSer);
-int hw_soft_ser_available(SoftSerial *pSSers);
-int hw_soft_ser_read(SoftSerial *pSSers);
-int hw_soft_ser_write(SoftSerial *pSSer, uint8_t b);
+void hw_softser_start(SoftSerial *pSSer, long speed);
+void hw_softser_stop(SoftSerial *pSSer);
+int hw_softser_avail(SoftSerial *pSSers);
+int hw_softser_read(SoftSerial *pSSers);
+int hw_softser_write(SoftSerial *pSSer, uint8_t b);
+
+#define softser_init(pSSer,pinRx,pinTx) hw_softser_init(pSSer, pinRx,pinTx)
+#define softser_start(pSSer) hw_softser_write(pSSer)
+#define softser_stop(pSSer) hw_softser_stop(pSSer)
+#define softser_avail(pSSer) hw_softser_avail(pSSer)
+#define softser_read(pSSer) hw_softser_read(pSSer)
+#define softser_write(pSSer,b) hw_softser_write(pSSer, b)
+
+
 #endif /* HW_SOFT_SER_H_ */

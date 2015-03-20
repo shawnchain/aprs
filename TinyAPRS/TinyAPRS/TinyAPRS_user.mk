@@ -18,8 +18,8 @@ TinyAPRS_PROGRAMMER_TYPE = arduino
 #TinyAPRS_PROGRAMMER_BAUD = 57600 
 
 # USB = FT232
-TinyAPRS_PROGRAMMER_PORT = /dev/cu.usbserial-AH02KRAG
-#TinyAPRS_PROGRAMMER_PORT = /dev/cu.usbserial-AH02KRAF
+#TinyAPRS_PROGRAMMER_PORT = /dev/cu.usbserial-AH02KRAG
+TinyAPRS_PROGRAMMER_PORT = /dev/cu.usbserial-AH02KRAF
 TinyAPRS_PROGRAMMER_BAUD = 115200
 
 # Files included by the user.
@@ -32,7 +32,7 @@ TinyAPRS_USER_CSRC = \
 	$(TinyAPRS_SRC_PATH)/net/kiss.c \
 	$(TinyAPRS_SRC_PATH)/sys_utils.c \
 	$(TinyAPRS_SRC_PATH)/beacon.c \
-	$(TinyAPRS_SRC_PATH)/hw_soft_ser.c \
+	$(TinyAPRS_SRC_PATH)/hw/hw_softser.c \
 	#
 
 # Files included by the user.
