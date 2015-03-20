@@ -110,12 +110,15 @@ static void print_call_P(KFile *ch, const AX25Call *call,char* buf) {
 	}
 }
 
+static uint16_t count = 1;
 INLINE void print_ax25_message(Serial *pSer, AX25Msg *msg){
 	#if 0
 		ax25_print(&(pSer->fd),msg); // less code but need 16 bytes of ram
 	#else
 		char buf[16];
 		KFile *ch = &(pSer->fd);
+		sprintf(buf,"%d ",count++);
+		kfile_print(ch,buf);
 		// CALL/RPT/DEST
 		print_call_P(ch, &msg->src,buf);
 		kfile_putc('>', ch);
@@ -132,7 +135,7 @@ INLINE void print_ax25_message(Serial *pSer, AX25Msg *msg){
 		}
 		#endif
 		// DATA PAYLOAD
-		SERIAL_PRINTF_P(pSer, PSTR(":%.*s\n"), msg->len, msg->info);
+		SERIAL_PRINTF_P(pSer, PSTR(":%.*s\n\r"), msg->len, msg->info);
 	#endif
 }
 
