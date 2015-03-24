@@ -8,12 +8,10 @@ Like most of the APRS TNCs, TinyAPRS is an AFSK1200 modem that decodes radio sig
 
 Unlike most of the APRS TNCs, tinyAPRS is VERY VERY CHEAP. It will only cost $10 to build one. That means you can build your own APRS IGATE or tracking beacon with very low cost.
 
-### How TinyAPRS works ###
-
 TinyAPRS has good performance on decoding. 
 Currently, it works perfectly with my GM300 radio and decodes packets successfully from OT++(The local Digipeater)/FTM350R(My Car) and other devices. Based on my test, it decodes 850+ records from WA8LMF APRS TestCD/Track1. 
 
-### How TinyAPRS is built ###
+### How did it work ###
 
 TinyAPRS is built on the giants shoulder.
 
@@ -24,7 +22,7 @@ TinyAPRS is built on the giants shoulder.
 
 Technical specification 
 
- - Main Chip : ATMEL/ATMEGA328P (Cheap clones of Arduino ProMini)
+ - Main Chip : ATMEL/ATMEGA328P (Cheap clones of Arduino ProMini, could be ported to other type of AVR MCUs with ease)
  - ALC circut: MCP6001 OPA
  - Firmware  : AFSK1200/KISS(P-CSMA)/AT Serial
 
