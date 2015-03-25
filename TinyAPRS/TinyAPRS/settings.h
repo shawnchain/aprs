@@ -61,8 +61,7 @@ typedef struct{
 	uint8_t path2_call[6];	// the path2
 	uint8_t path2_ssid;
 
-	uint8_t symbol;			// Symbols
-	uint8_t symbol_table;
+	uint8_t symbol[2];			// Symbol table and the index
 
 	uint8_t unused[2];
 } SettingsData;

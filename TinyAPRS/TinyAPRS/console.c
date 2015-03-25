@@ -382,15 +382,15 @@ static bool cmd_settings_reset(Serial* pSer, char* value, size_t len){
 
 //TODO -implement me
 static bool cmd_settings_symbol(Serial* pSer, char* value, size_t len){
-	if(len > 0){
-		settings_set(SETTINGS_SYMBOL,value,1);
+	if(len >= 2){
+		settings_set(SETTINGS_SYMBOL,value,2);
 		settings_save();
 	}
 
-	uint8_t symbol = 0;
-	uint8_t bufLen = 1;
-	settings_get(SETTINGS_SYMBOL,&symbol,&bufLen);
-	SERIAL_PRINTF_P(pSer,PSTR("SYMBOL: %c\r\n"),symbol);
+	uint8_t symbol[2];
+	uint8_t bufLen = 2;
+	settings_get(SETTINGS_SYMBOL,symbol,&bufLen);
+	SERIAL_PRINTF_P(pSer,PSTR("SYMBOL: %c%c\r\n"),symbol[0],symbol[1]);
 
 	return true;
 }

@@ -121,8 +121,9 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 			*pValueOutLen = 1;
 			break;
 		case SETTINGS_SYMBOL:
-			*((uint8_t*)valueOut) = g_settings.symbol;
-			*pValueOutLen = 1;
+			*((uint8_t*)valueOut) = g_settings.symbol[0];
+			*((uint8_t*)valueOut + 1) = g_settings.symbol[1];
+			*pValueOutLen = 2;
 			break;
 		default:
 			*pValueOutLen = 0;
@@ -164,7 +165,8 @@ void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
 			g_settings.path2_ssid = *((uint8_t*)value);
 			break;
 		case SETTINGS_SYMBOL:
-			g_settings.symbol = *((uint8_t*)value);
+			g_settings.symbol[0] = *((uint8_t*)value);
+			g_settings.symbol[1] = *(((uint8_t*)value)+1);
 			break;
 		default:
 			break;
