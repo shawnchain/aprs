@@ -264,7 +264,6 @@ static void init(void)
     console_init(&ser);
     console_add_command(PSTR("MODE"),cmd_switch_mode);			// setup tnc run mode
     console_add_command(PSTR("KISS"),cmd_enter_kiss_mode);		// enable KISS mode
-
 }
 
 // Free ram test

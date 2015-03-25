@@ -30,16 +30,18 @@ SettingsData g_settings = {
 		.location={30,14,0,'N',120,0,9,'E'},
 		.phgd={0,0,0,0},
 		.comments="TinyAPRS Rocks!",
-#if SETTINGS_SUPPORT_RAW_PACKET
-		.raw_packet_text="!3014.00N/12009.00E>000/000/A=000087Rolling! 3.6V 1011.0pa",
-#endif
 };
 
-#define NV_SETTINGS_BLOCK_SIZE SETTINGS_SIZE
 #define NV_SETTINGS_HEAD_BYTE_VALUE 0x88
-
+#define NV_SETTINGS_BLOCK_SIZE SETTINGS_SIZE
 uint8_t EEMEM nvSetHeadByte;
 uint8_t EEMEM nvSettings[NV_SETTINGS_BLOCK_SIZE];
+
+// TODO - support raw packet
+#define NV_RAW_PACKET_HEAD_BYTE_VALUE 0x99
+#define NV_RAW_PACKET_BLOCK_SIZE SETTINGS_RAW_PACKET_MAX
+uint8_t EEMEM nvRawPacketHeadByte;
+uint8_t EEMEM nvRawPacket[NV_RAW_PACKET_BLOCK_SIZE];
 
 /*
  * Load settings
@@ -68,6 +70,7 @@ bool settings_save(void){
  */
 void settings_clear(void){
 	eeprom_update_byte((void*)&nvSetHeadByte, 0xFF);
+	eeprom_update_byte((void*)&nvRawPacketHeadByte, 0xFF);
 }
 
 #define ABS(a)		(((a) < 0) ? -(a) : (a))
@@ -140,11 +143,6 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 		case SETTINGS_COMMENTS_TEXT:
 			*pValueOutLen = settings_copy_n_string_value(valueOut, (const char*)g_settings.comments,outBufferSize);
 			break;
-#if SETTINGS_SUPPORT_RAW_PACKET
-		case SETTINGS_RAW_PACKET_TEXT:
-			*pValueOutLen = settings_copy_n_string_value(valueOut, (const char*)g_settings.raw_packet_text,outBufferSize);
-			break;
-#endif
 		default:
 			*pValueOutLen = 0;
 			break;
@@ -195,12 +193,6 @@ void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
 			memset(g_settings.comments,0,SETTINGS_COMMENTS_TEXT_MAX);
 			memcpy(g_settings.comments,value,MIN(SETTINGS_COMMENTS_TEXT_MAX - 1,valueLen));
 			break;
-#if SETTINGS_SUPPORT_RAW_PACKET
-		case SETTINGS_RAW_PACKET_TEXT:
-			memset(g_settings.raw_packet_text,0,SETTINGS_RAW_PACKET_TEXT_MAX);
-			memcpy(g_settings.raw_packet_text,value,MIN(SETTINGS_RAW_PACKET_TEXT_MAX - 1,valueLen));
-			break;
-#endif
 		default:
 			break;
 	}
@@ -254,4 +246,30 @@ void settings_get_location_string(char* buf, uint8_t bufLen){
 	memset(buf,0,bufLen);
 	uint8_t* loc = g_settings.location;
 	snprintf_P(buf,bufLen-1,PSTR("%d%02d.%02d%c,%d%02d.%02d%c"),loc[0],loc[1],loc[2],loc[3],loc[4],loc[5],loc[6],loc[7]);
+}
+
+//.raw_packet_text="!3014.00N/12009.00E>000/000/A=000087Rolling! 3.6V 1011.0pa",
+uint8_t settings_get_raw_packet(char* buf, uint8_t bufLen){
+	uint8_t verification = eeprom_read_byte((void*)&nvRawPacketHeadByte);
+	if (verification != NV_RAW_PACKET_HEAD_BYTE_VALUE) {
+		buf[0] = 0;
+		return 0;
+	}
+	uint8_t bytesToRead = MIN(bufLen,SETTINGS_RAW_PACKET_MAX);
+	eeprom_read_block((void*)buf, (void*)nvRawPacket, bytesToRead);
+
+	// like strlen
+	uint8_t i = 0;
+	while(buf[i] != 0 && i < bytesToRead){
+		i++;
+	}
+	return i;
+}
+
+uint8_t settings_set_raw_packet(char* data, uint8_t dataLen){
+	uint8_t bytesToWrite = MIN(dataLen,SETTINGS_RAW_PACKET_MAX - 1);
+	eeprom_update_block((void*)data, (void*)nvRawPacket, bytesToWrite);
+	eeprom_update_byte((void*)(nvRawPacket + bytesToWrite), 0);
+	eeprom_update_byte((void*)&nvRawPacketHeadByte, NV_RAW_PACKET_HEAD_BYTE_VALUE);
+	return bytesToWrite;
 }

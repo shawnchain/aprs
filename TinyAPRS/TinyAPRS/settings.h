@@ -45,22 +45,13 @@ typedef enum {
 	SETTINGS_SYMBOL,
 	SETTINGS_LOCATION,
 	SETTINGS_COMMENTS_TEXT,
-
-#if SETTINGS_SUPPORT_RAW_PACKET
-	SETTINGS_RAW_PACKET_TEXT,
-#endif
-
 }SETTINGS_TYPE;
 
 #define SETTINGS_MAX_SSID 99
 #define SETTINGS_COMMENTS_TEXT_MAX 48
+#define SETTINGS_SIZE 76
 
-#if SETTINGS_SUPPORT_RAW_PACKET
-	#define SETTINGS_RAW_PACKET_TEXT_MAX 96
-	#define SETTINGS_SIZE 172
-#else
-	#define SETTINGS_SIZE 76
-#endif
+#define SETTINGS_RAW_PACKET_MAX 96
 
 typedef struct{
 	uint8_t my_call[6]; 	// the call sign like BG5HHP
@@ -82,9 +73,6 @@ typedef struct{
 
 	uint8_t comments[SETTINGS_COMMENTS_TEXT_MAX];
 
-#if SETTINGS_SUPPORT_RAW_PACKET
-	uint8_t raw_packet_text[SETTINGS_RAW_PACKET_TEXT_MAX]; //!3014.00N/12009.00E>000/000/A=000087Rolling! 3.6V 1011.0pa
-#endif
 	uint8_t unused[2];
 } SettingsData;
 
@@ -139,4 +127,8 @@ void settings_get_location_string(char* buf, uint8_t bufLen);
 
 void settings_set_location_string(char* buf, uint8_t bufLen);
 
+
+uint8_t settings_get_raw_packet(char* buf, uint8_t bufLen);
+
+uint8_t settings_set_raw_packet(char* data, uint8_t dataLen);
 #endif /* SETTINGS_H_ */

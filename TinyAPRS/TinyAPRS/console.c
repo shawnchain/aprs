@@ -19,6 +19,13 @@
 #include <drv/timer.h>
 #include "buildrev.h"
 
+// Increase the console read buffer for the raw package text input
+#if SETTINGS_SUPPORT_RAW_PACKET
+#undef CONSOLE_SERIAL_BUF_LEN
+#define CONSOLE_SERIAL_BUF_LEN SETTINGS_RAW_PACKET_MAX + 8
+#endif
+
+
 // Internal console command prototype
 static void console_parse_command(Serial *pSer, char* command, size_t commandLen);
 static void console_init_command(void);
@@ -58,11 +65,6 @@ void console_init(Serial *ser){
 	cmd_info(ser,0,0);
 }
 
-// Increase the console read buffer for the raw package text input
-#if SETTINGS_SUPPORT_RAW_PACKET
-#undef CONSOLE_SERIAL_BUF_LEN
-#define CONSOLE_SERIAL_BUF_LEN 128
-#endif
 
 /*
  * The console will always read console input char until met CRLF or buffer is full
@@ -416,17 +418,22 @@ static bool cmd_settings_comments_text(Serial* pSer, char* value, size_t valueLe
 static bool cmd_settings_raw_packet(Serial* pSer, char* value, size_t valueLen){
 	if(valueLen > 0){
 		// set the beacon text
-		settings_set(SETTINGS_RAW_PACKET_TEXT,value,valueLen);
-		settings_save();
+		settings_set_raw_packet(value,valueLen);
+		//SERIAL_PRINT_P(pSer, "OK\n\r");
+		//return true;
 	}
 
-	char buf[SETTINGS_RAW_PACKET_TEXT_MAX + 3];
-	uint8_t bufLen = SETTINGS_RAW_PACKET_TEXT_MAX - 1;
+	#define BUF_LEN SETTINGS_RAW_PACKET_MAX + 4
+	char buf[BUF_LEN];
 	buf[0] = '>';
-	settings_get(SETTINGS_RAW_PACKET_TEXT,buf+1,&bufLen);
+	uint8_t bytesRead = settings_get_raw_packet(buf+1,BUF_LEN - 4);
+	buf[bytesRead + 1] = '\n';
+	buf[bytesRead+2] = '\r';
+	buf[bytesRead+3] = 0;
 	kfile_print((&(pSer->fd)),buf);
-	buf[bufLen] = '\r';
-	kfile_print((&(pSer->fd)),buf);
+
+	uint16_t free = freeRam();
+	SERIAL_PRINTF_P(pSer, PSTR("free mem: %d\n\r"),free)
 	return true;
 }
 #endif
