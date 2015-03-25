@@ -1,54 +1,24 @@
 /**
  * \file
  * <!--
- * This file is part of BeRTOS.
+ * This file is part of TinyAPRS.
+ * Released under GPL License
  *
- * Bertos is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
- * As a special exception, you may use this file as part of a free software
- * library without restriction.  Specifically, if other files instantiate
- * templates or use macros or inline functions from this file, or you compile
- * this file and link it with other files to produce an executable, this
- * file does not by itself cause the resulting executable to be covered by
- * the GNU General Public License.  This exception does not however
- * invalidate any other reasons why the executable file might be covered by
- * the GNU General Public License.
- *
- * Copyright 2010 Develer S.r.l. (http://www.develer.com/)
+ * Copyright 2015 Shawn Chain (shawn.chain@gmail.com)
  *
  * -->
  *
- * \author Francesco Sacchi <batt@develer.com>
- * \author Luca Ottaviano <lottaviano@develer.com>
- * \author Daniele Basile <asterix@develer.com>
+ * \brief The main routines
  *
- * \brief Arduino APRS radio demo.
- *
- * This example shows how to read and decode APRS radio packets.
- * It uses the following modules:
- * afsk
- * ax25
- * ser
- *
- * You will see how to use a serial port to output messages, init the afsk demodulator and
- * how to parse input messages using ax25 module.
+ * \author Shawn Chain <shawn.chain@gmail.com>
+ * \date 2015-02-07
  */
 
 #include <cfg/compiler.h>
 
 #include <cpu/irq.h>
+#include <cpu/pgm.h>     /* PROGMEM */
+#include <avr/pgmspace.h>
 
 #include <net/afsk.h>
 #include <net/ax25.h>
@@ -59,29 +29,20 @@
 
 #include <stdio.h>
 #include <string.h>
-
-
-#include "console.h"
+#include <ctype.h>
 
 #include "config.h"
 #if SERIAL_DEBUG
 #include <cfg/debug.h>
 #endif
 
+#include "utils.h"
+
 #include "settings.h"
-#include <ctype.h>
-
-#include <cpu/pgm.h>     /* PROGMEM */
-#include <avr/pgmspace.h>
-
-#include "sys_utils.h"
-
+#include "console.h"
 #include "beacon.h"
-
-// The radio module
-#include "cfg/cfg_radio.h"
-#if CFG_RADIO_ENABLED
 #include "radio.h"
+#if CFG_RADIO_ENABLED
 static SoftSerial softSer;
 #endif
 

@@ -30,7 +30,7 @@ TinyAPRS_USER_CSRC = \
 	$(TinyAPRS_SRC_PATH)/console.c \
 	$(TinyAPRS_SRC_PATH)/settings.c \
 	$(TinyAPRS_SRC_PATH)/net/kiss.c \
-	$(TinyAPRS_SRC_PATH)/sys_utils.c \
+	$(TinyAPRS_SRC_PATH)/utils.c \
 	$(TinyAPRS_SRC_PATH)/beacon.c \
 	#$(TinyAPRS_SRC_PATH)/hw/hw_softser.c \
 	#$(TinyAPRS_SRC_PATH)/radio.c \

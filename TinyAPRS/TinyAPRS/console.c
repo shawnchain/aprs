@@ -4,9 +4,10 @@
 
 #include <avr/io.h>
 #include <avr/pgmspace.h>
-#include "sys_utils.h"
 #include <stdio.h>
 #include <string.h>
+
+#include "utils.h"
 #include "settings.h"
 
 #include <net/ax25.h>
@@ -16,10 +17,8 @@
 #include <cfg/cfg_kiss.h> // kiss config
 
 #include <drv/timer.h>
-#include "sys_utils.h"
 #include "buildrev.h"
 #include "config.h"
-
 
 // Internal console command prototype
 static void console_parse_command(Serial *pSer, char* command, size_t commandLen);
