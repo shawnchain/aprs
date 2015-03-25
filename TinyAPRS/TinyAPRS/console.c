@@ -18,7 +18,6 @@
 
 #include <drv/timer.h>
 #include "buildrev.h"
-#include "config.h"
 
 // Internal console command prototype
 static void console_parse_command(Serial *pSer, char* command, size_t commandLen);

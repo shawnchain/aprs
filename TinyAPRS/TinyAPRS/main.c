@@ -31,11 +31,6 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "config.h"
-#if SERIAL_DEBUG
-#include <cfg/debug.h>
-#endif
-
 #include "utils.h"
 
 #include "settings.h"
@@ -167,9 +162,6 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 			SERIAL_PRINT_P(pSer,PSTR("Enter KISS mode\r\n"));
 			break;
 
-		case MODE_TEST_BEACON:
-			currentMode = MODE_TEST_BEACON;
-			break;
 /*
 		case MODE_DIGI:
 			// DIGI MODE
@@ -197,7 +189,7 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 	}
 
 	if(!modeOK){
-		SERIAL_PRINTF_P(pSer,PSTR("Invalid value %s, only int value [0|1|2] is accepted\r\n"),value);
+		SERIAL_PRINTF_P(pSer,PSTR("Invalid mode %s, [0|1|2] is accepted\r\n"),value);
 	}
 
 	return true;
