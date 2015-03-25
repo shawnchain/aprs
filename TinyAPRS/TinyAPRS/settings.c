@@ -26,10 +26,9 @@ SettingsData g_settings = {
 		.path1_ssid=1,
 		.path2_call="",
 		.path2_ssid=0,
-		//.location="3014.00N,12009.00E",
-		.location={30,14,0,'N',120,0,9,'E'},
-		.phgd={0,0,0,0},
-		.comments="TinyAPRS Rocks!",
+		//.location={30,14,0,'N',120,0,9,'E'},
+		//.phgd={0,0,0,0},
+		//.comments="TinyAPRS Rocks!",
 };
 
 #define NV_SETTINGS_HEAD_BYTE_VALUE 0x88
@@ -87,22 +86,11 @@ static void settings_copy_call_value(const char* call, char* buf, uint8_t *len){
 	*len = i;
 }
 
-static uint8_t settings_copy_n_string_value(char* dst, const char* src, uint8_t n){
-	memset(dst, 0, n);
-	int i = 0;
-	while (i < (n - 1) && src[i] != 0) {
-		dst[i] = src[i];
-		i++;
-	}
-	return i;
-}
-
 /*
  * Get settings value, fill up the valueOut buffer, and update the valueOutLen of the actual value lenth
  */
 void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 	if(*pValueOutLen <= 0) return;
-	uint8_t outBufferSize = *pValueOutLen;
 	switch(type){
 		case SETTINGS_MY_CALL:
 			settings_copy_call_value((const char*)g_settings.my_call,valueOut,pValueOutLen);
@@ -131,17 +119,6 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 		case SETTINGS_PATH2_SSID:
 			*((uint8_t*)valueOut) = g_settings.path2_ssid;
 			*pValueOutLen = 1;
-			break;
-		case SETTINGS_PHGD:
-			memcpy(valueOut,g_settings.phgd,MIN(outBufferSize,4));
-			*pValueOutLen = 4; // yes they're fixed
-			break;
-		case SETTINGS_SYMBOL:
-			*((uint8_t*)valueOut) = g_settings.symbol;
-			*pValueOutLen = 1;
-			break;
-		case SETTINGS_COMMENTS_TEXT:
-			*pValueOutLen = settings_copy_n_string_value(valueOut, (const char*)g_settings.comments,outBufferSize);
 			break;
 		default:
 			*pValueOutLen = 0;
@@ -181,17 +158,6 @@ void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
 			break;
 		case SETTINGS_PATH2_SSID:
 			g_settings.path2_ssid = *((uint8_t*)value);
-			break;
-		case SETTINGS_PHGD:
-			memset(g_settings.phgd,0,4);
-			memcpy(g_settings.phgd,value,MIN(4,valueLen));
-			break;
-		case SETTINGS_SYMBOL:
-			g_settings.symbol = *((uint8_t*)value);
-			break;
-		case SETTINGS_COMMENTS_TEXT:
-			memset(g_settings.comments,0,SETTINGS_COMMENTS_TEXT_MAX);
-			memcpy(g_settings.comments,value,MIN(SETTINGS_COMMENTS_TEXT_MAX - 1,valueLen));
 			break;
 		default:
 			break;
@@ -242,13 +208,7 @@ void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType
 	}
 }
 
-void settings_get_location_string(char* buf, uint8_t bufLen){
-	memset(buf,0,bufLen);
-	uint8_t* loc = g_settings.location;
-	snprintf_P(buf,bufLen-1,PSTR("%d%02d.%02d%c,%d%02d.%02d%c"),loc[0],loc[1],loc[2],loc[3],loc[4],loc[5],loc[6],loc[7]);
-}
-
-//.raw_packet_text="!3014.00N/12009.00E>000/000/A=000087Rolling! 3.6V 1011.0pa",
+//.raw_packet_text="!3014.00N/12009.00E>000/000/A=000087TinyAPRS Rocks!",
 uint8_t settings_get_raw_packet(char* buf, uint8_t bufLen){
 	uint8_t verification = eeprom_read_byte((void*)&nvRawPacketHeadByte);
 	if (verification != NV_RAW_PACKET_HEAD_BYTE_VALUE) {

@@ -247,8 +247,7 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("AT+MYSSID=[SSID]\t\t;Set my ssid only\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN]-[SSID]\t;Set destination callsign only\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[PATH1],[PATH2]\t\t;Set PATH, max 2 allowed\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+LOCA=[DDMM.mmN/DDDMM.mmE]\t;Set location \r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+CMNTS=[BEACON COMMENTS]\t;Set beacon comments \r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+RAW=[BEACON RAW]\t;Set beacon raw text \r\n"));
 #endif
 
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=1\t\t\t;Enter kiss mode\r\n"));
@@ -383,37 +382,6 @@ static bool cmd_settings_symbol(Serial* pSer, char* value, size_t len){
 	return true;
 }
 
-static bool cmd_settings_location(Serial* pSer, char* value, size_t len){
-	(void)value;
-	(void)len;
-	//TODO - parse input and store back
-	//3014.00N,12009.00E
-
-	char buf[32];
-	uint8_t bufLen = sizeof(buf);
-	settings_get_location_string(buf,bufLen);
-	SERIAL_PRINTF_P(pSer, PSTR("Location:%s\r\n"),buf);
-	return true;
-}
-
-static bool cmd_settings_comments_text(Serial* pSer, char* value, size_t valueLen){
-	if(valueLen > 0){
-		// set the beacon text
-		settings_set(SETTINGS_COMMENTS_TEXT,value,valueLen);
-		settings_save();
-	}
-
-	char buf[SETTINGS_COMMENTS_TEXT_MAX + 3];
-	uint8_t bufLen = SETTINGS_COMMENTS_TEXT_MAX - 1;
-	buf[0] = '>';
-	settings_get(SETTINGS_COMMENTS_TEXT,buf + 1,&bufLen);
-	buf[bufLen++] = '\r';
-	buf[bufLen++] = '\n';
-	buf[bufLen] = 0;
-	kfile_print((&(pSer->fd)),buf);
-	return true;
-}
-
 #if SETTINGS_SUPPORT_RAW_PACKET
 static bool cmd_settings_raw_packet(Serial* pSer, char* value, size_t valueLen){
 	if(valueLen > 0){
@@ -491,8 +459,6 @@ static void console_init_command(void){
     console_add_command(PSTR("RESET"),cmd_settings_reset);				// reset the tnc
 
     console_add_command(PSTR("SYMBL"),cmd_settings_symbol);	// setup the beacon symbol
-    console_add_command(PSTR("LOCA"),cmd_settings_location);	// setup the fixed location
-    console_add_command(PSTR("CMNTS"),cmd_settings_comments_text);	// setup the beacon comment
 
 	#if SETTINGS_SUPPORT_RAW_PACKET
     console_add_command(PSTR("RAW"),cmd_settings_raw_packet);

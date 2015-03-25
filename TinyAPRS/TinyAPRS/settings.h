@@ -26,7 +26,7 @@
 #include <avr/pgmspace.h>
 
 
-#define SETTINGS_SUPPORT_RAW_PACKET 0
+#define SETTINGS_SUPPORT_RAW_PACKET 1
 
 /*
  * The setting types
@@ -40,16 +40,11 @@ typedef enum {
 	SETTINGS_PATH1_SSID,
 	SETTINGS_PATH2_CALL,
 	SETTINGS_PATH2_SSID,
-
-	SETTINGS_PHGD,
 	SETTINGS_SYMBOL,
-	SETTINGS_LOCATION,
-	SETTINGS_COMMENTS_TEXT,
 }SETTINGS_TYPE;
 
 #define SETTINGS_MAX_SSID 99
-#define SETTINGS_COMMENTS_TEXT_MAX 48
-#define SETTINGS_SIZE 76
+#define SETTINGS_SIZE 32
 
 #define SETTINGS_RAW_PACKET_MAX 96
 
@@ -66,12 +61,8 @@ typedef struct{
 	uint8_t path2_call[6];	// the path2
 	uint8_t path2_ssid;
 
-	uint8_t phgd[4];		// the POWER,HEIGHT,GAIN,DIRECTIVITY index values
 	uint8_t symbol;			// Symbols
 	uint8_t symbol_table;
-	uint8_t location[8];	// [30,14,00,'N',120,09,00,'E'] - "3014.00N,12009.00E"
-
-	uint8_t comments[SETTINGS_COMMENTS_TEXT_MAX];
 
 	uint8_t unused[2];
 } SettingsData;
@@ -118,14 +109,6 @@ bool settings_set_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType
  * Get specific CALL setting values and format to a string like "BG5HHP-1"
  */
 void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType, char* buf, uint8_t bufLen);
-
-
-/*
- * Get location like "DDMM.mmN/DDDMM.mmE" and update specific setting values.
- */
-void settings_get_location_string(char* buf, uint8_t bufLen);
-
-void settings_set_location_string(char* buf, uint8_t bufLen);
 
 
 uint8_t settings_get_raw_packet(char* buf, uint8_t bufLen);
