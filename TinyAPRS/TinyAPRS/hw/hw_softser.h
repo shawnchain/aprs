@@ -17,10 +17,11 @@
 #ifndef HW_SOFT_SER_H_
 #define HW_SOFT_SER_H_
 
+#include "cfg/cfg_softser.h"
+
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include "cfg/cfg_softser.h"
 
 #define _SS_MAX_RX_BUFF 64 // RX buffer size
 #ifndef GCC_VERSION
@@ -50,13 +51,15 @@ void hw_softser_stop(SoftSerial *pSSer);
 int hw_softser_avail(SoftSerial *pSSers);
 int hw_softser_read(SoftSerial *pSSers);
 int hw_softser_write(SoftSerial *pSSer, uint8_t b);
+int hw_softser_print(SoftSerial *pSSer, char* str);
 
 #define softser_init(pSSer,pinRx,pinTx) hw_softser_init(pSSer, pinRx,pinTx)
-#define softser_start(pSSer) hw_softser_write(pSSer)
+#define softser_start(pSSer,baud) hw_softser_start(pSSer,baud)
 #define softser_stop(pSSer) hw_softser_stop(pSSer)
 #define softser_avail(pSSer) hw_softser_avail(pSSer)
 #define softser_read(pSSer) hw_softser_read(pSSer)
 #define softser_write(pSSer,b) hw_softser_write(pSSer, b)
+#define softser_print(pSSer,s) hw_softser_print(pSSer, s)
 
 
 #endif /* HW_SOFT_SER_H_ */

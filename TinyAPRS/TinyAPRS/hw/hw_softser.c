@@ -327,6 +327,20 @@ int hw_softser_write(SoftSerial *pSSer, uint8_t b) {
 #endif
 }
 
+int hw_softser_print(SoftSerial *pSSer, char* str){
+#if CFG_SOFTSER_TX_ENABLED
+	uint8_t i = 0;
+	while(str[i] != 0 /*&& i < 255 */){
+		hw_softser_write(pSSer,str[i]);
+		i++;
+	}
+	return i;
+#else
+	(void)pSSer;(void)str;
+	return 0;
+#endif
+}
+
 #define rx_pin_read(pSSer) \
   (*(pSSer->_receivePortRegister) & (pSSer->_receiveBitMask))
 
