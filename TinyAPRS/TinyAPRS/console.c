@@ -20,9 +20,9 @@
 #include "buildrev.h"
 
 // Increase the console read buffer for the raw package text input
-#if SETTINGS_SUPPORT_RAW_PACKET
+#if SETTINGS_SUPPORT_BEACON_TEXT
 #undef CONSOLE_SERIAL_BUF_LEN
-#define CONSOLE_SERIAL_BUF_LEN SETTINGS_RAW_PACKET_MAX + 8
+#define CONSOLE_SERIAL_BUF_LEN SETTINGS_BEACON_TEXT_MAX + 8
 #endif
 
 
@@ -250,7 +250,8 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("AT+MYSSID=[SSID]\t\t;Set my ssid only\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN]-[SSID]\t;Set destination callsign only\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[PATH1],[PATH2]\t\t;Set PATH, max 2 allowed\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+RAW=[BEACON RAW]\t;Set beacon raw text \r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+SYMBOL=[SYMBOL]\t\t;Set beacon symbol\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+RAW=[BEACON RAW]\t\t;Set beacon raw text \r\n"));
 #endif
 
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=1\t\t\t;Enter kiss mode\r\n"));
@@ -381,14 +382,20 @@ static bool cmd_settings_reset(Serial* pSer, char* value, size_t len){
 
 //TODO -implement me
 static bool cmd_settings_symbol(Serial* pSer, char* value, size_t len){
-	(void)value;
-	(void)len;
+	if(len > 0){
+		settings_set(SETTINGS_SYMBOL,value,1);
+		settings_save();
+	}
 
-	SERIAL_PRINT_P(pSer, PSTR("Not implemented yet"));
+	uint8_t symbol = 0;
+	uint8_t bufLen = 1;
+	settings_get(SETTINGS_SYMBOL,&symbol,&bufLen);
+	SERIAL_PRINTF_P(pSer,PSTR("SYMBOL: %c\r\n"),symbol);
+
 	return true;
 }
 
-#if SETTINGS_SUPPORT_RAW_PACKET
+#if SETTINGS_SUPPORT_BEACON_TEXT
 static bool cmd_settings_raw_packet(Serial* pSer, char* value, size_t valueLen){
 	if(valueLen > 0){
 		// set the beacon text
@@ -397,7 +404,9 @@ static bool cmd_settings_raw_packet(Serial* pSer, char* value, size_t valueLen){
 		//return true;
 	}
 
-	#define BUF_LEN SETTINGS_RAW_PACKET_MAX + 4
+#define DEBUG_BEACON_TEXT 1
+#if DEBUG_BEACON_TEXT
+	#define BUF_LEN SETTINGS_BEACON_TEXT_MAX + 4
 	char buf[BUF_LEN];
 	buf[0] = '>';
 	uint8_t bytesRead = settings_get_raw_packet(buf+1,BUF_LEN - 4);
@@ -408,6 +417,7 @@ static bool cmd_settings_raw_packet(Serial* pSer, char* value, size_t valueLen){
 
 	uint16_t free = freeRam();
 	SERIAL_PRINTF_P(pSer, PSTR("free mem: %d\n\r"),free)
+#endif
 	return true;
 }
 #endif
@@ -464,9 +474,9 @@ static void console_init_command(void){
     console_add_command(PSTR("PATH"),cmd_settings_path);		// setup path like WIDEn-N for beaco
     console_add_command(PSTR("RESET"),cmd_settings_reset);				// reset the tnc
 
-    console_add_command(PSTR("SYMBL"),cmd_settings_symbol);	// setup the beacon symbol
+    console_add_command(PSTR("SYMBOL"),cmd_settings_symbol);	// setup the beacon symbol
 
-	#if SETTINGS_SUPPORT_RAW_PACKET
+	#if SETTINGS_SUPPORT_BEACON_TEXT
     console_add_command(PSTR("RAW"),cmd_settings_raw_packet);
 	#endif
 #endif

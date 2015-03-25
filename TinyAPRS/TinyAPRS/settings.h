@@ -26,7 +26,7 @@
 #include <avr/pgmspace.h>
 
 
-#define SETTINGS_SUPPORT_RAW_PACKET 1
+#define SETTINGS_SUPPORT_BEACON_TEXT 1
 
 /*
  * The setting types
@@ -46,7 +46,7 @@ typedef enum {
 #define SETTINGS_MAX_SSID 99
 #define SETTINGS_SIZE 32
 
-#define SETTINGS_RAW_PACKET_MAX 96
+#define SETTINGS_BEACON_TEXT_MAX 128
 
 typedef struct{
 	uint8_t my_call[6]; 	// the call sign like BG5HHP

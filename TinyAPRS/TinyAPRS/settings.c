@@ -38,7 +38,7 @@ uint8_t EEMEM nvSettings[NV_SETTINGS_BLOCK_SIZE];
 
 // TODO - support raw packet
 #define NV_RAW_PACKET_HEAD_BYTE_VALUE 0x99
-#define NV_RAW_PACKET_BLOCK_SIZE SETTINGS_RAW_PACKET_MAX
+#define NV_RAW_PACKET_BLOCK_SIZE SETTINGS_BEACON_TEXT_MAX
 uint8_t EEMEM nvRawPacketHeadByte;
 uint8_t EEMEM nvRawPacket[NV_RAW_PACKET_BLOCK_SIZE];
 
@@ -120,6 +120,10 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 			*((uint8_t*)valueOut) = g_settings.path2_ssid;
 			*pValueOutLen = 1;
 			break;
+		case SETTINGS_SYMBOL:
+			*((uint8_t*)valueOut) = g_settings.symbol;
+			*pValueOutLen = 1;
+			break;
 		default:
 			*pValueOutLen = 0;
 			break;
@@ -158,6 +162,9 @@ void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
 			break;
 		case SETTINGS_PATH2_SSID:
 			g_settings.path2_ssid = *((uint8_t*)value);
+			break;
+		case SETTINGS_SYMBOL:
+			g_settings.symbol = *((uint8_t*)value);
 			break;
 		default:
 			break;
@@ -215,7 +222,7 @@ uint8_t settings_get_raw_packet(char* buf, uint8_t bufLen){
 		buf[0] = 0;
 		return 0;
 	}
-	uint8_t bytesToRead = MIN(bufLen,SETTINGS_RAW_PACKET_MAX);
+	uint8_t bytesToRead = MIN(bufLen,SETTINGS_BEACON_TEXT_MAX);
 	eeprom_read_block((void*)buf, (void*)nvRawPacket, bytesToRead);
 
 	// like strlen
@@ -227,7 +234,7 @@ uint8_t settings_get_raw_packet(char* buf, uint8_t bufLen){
 }
 
 uint8_t settings_set_raw_packet(char* data, uint8_t dataLen){
-	uint8_t bytesToWrite = MIN(dataLen,SETTINGS_RAW_PACKET_MAX - 1);
+	uint8_t bytesToWrite = MIN(dataLen,SETTINGS_BEACON_TEXT_MAX - 1);
 	eeprom_update_block((void*)data, (void*)nvRawPacket, bytesToWrite);
 	eeprom_update_byte((void*)(nvRawPacket + bytesToWrite), 0);
 	eeprom_update_byte((void*)&nvRawPacketHeadByte, NV_RAW_PACKET_HEAD_BYTE_VALUE);
