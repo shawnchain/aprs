@@ -30,7 +30,10 @@ static bool cmd_help(Serial* pSer, char* command, size_t len);
 #endif
 
 static bool cmd_info(Serial* pSer, char* value, size_t len);
+
+#if CONSOLE_SEND_COMMAND_ENABLED
 static bool cmd_send(Serial* pSer, char* command, size_t len);
+#endif
 
 #if CONSOLE_TEST_COMMAND_ENABLED
 static bool cmd_test(Serial* pSer, char* command, size_t len);
@@ -443,13 +446,16 @@ static bool cmd_test(Serial* pSer, char* command, size_t len){
 		repeats = atoi((const char*)command);
 	}
 	if(repeats == 0 || repeats > 9) repeats = DEFAULT_REPEATS;
-	beacon_send_test(repeats);
+	beacon_set_repeats(repeats);
 
 	SERIAL_PRINTF_P(pSer,PSTR("Sending %d test packet...\r\n"),repeats);
 	return true;
 }
 #endif
 
+
+
+#if CONSOLE_SEND_COMMAND_ENABLED
 /*
  * AT+SEND - just send the beacon message once
  */
@@ -459,13 +465,15 @@ static bool cmd_send(Serial* pSer, char* value, size_t len){
 	if(len == 0){
 		// send test message
 		beacon_send();
+		SERIAL_PRINT_P(pSer,PSTR("SEND OK\r\n"));
 	}else{
-		//TODO send user input message out
-		//TODO build the ax25 path according settings
+		//TODO send user input message out, build the ax25 path according settings
+		SERIAL_PRINT_P(pSer,PSTR("NOT SUPPRTED YET\r\n"));
 	}
-	SERIAL_PRINT_P(pSer,PSTR("SEND OK\r\n"));
+
 	return true;
 }
+#endif
 
 static void console_init_command(void){
 
@@ -481,15 +489,16 @@ static void console_init_command(void){
     console_add_command(PSTR("LOCA"),cmd_settings_location);	// setup the fixed location
     console_add_command(PSTR("CMNTS"),cmd_settings_comments_text);	// setup the beacon comment
 
-#if SETTINGS_SUPPORT_RAW_PACKET
+	#if SETTINGS_SUPPORT_RAW_PACKET
     console_add_command(PSTR("RAW"),cmd_settings_raw_packet);
-#endif
+	#endif
 #endif
 
 #if CONSOLE_TEST_COMMAND_ENABLED
     console_add_command(PSTR("TEST"),cmd_test);
 #endif
 
-    // experimental commands
+#if CONSOLE_SEND_COMMAND_ENABLED
     console_add_command(PSTR("SEND"),cmd_send);
+#endif
 }

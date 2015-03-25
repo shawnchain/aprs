@@ -17,21 +17,19 @@
 #ifndef BEACON_H_
 #define BEACON_H_
 
+#include "cfg/cfg_beacon.h"
+
 #include <stdbool.h>
 
-#define CONFIG_BEACON_ENABLED 1
-
 struct AX25Ctx; // forward declaration
+
+// Beacon module callback
+typedef void (*beacon_exit_callback_t)(void);
 
 /*
  * Initialize the beacon module
  */
-void beacon_init(AX25Ctx *ctx);
-
-/*
- * Runloop of the beacon module
- */
-void beacon_poll(void);
+void beacon_init(AX25Ctx *ctx, beacon_exit_callback_t exitcb);
 
 /*
  * Force send the beacon message
@@ -39,18 +37,14 @@ void beacon_poll(void);
 void beacon_send(void);
 
 /*
- * Enable the beacon module
+ * Runloop of the beacon module
  */
-bool beacon_enabled(void);
+void beacon_poll(void);
 
 /*
- * Set the beacon module state
+ * Set beacon repeats.
+ * Beacon will exit when reaches the max repeat count
  */
-void beacon_set_enabled(bool flag);
-
-/*
- * Send test beacon
- */
-void beacon_send_test(uint8_t count);
+void beacon_set_repeats(int8_t repeats);
 
 #endif /* BEACON_H_ */

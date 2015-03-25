@@ -78,9 +78,12 @@
 
 #include "beacon.h"
 
-// TEST for SoftSerial
-#include "hw/hw_softser.h"
-
+// The radio module
+#include "cfg/cfg_radio.h"
+#if CFG_RADIO_ENABLED
+#include "radio.h"
+static SoftSerial softSer;
+#endif
 
 static Afsk afsk;
 static AX25Ctx ax25;
@@ -167,6 +170,11 @@ static void kiss_mode_exit_callback(void){
 	SERIAL_PRINT_P((&ser),PSTR("Exit KISS mode\r\n"));
 }
 
+static void beacon_mode_exit_callback(void){
+	currentMode = MODE_CFG;
+	SERIAL_PRINT_P((&ser),PSTR("Exit Beacon mode\r\n"));
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 // Command handlers
 /*
@@ -187,7 +195,6 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 			// COMMAND/CONFIG MODE
 			currentMode = MODE_CFG;
 			ax25.pass_through = 0;		// parse ax25 frames
-			beacon_set_enabled(false); 	// beacon off
 			ser_purge(pSer);  			// clear all rx/tx buffer
 			break;
 
@@ -195,9 +202,12 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 			// KISS MODE
 			currentMode = MODE_KISS;
 			ax25.pass_through = 1;		// don't parse ax25 frames
-			beacon_set_enabled(false); 	// beacon off
 			ser_purge(pSer);  			// clear serial rx/tx buffer
 			SERIAL_PRINT_P(pSer,PSTR("Enter KISS mode\r\n"));
+			break;
+
+		case MODE_TEST_BEACON:
+			currentMode = MODE_TEST_BEACON;
 			break;
 /*
 		case MODE_DIGI:
@@ -243,16 +253,12 @@ static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
 		ax25.pass_through = 1;
 		ser_purge(pSer);  // clear all rx/tx buffer
 
-		// disable beacon mode
-		beacon_set_enabled(false);
 		SERIAL_PRINT_P(pSer,PSTR("Enter KISS mode\r\n"));
 	}else{
 		SERIAL_PRINTF_P(pSer,PSTR("Invalid value %s, only value 1 is accepted\r\n"),value);
 	}
 	return true;
 }
-
-static SoftSerial softSer;
 
 static void init(void)
 {
@@ -287,13 +293,18 @@ static void init(void)
 	// Initialize the kiss module
 	kiss_init(&ser,&ax25,&afsk,kiss_mode_exit_callback);
 
-	//TODO refactoring me
-#if CONFIG_BEACON_ENABLED
-    beacon_init(&ax25);
-#endif
+	// Initialize the beacon module
+    beacon_init(&ax25,beacon_mode_exit_callback);
 
     // Load settings first
     settings_load();
+
+#if CFG_RADIO_ENABLED
+    // Initialize the soft serial and radio
+    softser_init(&softSer, CFG_RADIO_RX_PIN,CFG_RADIO_TX_PIN);
+    softser_start(&softSer,9600);
+    radio_init(&softSer,431, 400);
+#endif
 
     //////////////////////////////////////////////////////////////
     // Initialize the console & commands
@@ -301,11 +312,6 @@ static void init(void)
     console_add_command(PSTR("MODE"),cmd_switch_mode);			// setup tnc run mode
     console_add_command(PSTR("KISS"),cmd_enter_kiss_mode);		// enable KISS mode
 
-#define SOFT_SER_ENABLED 0
-#if SOFT_SER_ENABLED
-    hw_soft_ser_init(&softSer, 10,11);
-    hw_soft_ser_start(&softSer,9600);
-#endif
 }
 
 // Free ram test
@@ -316,13 +322,11 @@ INLINE uint16_t freeRam (void) {
   return (uint16_t) (vaddr - (__brkval == 0 ? (uint16_t) &__heap_start : (uint16_t) __brkval));
 }
 
-int main(void)
-{
+int main(void){
 
 	init();
 
-	while (1)
-	{
+	while (1){
 		/*
 		 * This function will look for new messages from the AFSK channel.
 		 * It will call the message_callback() function when a new message is received.
@@ -346,10 +350,6 @@ int main(void)
 				break;
 			}
 
-			case MODE_TEST_BEACON:{
-				break;
-			}
-
 			case MODE_TRACKER_BEACON:{
 				break;
 			}
@@ -358,10 +358,9 @@ int main(void)
 				break;
 		}// end of switch(runMode)
 
-// BEACON ROUTINS
-#if CONFIG_BEACON_ENABLED
-		beacon_poll();
-#endif
+		// Enable beacon if not under KISS TNC mode
+		if(currentMode != MODE_KISS)
+			beacon_poll();
 
 #define FREE_RAM_DEBUG 0
 #if FREE_RAM_DEBUG
@@ -375,7 +374,7 @@ int main(void)
 			}
 		}
 #endif
-
+#if 0
 		// Dump the isr changes
 		{
 			static uint32_t i = 0;
@@ -388,13 +387,12 @@ int main(void)
 					c = softser_read(&softSer);
 					kfile_putc(c,&(ser.fd));
 				}
-				softser_write(&softSer,'0');
-				softser_write(&softSer,'K');
-				softser_write(&softSer,'\n');
-				softser_write(&softSer,'\r');
+				char buf[8];
+				sprintf_P(buf,PSTR("0K\n\r"));
+				softser_print(&softSer,buf);
 			}
 		}
-
+#endif
 	} // end of while(1)
 	return 0;
 }
