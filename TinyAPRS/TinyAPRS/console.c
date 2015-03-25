@@ -123,9 +123,6 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 	char *key = NULL, *value = NULL;
 	uint8_t valueLen = 0;
 
-	// convert to upper case
-	strupr(command);
-
 	// A simple hack to command "!5"
 #if CONSOLE_TEST_COMMAND_ENABLED
 	if(commandLen > 0 && command[0] == '!'){
@@ -133,7 +130,6 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 		return;
 	}
 #endif
-
 
 	if(commandLen >0 && command[0] == '?'){
 		cmd_info(pSer,0,0);
@@ -144,21 +140,26 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 	}
 
 	//TinyAPRS AT Command Handler
-	if(commandLen >=6 && command[0] == 'A' && command[1] == 'T' && command[2] == '+' ){
-		const char s[2] = "=";
-		char* t = strtok((command + 3),s);
-		if(t != NULL){
-			key = t;
-			t = strtok(NULL,s);
-			if(t){
-				value = t;
-				valueLen = strlen(value);
+	if(commandLen >=6 && (command[0] == 'A' || command[0] == 'a') && (command[1] == 'T' || command[1] == 't') && (command[2] == '+') ){
+		// looking for the '='
+		char* t = NULL;
+		uint8_t i = 3;
+		for(;i < commandLen;i++){
+			if(command[i] == '='){
+				t = command + i;
+				break;
 			}
+		}
+		if(t != NULL){
+			*t = 0; // split the key=value string into 2 strings.
+			key = command + 3;
+			value = t + 1;
+			valueLen = strlen(value);
 		}
 	}
 
 	// Compatible with OT2/Other TNCs KISS init command
-	else if( (commandLen >=10) && (strcmp_P(command,PSTR("AMODE KISS")) == 0)){
+	else if( (commandLen >=10) && (strcasecmp_P(command,PSTR("AMODE KISS")) == 0)){
 		// enter the kiss mode
 		// reuse the existing command buffer
 		key = command + 6;
@@ -168,7 +169,7 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 		value[1] = 0;
 		valueLen = 1;
 	}
-	else if( (commandLen >=7) && (strcmp_P(command,PSTR("KISS ON")) == 0)){
+	else if( (commandLen >=7) && (strcasecmp_P(command,PSTR("KISS ON")) == 0)){
 		key = command;
 		key[4] = 0;
 		value = command + 5;
@@ -184,6 +185,8 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 	}
 
 	// look the command registry
+	// convert to upper case
+	strupr(key);
 	PFUN_CMD_HANDLER fun = console_lookup_command(key);
 	if(fun){
 		if(!fun(pSer, value, valueLen)){
@@ -283,6 +286,7 @@ static bool cmd_settings_myssid(Serial* pSer, char* value, size_t len){
 
 #define _TEMPLATE_SET_SETTINGS_CALL_SSID_(NAME,CALL_TYPE,SSID_TYPE,VALUE,LEN) \
 	if(LEN > 0){ \
+		strupr(VALUE); \
 		if(!settings_set_call_fullstring(CALL_TYPE,SSID_TYPE,VALUE,LEN)){ \
 			return false; \
 		} \
@@ -314,6 +318,8 @@ static bool cmd_settings_destcall(Serial* pSer, char* value, size_t valueLen){
  */
 static bool cmd_settings_path(Serial* pSer, char* value, size_t valueLen){
 	if(valueLen > 0){
+		// convert to upper case
+		strupr(value);
 		const char s[] = ",";
 		char *path1 = NULL, *path2=NULL;
 		uint8_t path1Len = 0, path2Len = 0;
