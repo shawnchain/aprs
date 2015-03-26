@@ -66,13 +66,21 @@ void beacon_send(void){
 	settings_get(SETTINGS_MY_CALL,&(path[1].call),&len);
 	settings_get(SETTINGS_MY_SSID,&(path[1].ssid),&len);
 
+	// digi-path
+	// payload
+	char payload[128];
+	uint8_t payloadLen = settings_get_raw_packet(payload,128);
+	if(payloadLen == 0){
+		payloadLen = snprintf_P(payload,127,PSTR("!3014.00N/12009.00E>TinyAPRS Rocks!")); // the default one for test purpose
+	}
+	if(payloadLen > 0)
+		ax25_sendVia(ax25Ctx, path, countof(path), payload, payloadLen);
 	// TODO construct the beacon payload from settings
   	//#define APRS_TEST_MSG "!3011.54N/12007.35E>000/000/A=000087Rolling! 3.6V 1011.0pa" // 六和塔
-	#define APRS_TEST_MSG "!3014.00N/12009.00E>000/000/A=000087Rolling!"   // Hangzhou
+	//#define APRS_TEST_MSG "!3014.00N/12009.00E>000/000/A=000087Rolling!"   // Hangzhou
 	//#define APRS_TEST_MSG "!3011.54N/12007.35E>000/000/A=000087TinyAPRS Rocks!"
 	//#define APRS_TEST_MSG ">Test Tiny APRS "
-
-	ax25_sendVia(ax25Ctx, path, countof(path), APRS_TEST_MSG, sizeof(APRS_TEST_MSG));
+	//ax25_sendVia(ax25Ctx, path, countof(path), APRS_TEST_MSG, sizeof(APRS_TEST_MSG));
 }
 
 

@@ -434,7 +434,7 @@ static bool cmd_test(Serial* pSer, char* command, size_t len){
 	if(len > 0){
 		repeats = atoi((const char*)command);
 	}
-	if(repeats == 0 || repeats > 9) repeats = DEFAULT_REPEATS;
+	if(repeats == 0 || repeats > 99) repeats = DEFAULT_REPEATS;
 	beacon_set_repeats(repeats);
 
 	SERIAL_PRINTF_P(pSer,PSTR("Sending %d test packet...\r\n"),repeats);
