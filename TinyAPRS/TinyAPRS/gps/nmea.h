@@ -53,7 +53,8 @@
 #define MAX_TERMS 			16
 #define MAX_SENTENCEN_CHARS 80
 
-#if 1
+typedef void (*gps_nmea_callback)(void*);
+
 typedef struct {
 	char*	_utc;
 	char	_status;
@@ -62,8 +63,6 @@ typedef struct {
 	char*   _speed;
 	char*   _heading;
 
-//	float	_gprmc_speed;
-//	float	_gprmc_angle;
 	char*	_date;
 
 	int		_terms;
@@ -76,86 +75,19 @@ typedef struct {
 	int		_state;
 	int		_parity;
 
-//	float	_degs;
+	gps_nmea_callback callback;
 }NMEA;
 
-#else
 
-typedef struct {
-	float	_gprmc_utc;
-	char	_gprmc_status;
-	float	_gprmc_lat;
-	float	_gprmc_long;
-	float	_gprmc_speed;
-	float	_gprmc_angle;
-	int		_terms;
-	char*	_term[MAX_TERMS];
-	char	_sentence[MAX_SENTENCEN_CHARS];
-	int		n;
-	int		_gprmc_tag;
-	int		_state;
-	int		_parity;
-	float	_degs;
-}NMEA;
-
-#endif
 
 /*
  *
  */
-void nmea_init(NMEA *pnmea, char* buf);
+void nmea_init(NMEA *pnmea, char* buf, gps_nmea_callback cb);
 
 /*
  *
  */
 int nmea_decode(NMEA *pnmea,char c);
-
-/*
-class NMEA
-{
-  public:
-		NMEA(int connect);					// constructor for NMEA parser object; parse sentences of GPRMC or all datatypes.
-		int		decode(char c);				// parse one character received from GPS; returns 1 when full sentence found w/ checksum OK, 0 otherwise
-		float	gprmc_utc();					// returns decimal value of UTC term in last full GPRMC sentence
-		char	gprmc_status();				// returns status character in last full GPRMC sentence ('A' or 'V')
-		float	gprmc_latitude();			// signed degree-decimal value of latitude terms in last full GPRMC sentence
-		float	gprmc_longitude();		// signed degree-decimal value of longitude terms in last full GPRMC sentence
-		float	gprmc_speed(float unit);	// speed-on-ground term in last full GPRMC sentence
-		float	gprmc_course();				// track-angle-made-good term in last full GPRMC sentence
-		float	gprmc_distance_to(float latitude, float longitude, float unit);	// returns distance from last-known GPRMC position to given position
-		float 	gprmc_course_to(float latitude, float longitude);			// returns initial course in degrees from last-known GPRMC position to given position
-		char*	sentence();						// returns last received full sentence as zero terminated string
-		int		terms();							// returns number of terms (including data type and checksum) in last received full sentence
-		char*	term(int t);					// returns term t of last received full sentence as zero terminated string
-		float	term_decimal(int t);	// returns the base-10 converted value of term[t] in last full sentence received
-		int		libversion();					// returns software version number of NMEA library
-  private:
-  	// properties
-		int		_gprmc_only;
-		float	_gprmc_utc;
-		char	_gprmc_status;
-		float	_gprmc_lat;
-		float	_gprmc_long;
-		float	_gprmc_speed;
-		float	_gprmc_angle;
-		char	f_sentence[100];
-		char*	f_term[30];
-		int		f_terms;
-		int		_terms;
-		char	_sentence[100];
-		char*	_term[30];
-		int		n;
-		int		_gprmc_tag;
-		int		_state;
-		int		_parity;
-		int		_nt;
-		float	_degs;
-		// methods
-		float distance_between (float lat1, float long1, float lat2, float long2, float units_per_meter);
-		float	initial_course(float lat1, float long1, float lat2, float long2);
-		int		_dehex(char a);
-		float	_decimal(char* s);
-};
-*/
 
 #endif /* NMEA_H_ */

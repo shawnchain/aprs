@@ -26,9 +26,10 @@
 static int nmea_dehex(char a);
 
 
-void nmea_init(NMEA *pnmea, char* buf){
+void nmea_init(NMEA *pnmea, char* buf, gps_nmea_callback cb){
 	memset(pnmea,0,sizeof(NMEA));
 	pnmea->_sentence = buf;
+	pnmea->callback = cb;
 //	pnmea->_sentence[0] = 0;
 }
 
@@ -122,6 +123,9 @@ int nmea_decode(NMEA *pnmea, char c){
 						pnmea->_date = pnmea->_term[8];
 
 						//sentence accepted!
+						if(pnmea->callback){
+							pnmea->callback(pnmea);
+						}
 						return 1;
 					}
 				}

@@ -41,9 +41,14 @@
 static SoftSerial softSer;
 #endif
 
+#include "gps/nmea.h"
+
 static Afsk afsk;
 static AX25Ctx ax25;
 static Serial ser;
+
+static NMEA nmea;
+static void gps_callback(void *pnmea);
 
 #define ADC_CH 0
 #define DAC_CH 0
@@ -131,6 +136,18 @@ static void beacon_mode_exit_callback(void){
 	SERIAL_PRINT_P((&ser),PSTR("Exit Beacon mode\r\n"));
 }
 
+static bool cmd_gps_test(Serial* pSer, char* value, size_t len){
+	(void)pSer;
+	if(len > 0){
+		NMEA *pnmea = &nmea;
+		nmea_init(pnmea,value,gps_callback);
+		for(int i = 0;i < (int)len;i++){
+			nmea_decode(pnmea, value[i]);
+		}
+	}
+	return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 // Command handlers
 /*
@@ -213,6 +230,11 @@ static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
 	return true;
 }
 
+static void gps_callback(void *p){
+	NMEA *pnmea = (NMEA*)p;
+	SERIAL_PRINTF_P((&ser),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),pnmea->_lat,pnmea->_lon, pnmea->_date,pnmea->_utc);
+}
+
 static void init(void)
 {
 
@@ -264,15 +286,37 @@ static void init(void)
     console_init(&ser);
     console_add_command(PSTR("MODE"),cmd_switch_mode);			// setup tnc run mode
     console_add_command(PSTR("KISS"),cmd_enter_kiss_mode);		// enable KISS mode
+    console_add_command(PSTR("GPS"),cmd_gps_test);
+
+    // Initialize GPS NMEA/GPRMC parser
+#if 0
+    static char s[80];
+    sprintf_P(s,PSTR("$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A\n"));
+	int l = strlen(s);
+
+    NMEA *pnmea = &nmea;
+    nmea_init(pnmea,s);
+    for(int i = 0;i < l;i++){
+       nmea_decode(&nmea,s[i]);
+    }
+
+    for(int i = 0;i < 12;i++){
+    	SERIAL_PRINTF_P((&ser),PSTR("term: %s\n"),pnmea->_term[i]);
+    }
+
+    SERIAL_PRINTF_P((&ser),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),pnmea->_lat,pnmea->_lon, pnmea->_date,pnmea->_utc);
+#endif
+
 }
 
 // Free ram test
 INLINE uint16_t freeRam (void) {
-  extern int __heap_start, *__brkval;
-  uint8_t v;
-  uint16_t vaddr = (uint16_t)(&v);
-  return (uint16_t) (vaddr - (__brkval == 0 ? (uint16_t) &__heap_start : (uint16_t) __brkval));
+	extern int __heap_start, *__brkval;
+	uint8_t v;
+	uint16_t vaddr = (uint16_t)(&v);
+	return (uint16_t) (vaddr - (__brkval == 0 ? (uint16_t) &__heap_start : (uint16_t) __brkval));
 }
+
 
 int main(void){
 
