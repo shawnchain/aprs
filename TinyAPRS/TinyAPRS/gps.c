@@ -1,5 +1,5 @@
 /*
- * \file nmea.c
+ * \file gps.c
  * <!--
  * This file is part of TinyAPRS.
  * Released under GPL License
@@ -14,7 +14,7 @@
  * \date 2015-3-27
  */
 
-#include "nmea.h"
+#include "gps.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -26,14 +26,14 @@
 static int nmea_dehex(char a);
 
 
-void nmea_init(NMEA *pnmea, char* buf, gps_nmea_callback cb){
-	memset(pnmea,0,sizeof(NMEA));
-	pnmea->_sentence = buf;
-	pnmea->callback = cb;
-//	pnmea->_sentence[0] = 0;
+void gps_init(GPS *gps, char* buf, gps_nmea_callback cb){
+	memset(gps,0,sizeof(GPS));
+	gps->_sentence = buf;
+	gps->callback = cb;
+//	gps->_sentence[0] = 0;
 }
 
-int nmea_decode(NMEA *pnmea, char c){
+int gps_decode(GPS *pnmea, char c){
         // avoid runaway sentences (>99 chars or >29 terms) and terms (>14 chars)
         if ((pnmea->n >= MAX_SENTENCEN_CHARS) || (pnmea->_terms >= MAX_TERMS) ) {
                 pnmea->_state = 0;

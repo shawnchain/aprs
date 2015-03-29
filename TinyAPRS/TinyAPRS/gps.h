@@ -1,5 +1,5 @@
 /*
- * \file nmea.h
+ * \file gps.h
  * <!--
  * This file is part of TinyAPRS.
  * Released under GPL License
@@ -55,7 +55,7 @@
 
 typedef void (*gps_nmea_callback)(void*);
 
-typedef struct {
+typedef struct GPS{
 	char*	_utc;
 	char	_status;
 	char*   _lat;
@@ -76,18 +76,18 @@ typedef struct {
 	int		_parity;
 
 	gps_nmea_callback callback;
-}NMEA;
+}GPS;
 
 
 
 /*
  *
  */
-void nmea_init(NMEA *pnmea, char* buf, gps_nmea_callback cb);
+void gps_init(GPS *gps, char* buf, gps_nmea_callback cb);
 
 /*
  *
  */
-int nmea_decode(NMEA *pnmea,char c);
+int gps_decode(GPS *gps,char c);
 
 #endif /* NMEA_H_ */

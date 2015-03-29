@@ -47,9 +47,9 @@ static SoftSerial softSer;
 
 #include <cfg/cfg_gps.h>
 #if CFG_GPS_ENABLED
-#include "gps/nmea.h"
-static NMEA nmea;
-static void gps_callback(void *pnmea);
+#include "gps.h"
+GPS g_gps;
+static void gps_callback(void *pGPS);
 #endif
 
 Afsk g_afsk;
@@ -157,14 +157,13 @@ static void _serial_reader_callback(char* line, uint8_t len){
 	}
 }
 
-#if CFG_GPS_ENABLED
+#if CFG_GPS_ENABLED && CFG_GPS_TEST
 static bool cmd_gps_test(Serial* pSer, char* value, size_t len){
 	(void)pSer;
 	if(len > 0){
-		NMEA *pnmea = &nmea;
-		nmea_init(pnmea,value,gps_callback);
+		gps_init(&g_gps,value,gps_callback);
 		for(int i = 0;i < (int)len;i++){
-			nmea_decode(pnmea, value[i]);
+			gps_decode(&g_gps, value[i]);
 		}
 	}
 	return true;
@@ -255,8 +254,8 @@ static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
 
 #if CFG_GPS_ENABLED
 static void gps_callback(void *p){
-	NMEA *pnmea = (NMEA*)p;
-	SERIAL_PRINTF_P((&g_serial),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),pnmea->_lat,pnmea->_lon, pnmea->_date,pnmea->_utc);
+	GPS *gps = (GPS*)p;
+	SERIAL_PRINTF_P((&g_serial),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),gps->_lat,gps->_lon, gps->_date,gps->_utc);
 }
 #endif
 
@@ -315,26 +314,23 @@ static void init(void)
     console_add_command(PSTR("KISS"),cmd_enter_kiss_mode);		// enable KISS mode
 
     // Initialize GPS NMEA/GPRMC parser
-#if CFG_GPS_ENABLED
+#if CFG_GPS_ENABLED && CFG_GPS_TEST
     console_add_command(PSTR("GPS"),cmd_gps_test);
 
-#if CFG_GPS_TEST
     static char s[80];
     sprintf_P(s,PSTR("$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A\n"));
 	int l = strlen(s);
 
-    NMEA *pnmea = &nmea;
-    nmea_init(pnmea,s,gps_callback);
+    gps_init(&g_gps,s,gps_callback);
     for(int i = 0;i < l;i++){
-       nmea_decode(&nmea,s[i]);
+       gps_decode(&g_gps,s[i]);
     }
 
     for(int i = 0;i < 12;i++){
-    	SERIAL_PRINTF_P((&ser),PSTR("term: %s\n"),pnmea->_term[i]);
+    	SERIAL_PRINTF_P((&g_serial),PSTR("term: %s\n"),g_gps._term[i]);
     }
 
-    SERIAL_PRINTF_P((&ser),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),pnmea->_lat,pnmea->_lon, pnmea->_date,pnmea->_utc);
-#endif
+    SERIAL_PRINTF_P((&g_serial),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),g_gps._lat,g_gps._lon, g_gps._date,g_gps._utc);
 #endif
 
 }
