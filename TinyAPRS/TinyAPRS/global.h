@@ -26,4 +26,7 @@ extern struct AX25Ctx g_ax25;
 struct Afsk;
 extern struct Afsk g_afsk;
 
+struct GPS;
+extern struct GPS g_gps;
+
 #endif /* GLOBAL_H_ */
