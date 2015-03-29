@@ -31,6 +31,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "global.h"
+
 #include "utils.h"
 
 #include "reader.h"
@@ -43,14 +45,19 @@
 static SoftSerial softSer;
 #endif
 
+#include <cfg/cfg_gps.h>
+#if CFG_GPS_ENABLED
 #include "gps/nmea.h"
+static NMEA nmea;
+static void gps_callback(void *pnmea);
+#endif
 
 static Afsk afsk;
 static AX25Ctx ax25;
-static Serial ser;
+
+
+Serial gSerial;
 static Reader serialReader;
-static NMEA nmea;
-static void gps_callback(void *pnmea);
 
 #define ADC_CH 0
 #define DAC_CH 0
@@ -115,7 +122,7 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 	switch(currentMode){
 	case MODE_CFG:{
 		// Print received message to serial
-		print_ax25_message(&ser,msg);
+		print_ax25_message(&gSerial,msg);
 		break;
 	}
 	case MODE_KISS:
@@ -130,18 +137,18 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 
 static void kiss_mode_exit_callback(void){
 	currentMode = MODE_CFG;
-	SERIAL_PRINT_P((&ser),PSTR("Exit KISS mode\r\n"));
+	SERIAL_PRINT_P((&gSerial),PSTR("Exit KISS mode\r\n"));
 }
 
 static void beacon_mode_exit_callback(void){
 	currentMode = MODE_CFG;
-	SERIAL_PRINT_P((&ser),PSTR("Exit Beacon mode\r\n"));
+	SERIAL_PRINT_P((&gSerial),PSTR("Exit Beacon mode\r\n"));
 }
 
 static void _serial_reader_callback(char* line, uint8_t len){
 	switch(currentMode){
 		case MODE_CFG:
-//			console_parse(line,len);
+			console_parse_command(line,len);
 			break;
 		case MODE_TRACKER_BEACON:
 //			nmea_parse(line,len);
@@ -151,6 +158,7 @@ static void _serial_reader_callback(char* line, uint8_t len){
 	}
 }
 
+#if CFG_GPS_ENABLED
 static bool cmd_gps_test(Serial* pSer, char* value, size_t len){
 	(void)pSer;
 	if(len > 0){
@@ -162,6 +170,7 @@ static bool cmd_gps_test(Serial* pSer, char* value, size_t len){
 	}
 	return true;
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Command handlers
@@ -245,10 +254,12 @@ static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
 	return true;
 }
 
+#if CFG_GPS_ENABLED
 static void gps_callback(void *p){
 	NMEA *pnmea = (NMEA*)p;
 	SERIAL_PRINTF_P((&ser),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),pnmea->_lat,pnmea->_lon, pnmea->_date,pnmea->_utc);
 }
+#endif
 
 static void init(void)
 {
@@ -259,8 +270,8 @@ static void init(void)
 	timer_init();
 
 	/* Initialize serial port, we are going to use it to show APRS messages*/
-	ser_init(&ser, SER_UART0);
-	ser_setbaudrate(&ser, SER_BAUD_RATE_9600);
+	ser_init(&gSerial, SER_UART0);
+	ser_setbaudrate(&gSerial, SER_BAUD_RATE_9600);
     // For some reason BertOS sets the serial
     // to 7 bit characters by default. We set
     // it to 8 instead.
@@ -281,7 +292,7 @@ static void init(void)
 	ax25.pass_through = false;
 
 	// Initialize the kiss module
-	kiss_init(&ser,&ax25,&afsk,kiss_mode_exit_callback);
+	kiss_init(&gSerial,&ax25,&afsk,kiss_mode_exit_callback);
 
 	// Initialize the beacon module
     beacon_init(&ax25,beacon_mode_exit_callback);
@@ -296,23 +307,25 @@ static void init(void)
     radio_init(&softSer,431, 400);
 #endif
 
-    reader_init(&serialReader,&(ser.fd),_serial_reader_callback);
+    reader_init(&serialReader,&(gSerial.fd),_serial_reader_callback);
 
     //////////////////////////////////////////////////////////////
     // Initialize the console & commands
-    console_init(&ser);
+    console_init();
     console_add_command(PSTR("MODE"),cmd_switch_mode);			// setup tnc run mode
     console_add_command(PSTR("KISS"),cmd_enter_kiss_mode);		// enable KISS mode
-    console_add_command(PSTR("GPS"),cmd_gps_test);
 
     // Initialize GPS NMEA/GPRMC parser
-#if 0
+#if CFG_GPS_ENABLED
+    console_add_command(PSTR("GPS"),cmd_gps_test);
+
+#if CFG_GPS_TEST
     static char s[80];
     sprintf_P(s,PSTR("$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A\n"));
 	int l = strlen(s);
 
     NMEA *pnmea = &nmea;
-    nmea_init(pnmea,s);
+    nmea_init(pnmea,s,gps_callback);
     for(int i = 0;i < l;i++){
        nmea_decode(&nmea,s[i]);
     }
@@ -322,6 +335,7 @@ static void init(void)
     }
 
     SERIAL_PRINTF_P((&ser),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),pnmea->_lat,pnmea->_lon, pnmea->_date,pnmea->_utc);
+#endif
 #endif
 
 }
@@ -349,7 +363,6 @@ int main(void){
 
 		switch(currentMode){
 			case MODE_CFG:{
-				console_poll();
 				reader_poll(&serialReader);
 				break;
 			}

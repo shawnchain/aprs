@@ -17,7 +17,11 @@
 #include <cfg/cfg_kiss.h> // kiss config
 
 #include <drv/timer.h>
+#include <drv/ser.h>
+
 #include "buildrev.h"
+
+#include "global.h"
 
 // Increase the console read buffer for the raw package text input
 #if SETTINGS_SUPPORT_BEACON_TEXT
@@ -25,10 +29,6 @@
 #define CONSOLE_SERIAL_BUF_LEN SETTINGS_BEACON_TEXT_MAX + 8
 #endif
 
-
-// Internal console command prototype
-static void console_parse_command(Serial *pSer, char* command, size_t commandLen);
-static void console_init_command(void);
 
 #if CONSOLE_HELP_COMMAND_ENABLED
 static bool cmd_help(Serial* pSer, char* command, size_t len);
@@ -44,8 +44,6 @@ static bool cmd_send(Serial* pSer, char* command, size_t len);
 static bool cmd_test(Serial* pSer, char* command, size_t len);
 #endif
 
-static Serial *pSerial;
-
 struct COMMAND_ENTRY{
 	PGM_P cmdName;
 	PFUN_CMD_HANDLER cmdHandler;
@@ -53,58 +51,14 @@ struct COMMAND_ENTRY{
 static struct COMMAND_ENTRY cmdEntries[CONSOLE_MAX_COMMAND];
 static uint8_t cmdCount;
 
-
-void console_init(Serial *ser){
-	pSerial = ser;
-	memset(cmdEntries,0, sizeof(struct COMMAND_ENTRY) * CONSOLE_MAX_COMMAND);
-	cmdCount = 0;
-
-	console_init_command();
-
-	// Initialization done, display the welcome banner and settings info
-	cmd_info(ser,0,0);
-}
-
-
 /*
- * The console will always read console input char until met CRLF or buffer is full
+ * Add command handler to the internal register
  */
-void console_parse(int c){
-	//FIXME check memory usage
-	static uint8_t serialBuffer[CONSOLE_SERIAL_BUF_LEN+1]; 	// Buffer for holding incoming serial data
-	static size_t serialLen = 0;                    		// Counter for counting length of data from serial
-
-#if CONSOLE_SERIAL_READ_TIMEOUT > 0
-	static ticks_t lastReadTick = 0;
-	if((serialLen > 0) && (timer_clock() - lastReadTick > ms_to_ticks(CONSOLE_SERIAL_READ_TIMEOUT)) ){
-		//LOG_INFO("Console - Timeout\n");
-		serialLen = 0;
-	}
-#endif
-
-	// read until met CR/LF/EOF or buffer is full
-	if ((serialLen >= CONSOLE_SERIAL_BUF_LEN) || (c == '\r') || (c == '\n') || (c == EOF) ) {
-		if(serialLen > 0){
-			serialBuffer[serialLen] = 0; // complete the buffered string
-			// parsing the command
-			console_parse_command(pSerial,(char*)serialBuffer, serialLen);
-			serialLen = 0;
-		}
-	} else {
-		// keep in buffer
-		serialBuffer[serialLen++] = c;
-#if CONSOLE_SERIAL_READ_TIMEOUT > 0
-		lastReadTick = timer_clock();
-#endif
-	}
-}
-
-void console_poll(void){
-	int c;
-	if(ser_available(pSerial)){
-		c = ser_getchar_nowait(pSerial);
-		console_parse(c);
-	}
+void console_add_command(PGM_P cmd, PFUN_CMD_HANDLER handler){
+	if(cmdCount >= CONSOLE_MAX_COMMAND)return;
+	cmdEntries[cmdCount].cmdName = cmd;
+	cmdEntries[cmdCount].cmdHandler = handler;
+	cmdCount++;
 }
 
 static PFUN_CMD_HANDLER console_lookup_command(const char* command){
@@ -119,9 +73,10 @@ static PFUN_CMD_HANDLER console_lookup_command(const char* command){
 	return NULL;
 }
 
-static void console_parse_command(Serial *pSer, char* command, size_t commandLen){
+void console_parse_command(char* command, size_t commandLen){
 	char *key = NULL, *value = NULL;
 	uint8_t valueLen = 0;
+	Serial *pSer = &gSerial;
 
 	// A simple hack to command "!5"
 #if CONSOLE_TEST_COMMAND_ENABLED
@@ -200,18 +155,6 @@ static void console_parse_command(Serial *pSer, char* command, size_t commandLen
 	return;
 }
 
-
-/*
- * Add command handler to the internal register
- */
-void console_add_command(PGM_P cmd, PFUN_CMD_HANDLER handler){
-	if(cmdCount >= CONSOLE_MAX_COMMAND)return;
-	cmdEntries[cmdCount].cmdName = cmd;
-	cmdEntries[cmdCount].cmdHandler = handler;
-	cmdCount++;
-}
-
-
 // Free ram test
 INLINE uint16_t freeRam (void) {
   extern int __heap_start, *__brkval;
@@ -231,7 +174,7 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 	char buf[16];
 	uint8_t bufLen = sizeof(buf);
 	settings_get_call_fullstring(SETTINGS_MY_CALL,SETTINGS_MY_SSID,buf,bufLen);
-	SERIAL_PRINTF_P(pSerial, PSTR("MyCall: %s\r\n"),buf);
+	SERIAL_PRINTF_P(pSer, PSTR("MyCall: %s\r\n"),buf);
 
 	// print free memory
 	SERIAL_PRINTF_P(pSer,PSTR("Free RAM: %u\r\n"),freeRam());
@@ -464,8 +407,15 @@ static bool cmd_send(Serial* pSer, char* value, size_t len){
 }
 #endif
 
-static void console_init_command(void){
 
+/*
+ * Console Initialization Routine
+ */
+void console_init(){
+	memset(cmdEntries,0, sizeof(struct COMMAND_ENTRY) * CONSOLE_MAX_COMMAND);
+	cmdCount = 0;
+
+	// Initialize the commands
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
 	// settings
     console_add_command(PSTR("MYCALL"),cmd_settings_mycall);	// setup my callsign-ssid
@@ -473,9 +423,7 @@ static void console_init_command(void){
     console_add_command(PSTR("DEST"),cmd_settings_destcall);		// setup destination call-ssid
     console_add_command(PSTR("PATH"),cmd_settings_path);		// setup path like WIDEn-N for beaco
     console_add_command(PSTR("RESET"),cmd_settings_reset);				// reset the tnc
-
     console_add_command(PSTR("SYMBOL"),cmd_settings_symbol);	// setup the beacon symbol
-
 	#if SETTINGS_SUPPORT_BEACON_TEXT
     console_add_command(PSTR("RAW"),cmd_settings_raw_packet);
 	#endif
@@ -488,4 +436,7 @@ static void console_init_command(void){
 #if CONSOLE_SEND_COMMAND_ENABLED
     console_add_command(PSTR("SEND"),cmd_send);
 #endif
+
+	// Initialization done, display the welcome banner and settings info
+	cmd_info(&gSerial,0,0);
 }
