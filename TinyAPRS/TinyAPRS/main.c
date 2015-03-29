@@ -52,11 +52,10 @@ static NMEA nmea;
 static void gps_callback(void *pnmea);
 #endif
 
-static Afsk afsk;
-static AX25Ctx ax25;
+Afsk g_afsk;
+AX25Ctx g_ax25;
 
-
-Serial gSerial;
+Serial g_serial;
 static Reader serialReader;
 
 #define ADC_CH 0
@@ -122,11 +121,11 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 	switch(currentMode){
 	case MODE_CFG:{
 		// Print received message to serial
-		print_ax25_message(&gSerial,msg);
+		print_ax25_message(&g_serial,msg);
 		break;
 	}
 	case MODE_KISS:
-		kiss_send_host(0x00/*kiss port id*/,ax25.buf,ax25.frm_len - 2);
+		kiss_send_host(0x00/*kiss port id*/,g_ax25.buf,g_ax25.frm_len - 2);
 		break;
 
 	default:
@@ -137,12 +136,12 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 
 static void kiss_mode_exit_callback(void){
 	currentMode = MODE_CFG;
-	SERIAL_PRINT_P((&gSerial),PSTR("Exit KISS mode\r\n"));
+	SERIAL_PRINT_P((&g_serial),PSTR("Exit KISS mode\r\n"));
 }
 
 static void beacon_mode_exit_callback(void){
 	currentMode = MODE_CFG;
-	SERIAL_PRINT_P((&gSerial),PSTR("Exit Beacon mode\r\n"));
+	SERIAL_PRINT_P((&g_serial),PSTR("Exit Beacon mode\r\n"));
 }
 
 static void _serial_reader_callback(char* line, uint8_t len){
@@ -191,14 +190,14 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 		case MODE_CFG:
 			// COMMAND/CONFIG MODE
 			currentMode = MODE_CFG;
-			ax25.pass_through = 0;		// parse ax25 frames
+			g_ax25.pass_through = 0;		// parse ax25 frames
 			ser_purge(pSer);  			// clear all rx/tx buffer
 			break;
 
 		case MODE_KISS:
 			// KISS MODE
 			currentMode = MODE_KISS;
-			ax25.pass_through = 1;		// don't parse ax25 frames
+			g_ax25.pass_through = 1;		// don't parse ax25 frames
 			ser_purge(pSer);  			// clear serial rx/tx buffer
 			SERIAL_PRINT_P(pSer,PSTR("Enter KISS mode\r\n"));
 			break;
@@ -244,7 +243,7 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
 	if(len > 0 && value[0] == '1'){
 		currentMode = MODE_KISS;
-		ax25.pass_through = 1;
+		g_ax25.pass_through = 1;
 		ser_purge(pSer);  // clear all rx/tx buffer
 
 		SERIAL_PRINT_P(pSer,PSTR("Enter KISS mode\r\n"));
@@ -257,7 +256,7 @@ static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
 #if CFG_GPS_ENABLED
 static void gps_callback(void *p){
 	NMEA *pnmea = (NMEA*)p;
-	SERIAL_PRINTF_P((&ser),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),pnmea->_lat,pnmea->_lon, pnmea->_date,pnmea->_utc);
+	SERIAL_PRINTF_P((&g_serial),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),pnmea->_lat,pnmea->_lon, pnmea->_date,pnmea->_utc);
 }
 #endif
 
@@ -270,8 +269,8 @@ static void init(void)
 	timer_init();
 
 	/* Initialize serial port, we are going to use it to show APRS messages*/
-	ser_init(&gSerial, SER_UART0);
-	ser_setbaudrate(&gSerial, SER_BAUD_RATE_9600);
+	ser_init(&g_serial, SER_UART0);
+	ser_setbaudrate(&g_serial, SER_BAUD_RATE_9600);
     // For some reason BertOS sets the serial
     // to 7 bit characters by default. We set
     // it to 8 instead.
@@ -282,20 +281,20 @@ static void init(void)
 	 * is the hardware abstraction layer.
 	 * We do not need transmission for now, so we set transmission DAC channel to 0.
 	 */
-	afsk_init(&afsk, ADC_CH, DAC_CH);
+	afsk_init(&g_afsk, ADC_CH, DAC_CH);
 
 	/*
 	 * Here we initialize AX25 context, the channel (KFile) we are going to read messages
 	 * from and the callback that will be called on incoming messages.
 	 */
-	ax25_init(&ax25, &afsk.fd, ax25_msg_callback);
-	ax25.pass_through = false;
+	ax25_init(&g_ax25, &g_afsk.fd, ax25_msg_callback);
+	g_ax25.pass_through = false;
 
 	// Initialize the kiss module
-	kiss_init(&gSerial,&ax25,&afsk,kiss_mode_exit_callback);
+	kiss_init(&(g_serial.fd),&g_ax25,&g_afsk,kiss_mode_exit_callback);
 
 	// Initialize the beacon module
-    beacon_init(&ax25,beacon_mode_exit_callback);
+    beacon_init(beacon_mode_exit_callback);
 
     // Load settings first
     settings_load();
@@ -307,7 +306,7 @@ static void init(void)
     radio_init(&softSer,431, 400);
 #endif
 
-    reader_init(&serialReader,&(gSerial.fd),_serial_reader_callback);
+    reader_init(&serialReader,&(g_serial.fd),_serial_reader_callback);
 
     //////////////////////////////////////////////////////////////
     // Initialize the console & commands
@@ -359,7 +358,7 @@ int main(void){
 		 * It will call the message_callback() function when a new message is received.
 		 * If there's nothing to do, this function will call cpu_relax()
 		 */
-		ax25_poll(&ax25);
+		ax25_poll(&g_ax25);
 
 		switch(currentMode){
 			case MODE_CFG:{

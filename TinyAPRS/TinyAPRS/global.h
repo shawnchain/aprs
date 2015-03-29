@@ -18,7 +18,12 @@
 #define GLOBAL_H_
 
 struct Serial;
+extern struct Serial g_serial;
 
-extern Serial gSerial;
+struct AX25Ctx;
+extern struct AX25Ctx g_ax25;
+
+struct Afsk;
+extern struct Afsk g_afsk;
 
 #endif /* GLOBAL_H_ */

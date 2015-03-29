@@ -21,15 +21,13 @@
 
 #include <stdbool.h>
 
-struct AX25Ctx; // forward declaration
-
 // Beacon module callback
 typedef void (*beacon_exit_callback_t)(void);
 
 /*
  * Initialize the beacon module
  */
-void beacon_init(AX25Ctx *ctx, beacon_exit_callback_t exitcb);
+void beacon_init(beacon_exit_callback_t exitcb);
 
 /*
  * Force send the beacon message

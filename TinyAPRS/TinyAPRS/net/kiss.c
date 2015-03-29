@@ -1,5 +1,6 @@
 #include "kiss.h"
 
+#include <cfg/compiler.h>
 #include <algo/rand.h>
 
 #define LOG_LEVEL  KISS_LOG_LEVEL
@@ -9,7 +10,7 @@
 
 #define KISS_QUEUE CONFIG_KISS_QUEUE
 
-Serial *kiss_ser;
+KFile *kiss_fd;
 AX25Ctx *kiss_ax25;
 Afsk *kiss_afsk;
 
@@ -32,7 +33,7 @@ uint8_t kiss_duplex;
 
 static void kiss_cmd_process(struct Kiss_msg *k);
 
-void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook)
+void kiss_init(KFile *fd, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook)
 {
 	kiss_txdelay = 50;
 	kiss_persistence = 63;
@@ -40,7 +41,7 @@ void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook
 	kiss_slot_time = 10;
 	kiss_duplex = KISS_DUPLEX_HALF;
 
-	kiss_ser = ser;
+	kiss_fd = fd;
 	kiss_ax25 = ax25;
 	kiss_afsk = afsk;
 
@@ -49,7 +50,7 @@ void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook
 
 static struct Kiss_msg k = {.pos = 0};
 
-void kiss_parse(int c){
+INLINE void kiss_parse(int c){
 	static bool escaped = false;
 	// sanity checks
 	// no serial input in last 2 secs?
@@ -97,7 +98,7 @@ void kiss_parse(int c){
 void kiss_serial_poll()
 {
 	int c;
-	c = ser_getchar_nowait(kiss_ser);
+	c = kfile_getc(kiss_fd); // Make sure CONFIG_SERIAL_RXTIMEOUT = 0
 	if (c == EOF) {
 		return;
 	}
@@ -286,26 +287,26 @@ void kiss_send_host(uint8_t port, uint8_t *buf, size_t len)
 {
 	size_t i;
 
-	kfile_putc(KISS_FEND, &kiss_ser->fd);
-	kfile_putc((port << 4) & 0xf0, &kiss_ser->fd);
+	kfile_putc(KISS_FEND, kiss_fd);
+	kfile_putc((port << 4) & 0xf0, kiss_fd);
 
 	for (i = 0; i < len; i++) {
 
 		uint8_t c = buf[i];
 
 		if (c == KISS_FEND) {
-			kfile_putc(KISS_FESC, &kiss_ser->fd);
-			kfile_putc(KISS_TFEND, &kiss_ser->fd);
+			kfile_putc(KISS_FESC, kiss_fd);
+			kfile_putc(KISS_TFEND, kiss_fd);
 			continue;
 		}
 
-		kfile_putc(c, &kiss_ser->fd);
+		kfile_putc(c, kiss_fd);
 
 		if (c == KISS_FESC) {
-			kfile_putc(KISS_TFESC, &kiss_ser->fd);
+			kfile_putc(KISS_TFESC, kiss_fd);
 		}
 	}
 
-	kfile_putc(KISS_FEND, &kiss_ser->fd);
+	kfile_putc(KISS_FEND, kiss_fd);
 }
 

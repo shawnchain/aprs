@@ -20,8 +20,7 @@
 
 #include "beacon.h"
 #include "settings.h"
-
-static AX25Ctx *ax25Ctx;
+#include "global.h"
 
 static beacon_exit_callback_t exitCallback = 0;
 
@@ -31,8 +30,7 @@ static int8_t beaconSendCount = 0;
 /*
  * Initialize the beacon module
  */
-void beacon_init(AX25Ctx *ctx, beacon_exit_callback_t exitcb){
-	ax25Ctx = ctx;
+void beacon_init(beacon_exit_callback_t exitcb){
 	exitCallback = exitcb;
 }
 
@@ -74,7 +72,7 @@ void beacon_send(void){
 		payloadLen = snprintf_P(payload,127,PSTR("!3014.00N/12009.00E>TinyAPRS Rocks!")); // the default one for test purpose
 	}
 	if(payloadLen > 0)
-		ax25_sendVia(ax25Ctx, path, countof(path), payload, payloadLen);
+		ax25_sendVia(&g_ax25, path, countof(path), payload, payloadLen);
 	// TODO construct the beacon payload from settings
   	//#define APRS_TEST_MSG "!3011.54N/12007.35E>000/000/A=000087Rolling! 3.6V 1011.0pa" // 六和塔
 	//#define APRS_TEST_MSG "!3014.00N/12009.00E>000/000/A=000087Rolling!"   // Hangzhou

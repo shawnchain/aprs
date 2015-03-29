@@ -6,9 +6,9 @@
 
 #include "cfg/cfg_kiss.h"
 
+#include <io/kfile.h>
 #include <net/afsk.h>
 #include <net/ax25.h>
-#include <drv/ser.h>
 #include <drv/timer.h>
 #include <algo/crc_ccitt.h>
 
@@ -47,10 +47,9 @@ struct Kiss_msg {
 	ticks_t last_tick;     // timestamp of last byte into buf
 };
 
-void kiss_init(Serial *ser, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook);
+void kiss_init(KFile *fd, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook);
 
 void kiss_serial_poll(void);
-void kiss_parse(int c);
 void kiss_queue_message(uint8_t *buf, size_t len);
 void kiss_queue_process(void);
 void kiss_send_host(uint8_t port, uint8_t *buf, size_t len);

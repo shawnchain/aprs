@@ -76,7 +76,7 @@ static PFUN_CMD_HANDLER console_lookup_command(const char* command){
 void console_parse_command(char* command, size_t commandLen){
 	char *key = NULL, *value = NULL;
 	uint8_t valueLen = 0;
-	Serial *pSer = &gSerial;
+	Serial *pSer = &g_serial;
 
 	// A simple hack to command "!5"
 #if CONSOLE_TEST_COMMAND_ENABLED
@@ -438,5 +438,5 @@ void console_init(){
 #endif
 
 	// Initialization done, display the welcome banner and settings info
-	cmd_info(&gSerial,0,0);
+	cmd_info(&g_serial,0,0);
 }
