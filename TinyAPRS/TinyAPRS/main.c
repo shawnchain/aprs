@@ -33,6 +33,8 @@
 
 #include "utils.h"
 
+#include "reader.h"
+
 #include "settings.h"
 #include "console.h"
 #include "beacon.h"
@@ -46,7 +48,7 @@ static SoftSerial softSer;
 static Afsk afsk;
 static AX25Ctx ax25;
 static Serial ser;
-
+static Reader serialReader;
 static NMEA nmea;
 static void gps_callback(void *pnmea);
 
@@ -134,6 +136,19 @@ static void kiss_mode_exit_callback(void){
 static void beacon_mode_exit_callback(void){
 	currentMode = MODE_CFG;
 	SERIAL_PRINT_P((&ser),PSTR("Exit Beacon mode\r\n"));
+}
+
+static void _serial_reader_callback(char* line, uint8_t len){
+	switch(currentMode){
+		case MODE_CFG:
+//			console_parse(line,len);
+			break;
+		case MODE_TRACKER_BEACON:
+//			nmea_parse(line,len);
+			break;
+		default:
+			break;
+	}
 }
 
 static bool cmd_gps_test(Serial* pSer, char* value, size_t len){
@@ -281,6 +296,8 @@ static void init(void)
     radio_init(&softSer,431, 400);
 #endif
 
+    reader_init(&serialReader,&(ser.fd),_serial_reader_callback);
+
     //////////////////////////////////////////////////////////////
     // Initialize the console & commands
     console_init(&ser);
@@ -333,6 +350,7 @@ int main(void){
 		switch(currentMode){
 			case MODE_CFG:{
 				console_poll();
+				reader_poll(&serialReader);
 				break;
 			}
 
@@ -347,6 +365,7 @@ int main(void){
 			}
 
 			case MODE_TRACKER_BEACON:{
+				reader_poll(&serialReader);
 				break;
 			}
 

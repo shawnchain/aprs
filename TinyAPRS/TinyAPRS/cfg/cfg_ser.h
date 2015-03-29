@@ -200,7 +200,7 @@
  * $WIZ$ type = "int"
  * $WIZ$ min = -1
  */
-#define CONFIG_SER_RXTIMEOUT    -1
+#define CONFIG_SER_RXTIMEOUT    0 // Here in TinyAPRS, we need this to enable read_without_block on serial port.
 
 /**
  * Use RTS/CTS handshake.
