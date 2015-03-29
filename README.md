@@ -35,15 +35,14 @@ TinyAPRS is released under GPL license, **but with the following restriction** :
  - All GPL restrictions
 
 ### Pictures ###
-![Image0](http://ww4.sinaimg.cn/mw1024/8a58507cjw1epkgrq4w49j218g18gtqq.jpg)
 
-![Image1](http://ww2.sinaimg.cn/mw1024/8a58507cjw1enksv3eme7j218g0xc4cf.jpg)
+![Image0](https://raw.githubusercontent.com/shawnchain/aprs/master/doc/tinyaprs_schematic_r2.png)
 
-![Image2](http://ww2.sinaimg.cn/mw1024/8a58507cjw1enksv2ekyfj218g0xcnd6.jpg)
+![Image1](http://ww4.sinaimg.cn/mw1024/8a58507cjw1epkgrq4w49j218g18gtqq.jpg)
 
-![Image3](http://ww2.sinaimg.cn/mw1024/8a58507cjw1enksv58n73j218g0xcwt3.jpg)
+![Image2](http://ww2.sinaimg.cn/mw1024/8a58507cjw1enksv3eme7j218g0xc4cf.jpg)
 
-![Image4](http://ww3.sinaimg.cn/mw1024/8a58507cjw1epkgro575lj218g18g19p.jpg)
+![Image3](http://ww2.sinaimg.cn/mw1024/8a58507cjw1enksv2ekyfj218g0xcnd6.jpg)
 
 
 Please visit my [weibo album](http://www.weibo.com/p/1005052321043580/album?from=page_100505&mod=TAB#place "Weibo Album") for more pictures.
