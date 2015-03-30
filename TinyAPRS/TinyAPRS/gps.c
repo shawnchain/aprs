@@ -95,8 +95,8 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len){
 			// when parity is zero, checksum was correct!
 			if (parity == 0) {
 				// store values of relevant GPRMC terms
-				gps->_status = (gps->_term[GPRMC_TERM_STATUS])[0];
-
+				gps->valid = (gps->_term[GPRMC_TERM_STATUS])[0] == 'A';
+				/*
 				if(terms >5){
 					// lat/lon in APRS  is always: hhmm.ssN/hhhmm.ssE
 					gps->_lat = gps->_term[2];
@@ -107,7 +107,7 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len){
 					gps->_lon[8] = (gps->_term[5])[0]; // W or E
 					gps->_lon[9] = 0;
 				}
-
+				*/
 				return 1;
 			}
 			break;
@@ -120,16 +120,12 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len){
 	return 0;
 }
 
-float gps_get_speed_kmh(GPS *gps){
-	char *s = gps->_term[GPRMC_TERM_SPEED];
-	return nmea_decimal(s) * KMPH;
+void gps_get_location(GPS *gps, Location *pLoc){
+	pLoc->latitude = nmea_decimal(gps->_term[GPRMC_TERM_LATITUDE]);
+	pLoc->longitude = nmea_decimal(gps->_term[GPRMC_TERM_LONGITUDE]);
+	pLoc->speedInKMH = nmea_decimal(gps->_term[GPRMC_TERM_SPEED]) * KMPH;
+	pLoc->heading = nmea_decimal(gps->_term[GPRMC_TERM_HEADING]);
 }
-
-float gps_get_heading(GPS *gps){
-	char *s = gps->_term[GPRMC_TERM_HEADING];
-	return nmea_decimal(s);
-}
-
 
 static int nmea_dehex(char a) {
 	// returns base-16 value of chars '0'-'9' and 'A'-'F';

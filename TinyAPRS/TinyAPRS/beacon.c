@@ -21,6 +21,9 @@
 #include "beacon.h"
 #include "settings.h"
 #include "global.h"
+#include "gps.h"
+#include "utils.h"
+#include <drv/ser.h>
 
 static beacon_exit_callback_t exitCallback = 0;
 
@@ -81,4 +84,16 @@ void beacon_send(void){
 	//ax25_sendVia(ax25Ctx, path, countof(path), APRS_TEST_MSG, sizeof(APRS_TEST_MSG));
 }
 
+/*
+ * smart beacon algorithm
+ */
+void beacon_update_location(struct Location *location){
+	if(location == NULL)
+		return;
+	// TODO - send the location message
+	char* lat = g_gps._term[GPRMC_TERM_LATITUDE];
+	char* lon = g_gps._term[GPRMC_TERM_LONGITUDE];
+	char* spd = g_gps._term[GPRMC_TERM_SPEED];
+	SERIAL_PRINTF_P((&g_serial),PSTR("lat:%s, lon:%s, speed:%s\n"),lat,lon,spd);
+}
 

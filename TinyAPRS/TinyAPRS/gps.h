@@ -39,6 +39,7 @@
 
 #include "cfg/cfg_gps.h"
 #include <stdio.h>
+#include <stdbool.h>
 
 #define	ALL					0						// connect to all datatypes
 #define	GPRMC				1						// connect only to GPRMC datatype
@@ -68,21 +69,18 @@
 typedef void (*gps_callback)(void*);
 
 typedef struct GPS{
-	char	_status;
-	char*   _lat;
-	char*   _lon;
+	bool	valid;
 	char*	_term[MAX_TERMS];
 }GPS;
 
-/*
- *
- */
-float gps_get_speed_kmh(GPS *gps);
-
-/*
- *
- */
-float gps_get_heading(GPS *gps);
+typedef struct Location{
+	float latitude;
+	char northOrSouth;
+	float longitude;
+	char westOrEast;
+	float speedInKMH;
+	float heading;
+}Location;
 
 /*
  *
@@ -91,5 +89,7 @@ void gps_init(GPS *gps);
 
 
 int gps_parse(GPS *gps, char *sentence, uint8_t len);
+
+void gps_get_location(GPS *gps, Location *pLoc);
 
 #endif /* NMEA_H_ */
