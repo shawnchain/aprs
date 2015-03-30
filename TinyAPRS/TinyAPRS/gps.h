@@ -37,6 +37,7 @@
 #ifndef NMEA_H_
 #define NMEA_H_
 
+#include "cfg/cfg_gps.h"
 #include <stdio.h>
 
 #define	ALL					0						// connect to all datatypes
@@ -88,10 +89,6 @@ float gps_get_heading(GPS *gps);
  */
 void gps_init(GPS *gps);
 
-/*
- *
- */
-int gps_decode(GPS *gps,char c);
 
 int gps_parse(GPS *gps, char *sentence, uint8_t len);
 

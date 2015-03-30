@@ -18,7 +18,9 @@
 
 #include <cpu/irq.h>
 #include <cpu/pgm.h>     /* PROGMEM */
+#if CPU_AVR
 #include <avr/pgmspace.h>
+#endif
 
 #include <net/afsk.h>
 #include <net/ax25.h>
@@ -45,9 +47,8 @@
 static SoftSerial softSer;
 #endif
 
-#include <cfg/cfg_gps.h>
-#if CFG_GPS_ENABLED
 #include "gps.h"
+#if CFG_GPS_ENABLED
 GPS g_gps;
 #endif
 
@@ -75,42 +76,9 @@ static RunMode currentMode = MODE_CFG;
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Message Callbacks
-static void print_call_P(KFile *ch, const AX25Call *call,char* buf) {
-	sprintf_P(buf,PSTR("%.6s"),call->call);
-	kfile_print(ch, buf);
-	if (call->ssid){
-		sprintf_P(buf,PSTR("-%d"),call->ssid);
-		kfile_print(ch, buf);
-	}
-}
-
-static uint16_t count = 1;
-INLINE void print_ax25_message(Serial *pSer, AX25Msg *msg){
-	#if 0
-		ax25_print(&(pSer->fd),msg); // less code but need 16 bytes of ram
-	#else
-		char buf[16];
-		KFile *ch = &(pSer->fd);
-		sprintf(buf,"%d ",count++);
-		kfile_print(ch,buf);
-		// CALL/RPT/DEST
-		print_call_P(ch, &msg->src,buf);
-		kfile_putc('>', ch);
-		print_call_P(ch, &msg->dst,buf);
-		#if CONFIG_AX25_RPT_LST
-		for (int i = 0; i < msg->rpt_cnt; i++)
-		{
-			kfile_putc(',', ch);
-			print_call_P(ch, &msg->rpt_lst[i],buf);
-			/* Print a '*' if packet has already been transmitted
-			 * by this repeater */
-			if (AX25_REPEATED(msg, i))
-				kfile_putc('*', ch);
-		}
-		#endif
-		// DATA PAYLOAD
-		SERIAL_PRINTF_P(pSer, PSTR(":%.*s\n\r"), msg->len, msg->info);
-	#endif
+///////////////////////////////////////////////////////////////////////////////////
+INLINE void print_ax25_message(AX25Msg *msg){
+	ax25_print(&(g_serial.fd),msg); // less code but need 16 bytes of ram
 }
 
 /*
@@ -120,7 +88,7 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 	switch(currentMode){
 	case MODE_CFG:{
 		// Print received message to serial
-		print_ax25_message(&g_serial,msg);
+		print_ax25_message(msg);
 		break;
 	}
 	case MODE_KISS:

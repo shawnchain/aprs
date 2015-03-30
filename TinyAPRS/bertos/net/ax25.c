@@ -50,6 +50,12 @@
 #include <string.h> //memset, memcmp
 #include <ctype.h>  //isalnum, toupper
 
+#include <cpu/pgm.h>
+#if CPU_AVR
+#include <avr/pgmspace.h>
+#include <stdio.h>
+#endif
+
 #if CONFIG_AX25_RPT_LST
 	#define AX25_SET_REPEATED(msg, idx, val) \
 		do \
@@ -331,9 +337,19 @@ void ax25_sendRaw(AX25Ctx *ctx, const void *_buf, size_t len)
 
 static void print_call(KFile *ch, const AX25Call *call)
 {
+#if CPU_AVR
+	char buf[8];
+	sprintf_P(buf,PSTR("%.6s"),call->call);
+	kfile_print(ch,buf);
+	if(call->ssid){
+		sprintf_P(buf,PSTR("-%d"),call->ssid);
+		kfile_print(ch,buf);
+	}
+#else
 	kfile_printf(ch, "%.6s", call->call);
 	if (call->ssid)
 		kfile_printf(ch, "-%d", call->ssid);
+#endif
 }
 
 /**
@@ -343,6 +359,21 @@ static void print_call(KFile *ch, const AX25Call *call)
  */
 void ax25_print(KFile *ch, const AX25Msg *msg)
 {
+
+#if CPU_AVR
+	char buf[64];
+#endif
+
+#if	CONFIG_AX25_DEBUG_PRINT_MESSAGE_COUNT
+	static uint16_t messageCount = 1;
+#if CPU_AVR
+	sprintf_P(buf,PSTR("%d "),messageCount++);
+	kfile_print(ch,buf);
+#else
+	kfile_printf(ch, "%d ",messageCount++);
+#endif
+#endif
+
 	print_call(ch, &msg->src);
 	kfile_putc('>', ch);
 	print_call(ch, &msg->dst);
@@ -359,7 +390,12 @@ void ax25_print(KFile *ch, const AX25Msg *msg)
 	}
 	#endif
 
+#if CPU_AVR
+	snprintf_P(buf,61, PSTR(":%.*s\n"),msg->len,msg->info);
+	kfile_print(ch,buf);
+#else
 	kfile_printf(ch, ":%.*s\n", msg->len, msg->info);
+#endif
 }
 
 
