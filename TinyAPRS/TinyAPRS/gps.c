@@ -20,122 +20,116 @@
 #include <string.h>
 #include <stdbool.h>
 #include <math.h>
+#include <avr/pgmspace.h>
 
-#define _GPRMC_TERM   "$GPRMC,"		// GPRMC datatype identifier
+#define PI 3.1415926535897932384626433832795
+#define HALF_PI 1.5707963267948966192313216916398
+#define TWO_PI 6.283185307179586476925286766559
+#define DEG_TO_RAD 0.017453292519943295769236907684886
+#define RAD_TO_DEG 57.295779513082320876798154814105
 
 static int nmea_dehex(char a);
+static float nmea_decimal(char* s);
 
-
-void gps_init(GPS *gps, char* buf, gps_nmea_callback cb){
+void gps_init(GPS *gps){
 	memset(gps,0,sizeof(GPS));
-	gps->_sentence = buf;
-	gps->callback = cb;
-//	gps->_sentence[0] = 0;
 }
 
-int gps_decode(GPS *pnmea, char c){
-        // avoid runaway sentences (>99 chars or >29 terms) and terms (>14 chars)
-        if ((pnmea->n >= MAX_SENTENCEN_CHARS) || (pnmea->_terms >= MAX_TERMS) ) {
-                pnmea->_state = 0;
-        }
-        // LF and CR always reset parser
-        if ((c == 0x0A) || (c == 0x0D)) {
-                pnmea->_state = 0;
-        }
-        // '$' always starts a new sentence
-        if (c == '$') {
-                pnmea->_gprmc_tag = 0;
-                pnmea->_parity = 0;
-                pnmea->_terms = 0;
-                pnmea->_sentence[0] = c;
-                pnmea->n = 1;
-                pnmea->_state = 1;
-                return 0;
-        }
-        // parse other chars according to parser state
-        switch (pnmea->_state) {
-        case 0:
-                // waiting for '$', do nothing
-                break;
-        case 1:
-                // decode chars after '$' and before '*' found
-                if (pnmea->n < 7) {
-                        // see if first seven chars match "$GPRMC,"
-                        if (c == _GPRMC_TERM[pnmea->n]) {
-                                pnmea->_gprmc_tag++;
-                        }
-                }
-                // add received char to sentence
-                switch (c) {
-                case ',':
-                        // ',' delimits the individual terms
-                        pnmea->_sentence[pnmea->n++] = 0;
-                        // point to the next term
-                        pnmea->_term[pnmea->_terms++] = pnmea->_sentence + pnmea->n;
-                        pnmea->_parity = pnmea->_parity ^ c;
-                        break;
-                case '*':
-                        // '*' delimits term and precedes checksum term
-                        pnmea->_sentence[pnmea->n++] = 0;
-                        pnmea->_state++;
-                        break;
-                default:
-                        // all other chars between '$' and '*' are part of a term
-                        pnmea->_sentence[pnmea->n++] = c;
-                        pnmea->_parity = pnmea->_parity ^ c;
-                        break;
-                }
-                break;
-        case 2:
-                // first char following '*' is checksum MSB
-                pnmea->_term[pnmea->_terms++] = pnmea->_sentence + pnmea->n;
-                pnmea->_sentence[pnmea->n++] = c;
-                pnmea->_parity = pnmea->_parity - (16 * nmea_dehex(c));         // replace with bitshift?
-                pnmea->_state++;
-                break;
-        case 3:
-                // second char after '*' completes the checksum (LSB)
-                pnmea->_sentence[pnmea->n++] = c;
-                pnmea->_sentence[pnmea->n++] = 0;
-				pnmea->_state = 0;
-				pnmea->_parity = pnmea->_parity - nmea_dehex(c);
-				// when parity is zero, checksum was correct!
-				if (pnmea->_parity == 0) {
-					// accept only GPRMC datatype?
-					if (pnmea->_gprmc_tag == 6 /*it's GPRMC tag!*/) {
-						// when sentence is of datatype GPRMC
-						// store values of relevant GPRMC terms
-						pnmea->_utc = pnmea->_term[0];
-						pnmea->_status = (pnmea->_term[1])[0];
+//$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A\n
+int gps_parse(GPS *gps, char *sentence, uint8_t len){
 
-						// lat/lon in APRS  is always: hhmm.ssN/hhhmm.ssE
-						pnmea->_lat = pnmea->_term[2];
-						pnmea->_lat[7] = (pnmea->_term[3])[0]; // N or S
-						pnmea->_lat[8] = 0;
-
-						pnmea->_lon = pnmea->_term[4];
-						pnmea->_lon[8] = (pnmea->_term[5])[0]; // W or E
-						pnmea->_lon[9] = 0;
-
-						// speed/heading/date
-						pnmea->_speed = pnmea->_term[6];
-						pnmea->_heading = pnmea->_term[7];
-						pnmea->_date = pnmea->_term[8];
-
-						//sentence accepted!
-						if(pnmea->callback){
-							pnmea->callback(pnmea);
-						}
-						return 1;
-					}
-				}
-				break;
-		default:
-				pnmea->_state = 0;
-				break;
-		}
+	if(len <= MIN_SENTENCEN_CHARS || len > MAX_SENTENCEN_CHARS){
 		return 0;
+	}
+	// make sure it's started with '$GPRMC'
+	if(strncmp_P(sentence,PSTR("$GPRMC"),6) != 0){
+		// not started with that, so return
+		return 0;
+	}
+
+	int parity = 0x4b; // the checksum of 'GPRMC'
+
+	uint8_t state = 0;
+	int terms = 0;
+
+	for(int n = 6;n < len;n++){
+		char c = sentence[n];
+		if ((c == 0x0A) || (c == 0x0D) || terms == MAX_TERMS) {
+			// we're done
+			break;
+		}
+		switch(state){
+
+		case 0:
+			switch(c){
+				case ',':
+					// ',' delimits the individual terms
+					sentence[n] = 0;
+					// point to the next term
+					gps->_term[terms++] = sentence + n + 1;
+					parity = parity ^ c;
+					break;
+				case '*':
+					// '*' delimits term and precedes checksum term
+					sentence[n] = 0;
+					state++; // 1
+					break;
+				default:
+					// all other chars between '$' and '*' are part of a term
+					parity = parity ^ c;
+					break;
+			}
+			break;
+
+		case 1:
+			// first char following '*' is checksum MSB
+			gps->_term[terms++] = sentence + n;
+			parity = parity - (16 * nmea_dehex(c));         // replace with bitshift?
+			state++;
+			break;
+
+		case 2:
+			// second char after '*' completes the checksum (LSB)
+			state = 0;
+			parity = parity - nmea_dehex(c);
+			// when parity is zero, checksum was correct!
+			if (parity == 0) {
+				// store values of relevant GPRMC terms
+				gps->_status = (gps->_term[GPRMC_TERM_STATUS])[0];
+
+				if(terms >5){
+					// lat/lon in APRS  is always: hhmm.ssN/hhhmm.ssE
+					gps->_lat = gps->_term[2];
+					gps->_lat[7] = (gps->_term[3])[0]; // N or S
+					gps->_lat[8] = 0;
+
+					gps->_lon = gps->_term[4];
+					gps->_lon[8] = (gps->_term[5])[0]; // W or E
+					gps->_lon[9] = 0;
+				}
+
+				return 1;
+			}
+			break;
+
+		default:
+			break;
+		}
+
+	} // end of for loop
+	return 0;
 }
+
+float gps_get_speed_kmh(GPS *gps){
+	char *s = gps->_term[GPRMC_TERM_SPEED];
+	return nmea_decimal(s) * KMPH;
+}
+
+float gps_get_heading(GPS *gps){
+	char *s = gps->_term[GPRMC_TERM_HEADING];
+	return nmea_decimal(s);
+}
+
 
 static int nmea_dehex(char a) {
 	// returns base-16 value of chars '0'-'9' and 'A'-'F';
@@ -147,7 +141,6 @@ static int nmea_dehex(char a) {
 	}
 }
 
-#if 0
 static float nmea_decimal(char* s) {
 	// returns base-10 value of zero-termindated string
 	// that contains only chars '+','-','0'-'9','.';
@@ -179,5 +172,47 @@ static float nmea_decimal(char* s) {
 		rr = 0.0 - rr;
 	}
 	return rr;
+}
+
+#if 0
+float gps_distance_between(float lat1, float long1, float lat2, float long2,
+		float units_per_meter) {
+	// returns distance in meters between two positions, both specified
+	// as signed decimal-degrees latitude and longitude. Uses great-circle
+	// distance computation for hypothised sphere of radius 6372795 meters.
+	// Because Earth is no exact sphere, rounding errors may be upto 0.5%.
+	float delta = radians(long1-long2);
+	float sdlong = sin(delta);
+	float cdlong = cos(delta);
+	lat1 = radians(lat1);
+	lat2 = radians(lat2);
+	float slat1 = sin(lat1);
+	float clat1 = cos(lat1);
+	float slat2 = sin(lat2);
+	float clat2 = cos(lat2);
+	delta = (clat1 * slat2) - (slat1 * clat2 * cdlong);
+	delta = sq(delta);
+	delta += sq(clat2 * sdlong);
+	delta = sqrt(delta);
+	float denom = (slat1 * slat2) + (clat1 * clat2 * cdlong);
+	delta = atan2(delta, denom);
+	return delta * 6372795 * units_per_meter;
+}
+
+float gps_initial_course(float lat1, float long1, float lat2, float long2) {
+	// returns initial course in degrees (North=0, West=270) from
+	// position 1 to position 2, both specified as signed decimal-degrees
+	// latitude and longitude.
+	float dlon = radians(long2-long1);
+	lat1 = radians(lat1);
+	lat2 = radians(lat2);
+	float a1 = sin(dlon) * cos(lat2);
+	float a2 = sin(lat1) * cos(lat2) * cos(dlon);
+	a2 = cos(lat1) * sin(lat2) - a2;
+	a2 = atan2(a1, a2);
+	if (a2 < 0.0) {
+		a2 += TWO_PI;		// modulo operator doesn't seem to work on floats
+	}
+	return degrees(a2);
 }
 #endif

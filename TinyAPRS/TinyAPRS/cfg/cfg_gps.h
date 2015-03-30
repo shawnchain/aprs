@@ -17,7 +17,7 @@
 #ifndef CFG_GPS_H_
 #define CFG_GPS_H_
 
-#define CFG_GPS_ENABLED 0
+#define CFG_GPS_ENABLED 1
 
 #define CFG_GPS_TEST 0
 

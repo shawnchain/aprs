@@ -49,7 +49,6 @@ static SoftSerial softSer;
 #if CFG_GPS_ENABLED
 #include "gps.h"
 GPS g_gps;
-static void gps_callback(void *pGPS);
 #endif
 
 Afsk g_afsk;
@@ -150,7 +149,7 @@ static void _serial_reader_callback(char* line, uint8_t len){
 			console_parse_command(line,len);
 			break;
 		case MODE_TRACKER_BEACON:
-//			nmea_parse(line,len);
+//			gps_parse(line,len);
 			break;
 		default:
 			break;
@@ -161,9 +160,10 @@ static void _serial_reader_callback(char* line, uint8_t len){
 static bool cmd_gps_test(Serial* pSer, char* value, size_t len){
 	(void)pSer;
 	if(len > 0){
-		gps_init(&g_gps,value,gps_callback);
-		for(int i = 0;i < (int)len;i++){
-			gps_decode(&g_gps, value[i]);
+		if(gps_parse(&g_gps,value,(int)len)){
+			// print the result
+			GPS *gps = &g_gps;
+			SERIAL_PRINTF_P((&g_serial),PSTR("lat: %s, lon: %s, speed: %s, heading: %s\n\r"),gps->_lat,gps->_lon, gps->_term[GPRMC_TERM_SPEED],gps->_term[GPRMC_TERM_HEADING]);
 		}
 	}
 	return true;
@@ -252,7 +252,7 @@ static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
 	return true;
 }
 
-#if CFG_GPS_ENABLED
+#if 0
 static void gps_callback(void *p){
 	GPS *gps = (GPS*)p;
 	SERIAL_PRINTF_P((&g_serial),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),gps->_lat,gps->_lon, gps->_date,gps->_utc);
@@ -321,16 +321,14 @@ static void init(void)
     sprintf_P(s,PSTR("$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A\n"));
 	int l = strlen(s);
 
-    gps_init(&g_gps,s,gps_callback);
-    for(int i = 0;i < l;i++){
-       gps_decode(&g_gps,s[i]);
-    }
+    gps_init(&g_gps);
+    gps_parse(&g_gps,s,l);
 
-    for(int i = 0;i < 12;i++){
-    	SERIAL_PRINTF_P((&g_serial),PSTR("term: %s\n"),g_gps._term[i]);
-    }
+//    for(int i = 0;i < 12;i++){
+//    	SERIAL_PRINTF_P((&g_serial),PSTR("term: %s\n"),g_gps._term[i]);
+//    }
 
-    SERIAL_PRINTF_P((&g_serial),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),g_gps._lat,g_gps._lon, g_gps._date,g_gps._utc);
+    SERIAL_PRINTF_P((&g_serial),PSTR("lat: %s, lon: %s, speed: %s, heading: %s\n\r"),g_gps._lat,g_gps._lon, g_gps._term[GPRMC_TERM_SPEED],g_gps._term[GPRMC_TERM_HEADING]);
 #endif
 
 }
