@@ -235,6 +235,7 @@ static void check_run_mode(void){
 			c[1] = 0;
 			cmd_switch_mode(&g_serial,c,1);
 		}
+		ts = timer_clock_unlocked(); // update the timestamp
 	}
 }
 
