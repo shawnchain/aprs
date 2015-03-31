@@ -182,20 +182,20 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	(void)command;
 	(void)len;
 	SERIAL_PRINT_P(pSer,PSTR("\r\nAT commands supported\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("-----------------------------------------------\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("-----------------------------------------------------------\r\n"));
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
-	SERIAL_PRINT_P(pSer,PSTR("AT+MYCALL=[CALLSIGN]-[SSID]\t;Set my callsign\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+MYSSID=[SSID]\t\t;Set my ssid only\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN]-[SSID]\t;Set destination callsign only\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[PATH1],[PATH2]\t\t;Set PATH, max 2 allowed\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+SYMBOL=[SYMBOL]\t\t;Set beacon symbol\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+RAW=[BEACON RAW]\t\t;Set beacon raw text \r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+MYCALL=[CALLSIGN-SSID]\t;Set my callsign\r\n"));
+	//SERIAL_PRINT_P(pSer,PSTR("AT+MYSSID=[SSID]\t\t;Set my ssid only\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN-SSID]\t\t;Set destination callsign\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[WIDE1-1,WIDE2-2]\t;Set PATH, max 2 allowed\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+SYMBOL=[SYMBOL_TABLE/IDX]\t;Set beacon symbol\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+RAW=[!3011.54N/12007.35E>..]\t;Set beacon raw text \r\n"));
 #endif
-	SERIAL_PRINT_P(pSer,PSTR("AT+MODE=[0|1|2]\t\t\t;Set beacon mode\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=1\t\t\t;Enter kiss mode\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+MODE=[0|1|2]\t\t\t;Set device run mode\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=[1]\t\t\t;Enter kiss mode\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("?\t\t\t\t;Display help messages\r\n"));
 
-	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyrights 2015, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
+	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyright 2015, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
 
 	return true;
 }
