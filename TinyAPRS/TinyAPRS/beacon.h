@@ -32,7 +32,7 @@ void beacon_init(beacon_exit_callback_t exitcb);
 /*
  * Force send the beacon message
  */
-void beacon_send(void);
+void beacon_send_fixed(void);
 
 /*
  * Runloop of the beacon module

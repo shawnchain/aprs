@@ -23,13 +23,6 @@
 
 #include "global.h"
 
-// Increase the console read buffer for the raw package text input
-#if SETTINGS_SUPPORT_BEACON_TEXT
-#undef CONSOLE_SERIAL_BUF_LEN
-#define CONSOLE_SERIAL_BUF_LEN SETTINGS_BEACON_TEXT_MAX + 8
-#endif
-
-
 #if CONSOLE_HELP_COMMAND_ENABLED
 static bool cmd_help(Serial* pSer, char* command, size_t len);
 #endif
@@ -136,6 +129,7 @@ void console_parse_command(char* command, size_t commandLen){
 	if(key == NULL && value == NULL){
 		// bail out
 		SERIAL_PRINTF_P(pSer,PSTR("INVALID CMD: %.*s\r\n"),commandLen,command);
+		cmd_info(pSer,0,0);
 		return;
 	}
 
@@ -168,7 +162,7 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 	(void)len;
 
 	// print welcome banner
-	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS TNC (KISS) 1.1-SNAPSHOT (f%da%d-%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS (KISS-TNC/GPS-Beacon) 1.1-SNAPSHOT (f%da%d-%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 
 	// print settings
 	char buf[16];
@@ -176,6 +170,7 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 	settings_get_call_fullstring(SETTINGS_MY_CALL,SETTINGS_MY_SSID,buf,bufLen);
 	SERIAL_PRINTF_P(pSer, PSTR("MyCall: %s\r\n"),buf);
 
+	SERIAL_PRINTF_P(pSer, PSTR("Mode: %d\r\n"),g_settings.run_mode);
 	// print free memory
 	SERIAL_PRINTF_P(pSer,PSTR("Free RAM: %u\r\n"),freeRam());
 
@@ -196,7 +191,7 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("AT+SYMBOL=[SYMBOL]\t\t;Set beacon symbol\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+RAW=[BEACON RAW]\t\t;Set beacon raw text \r\n"));
 #endif
-
+	SERIAL_PRINT_P(pSer,PSTR("AT+MODE=[0|1|2]\t\t\t;Set beacon mode\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=1\t\t\t;Enter kiss mode\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("?\t\t\t\t;Display help messages\r\n"));
 
@@ -396,7 +391,7 @@ static bool cmd_send(Serial* pSer, char* value, size_t len){
 	(void)len;
 	if(len == 0){
 		// send test message
-		beacon_send();
+		beacon_send_fixed();
 		SERIAL_PRINT_P(pSer,PSTR("SEND OK\r\n"));
 	}else{
 		//TODO send user input message out, build the ax25 path according settings

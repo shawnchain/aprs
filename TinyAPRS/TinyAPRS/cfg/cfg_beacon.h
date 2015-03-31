@@ -18,6 +18,6 @@
 #define CFG_BEACON_H_
 
 #define CFG_BEACON_ENABLED 1
-
+#define CFG_BEACON_DEBUG 1
 
 #endif /* CFG_BEACON_H_ */
