@@ -46,7 +46,7 @@ void beacon_poll(void);
 void beacon_set_repeats(int8_t repeats);
 
 
-struct Location;
-void beacon_update_location(struct Location *location);
+struct GPS;
+void beacon_update_location(struct GPS *gps);
 
 #endif /* BEACON_H_ */

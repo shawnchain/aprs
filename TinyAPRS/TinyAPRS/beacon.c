@@ -87,9 +87,13 @@ void beacon_send(void){
 /*
  * smart beacon algorithm
  */
-void beacon_update_location(struct Location *location){
-	if(location == NULL)
+void beacon_update_location(struct GPS *gps){
+	if(!gps->valid){
 		return;
+	}
+
+	Location location;
+	gps_get_location(gps,&location);
 	// TODO - send the location message
 	char* lat = g_gps._term[GPRMC_TERM_LATITUDE];
 	char* lon = g_gps._term[GPRMC_TERM_LONGITUDE];
