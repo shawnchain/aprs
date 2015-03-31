@@ -115,7 +115,8 @@ void beacon_update_location(struct GPS *gps){
 	}
 
 	static ticks_t ts = 0;
-	if(timer_clock() - ts > ms_to_ticks(30000)){
+	// first time will always trigger the send
+	if(ts == 0 || timer_clock() - ts > ms_to_ticks(30000)){
 		// payload
 		char payload[48];
 		char s1 = g_settings.symbol[0];
