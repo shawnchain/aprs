@@ -42,13 +42,16 @@
 #include "settings.h"
 #include "console.h"
 #include "beacon.h"
-#include "radio.h"
+
+#include "cfg/cfg_radio.h"
 #if CFG_RADIO_ENABLED
+#include "radio.h"
 static SoftSerial softSer;
 #endif
 
-#include "gps.h"
+#include "cfg/cfg_gps.h"
 #if CFG_GPS_ENABLED
+#include "gps.h"
 GPS g_gps;
 #endif
 
@@ -130,9 +133,7 @@ static void serial_read_line_callback(char* line, uint8_t len){
 		case MODE_TRACKER:
 #if CFG_GPS_ENABLED
 			if(gps_parse(&g_gps,line,len) && g_gps.valid){
-				Location location;
-				gps_get_location(&g_gps,&location);
-				beacon_update_location(&location);
+				beacon_update_location(&g_gps);
 			}
 #endif
 			break;
@@ -141,24 +142,6 @@ static void serial_read_line_callback(char* line, uint8_t len){
 			break;
 	}
 }
-
-#if CFG_GPS_ENABLED && CFG_GPS_TEST
-static bool cmd_gps_test(Serial* pSer, char* value, size_t len){
-	(void)pSer;
-	if(len > 0){
-		if(gps_parse(&g_gps,value,(int)len)){
-			// print the result
-			GPS *gps = &g_gps;
-			char* lat = g_gps._term[GPRMC_TERM_LATITUDE];
-			char* lon = g_gps._term[GPRMC_TERM_LONGITUDE];
-			char* spd = g_gps._term[GPRMC_TERM_SPEED];
-			SERIAL_PRINTF_P((&g_serial),PSTR("lat: %s, lon: %s, speed: %s, heading: %s\n\r"),lat,lon, spd,gps->_term[GPRMC_TERM_HEADING]);
-		}
-	}
-	return true;
-}
-#endif
-
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Command handlers
@@ -171,7 +154,7 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 	bool modeOK = false;
 	if(len > 0 ){
 		int i = atoi(value);
-		if(i == (int)currentMode){
+		if(i == (int)currentMode && i == g_settings.run_mode){
 			// already in this mode, bail out.
 			return true;
 		}
@@ -179,21 +162,27 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 		modeOK = true;
 		switch(i){
 		case MODE_CFG:
-			// COMMAND/CONFIG MODE
+			// Enter COMMAND/CONFIG MODE
 			currentMode = MODE_CFG;
 			g_ax25.pass_through = 0;		// parse ax25 frames
 			ser_purge(pSer);  			// clear all rx/tx buffer
+			SERIAL_PRINT_P(pSer,PSTR("Enter Config mode\r\n"));
 			break;
 
 		case MODE_KISS:
-			// KISS MODE
+			// Enter KISS MODE
 			currentMode = MODE_KISS;
 			g_ax25.pass_through = 1;		// don't parse ax25 frames
 			ser_purge(pSer);  			// clear serial rx/tx buffer
 			SERIAL_PRINT_P(pSer,PSTR("Enter KISS mode\r\n"));
 			break;
 
-/*
+		case MODE_TRACKER:
+			currentMode = MODE_TRACKER;
+			SERIAL_PRINT_P(pSer,PSTR("Enter Tracker mode\r\n"));
+			break;
+
+		/*
 		case MODE_DIGI:
 			// DIGI MODE
 			runMode = MODE_DIGI;
@@ -202,51 +191,52 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 			beacon_set_enabled(true);	// beacon on
 			ser_purge(pSer);  			// clear serial rx/tx buffer
 			break;
-*/
-
-		case MODE_TRACKER:
-			currentMode = MODE_TRACKER;
-			SERIAL_PRINT_P(pSer,PSTR("Enter Tracker mode\r\n"));
-			break;
+		*/
 
 		default:
 			// unknown mode
 			modeOK = false;
 			break;
-		}
-	}
+		} // end of switch
 
-	if(!modeOK){
-		SERIAL_PRINTF_P(pSer,PSTR("Invalid mode %s, [0|1|2] is accepted\r\n"),value);
+		// save to settings/run_mode
+		if(modeOK){
+			if(currentMode != g_settings.run_mode){
+				settings_set(SETTINGS_RUN_MODE,&currentMode,1);
+				settings_save();
+			}
+		}else{
+			SERIAL_PRINTF_P(pSer,PSTR("Invalid mode %s, [0|1|2] is accepted\r\n"),value);
+		}
+	}else{
+		// no parameters, just dump the mode
+		SERIAL_PRINTF_P(pSer,PSTR("Current mode %d/%d\r\n"),currentMode,g_settings.run_mode);
 	}
 
 	return true;
 }
-
-
 
 /*
- * AT+KISS=1 - enable the KISS mode
+ * AT+KISS=1 enter KISS mode, same as AT+MODE=1, where MODE_KISS = 1
  */
 static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
-	if(len > 0 && value[0] == '1'){
-		currentMode = MODE_KISS;
-		g_ax25.pass_through = 1;
-		ser_purge(pSer);  // clear all rx/tx buffer
+	(void)value;
+	(void)len;
+	char c[] = "1"; //
+	return cmd_switch_mode(pSer, c, 1);
+}
 
-		SERIAL_PRINT_P(pSer,PSTR("Enter KISS mode\r\n"));
-	}else{
-		SERIAL_PRINTF_P(pSer,PSTR("Invalid value %s, only value 1 is accepted\r\n"),value);
+static void check_run_mode(void){
+	static ticks_t ts = 0;
+	if(timer_clock_unlocked() -  ts > ms_to_ticks(10000)){
+		if(currentMode != g_settings.run_mode){
+			char c[2];
+			c[0] = (g_settings.run_mode + 48);
+			c[1] = 0;
+			cmd_switch_mode(&g_serial,c,1);
+		}
 	}
-	return true;
 }
-
-#if 0
-static void gps_callback(void *p){
-	GPS *gps = (GPS*)p;
-	SERIAL_PRINTF_P((&g_serial),PSTR("lat: %s, lon: %s, date: %s,%s\n\r"),gps->_lat,gps->_lon, gps->_date,gps->_utc);
-}
-#endif
 
 static void init(void)
 {
@@ -263,6 +253,9 @@ static void init(void)
     // to 7 bit characters by default. We set
     // it to 8 instead.
     UCSR0C = _BV(UCSZ01) | _BV(UCSZ00);
+
+    // Load settings first
+    settings_load();
 
 	/*
 	 * Init afsk demodulator. We need to implement the macros defined in hw_afsk.h, which
@@ -284,9 +277,6 @@ static void init(void)
 	// Initialize the beacon module
     beacon_init(beacon_mode_exit_callback);
 
-    // Load settings first
-    settings_load();
-
 #if CFG_RADIO_ENABLED
     // Initialize the soft serial and radio
     softser_init(&softSer, CFG_RADIO_RX_PIN,CFG_RADIO_TX_PIN);
@@ -296,32 +286,16 @@ static void init(void)
 
     reader_init(&serialReader,&(g_serial.fd),serial_read_line_callback);
 
+    // Initialize GPS NMEA/GPRMC parser
+#if CFG_GPS_ENABLED
+    gps_init(&g_gps);
+#endif
+
     //////////////////////////////////////////////////////////////
     // Initialize the console & commands
     console_init();
     console_add_command(PSTR("MODE"),cmd_switch_mode);			// setup tnc run mode
     console_add_command(PSTR("KISS"),cmd_enter_kiss_mode);		// enable KISS mode
-
-    // Initialize GPS NMEA/GPRMC parser
-#if CFG_GPS_ENABLED && CFG_GPS_TEST
-    console_add_command(PSTR("GPS"),cmd_gps_test);
-
-    static char s[80];
-    sprintf_P(s,PSTR("$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A\n"));
-	int l = strlen(s);
-
-    gps_init(&g_gps);
-    gps_parse(&g_gps,s,l);
-
-//    for(int i = 0;i < 12;i++){
-//    	SERIAL_PRINTF_P((&g_serial),PSTR("term: %s\n"),g_gps._term[i]);
-//    }
-	char* lat = g_gps._term[GPRMC_TERM_LATITUDE];
-	char* lon = g_gps._term[GPRMC_TERM_LONGITUDE];
-	char* spd = g_gps._term[GPRMC_TERM_SPEED];
-    SERIAL_PRINTF_P((&g_serial),PSTR("lat: %s, lon: %s, speed: %s, heading: %s\n\r"), lat, lon, spd, g_gps._term[GPRMC_TERM_HEADING]);
-#endif
-
 }
 
 
@@ -347,10 +321,10 @@ int main(void){
 		ax25_poll(&g_ax25);
 
 		switch(currentMode){
-			case MODE_CFG:{
+			case MODE_CFG:
+			case MODE_TRACKER:
 				reader_poll(&serialReader);
 				break;
-			}
 
 			case MODE_KISS:{
 				kiss_serial_poll();
@@ -362,10 +336,6 @@ int main(void){
 				break;
 			}
 
-			case MODE_TRACKER:{
-				reader_poll(&serialReader);
-				break;
-			}
 
 			default:
 				break;
@@ -378,10 +348,10 @@ int main(void){
 #define FREE_RAM_DEBUG 0
 #if FREE_RAM_DEBUG
 		{
-			static uint32_t i = 0;
-			if(i++ == 100000){
-				i = 0;
-				// log the stack size
+			static ticks_t ts = 0;
+
+			if(timer_clock_unlocked() -  ts > ms_to_ticks(5000)){
+				ts = timer_clock_unlocked();
 				uint16_t ram = freeRam();
 				SERIAL_PRINTF((&g_serial),"%u\r\n",ram);
 			}
@@ -406,6 +376,8 @@ int main(void){
 			}
 		}
 #endif
+
+		check_run_mode();
 	} // end of while(1)
 	return 0;
 }

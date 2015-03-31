@@ -41,6 +41,7 @@ typedef enum {
 	SETTINGS_PATH2_CALL,
 	SETTINGS_PATH2_SSID,
 	SETTINGS_SYMBOL,
+	SETTINGS_RUN_MODE,
 }SETTINGS_TYPE;
 
 #define SETTINGS_MAX_SSID 99
@@ -61,9 +62,11 @@ typedef struct{
 	uint8_t path2_call[6];	// the path2
 	uint8_t path2_ssid;
 
-	uint8_t symbol[2];			// Symbol table and the index
+	uint8_t symbol[2];		// Symbol table and the index
 
-	uint8_t unused[2];
+	uint8_t run_mode;		// the run mode ,could be 0|1|2
+
+	uint8_t unused;			// reserved
 } SettingsData;
 
 
@@ -93,11 +96,11 @@ void settings_clear(void);
  * @valueOutLen max out buffer len and will be set to the actual value length when function returned.
  */
 void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* valueOutLen);
+
 /**
  * Set value of a specific setting
  */
 void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen);
-
 
 /*
  * Accept CALL string like "BG5HHP-1" and update specific setting values
@@ -109,8 +112,14 @@ bool settings_set_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType
  */
 void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType, char* buf, uint8_t bufLen);
 
-
+/*
+ * get the beacon text
+ */
 uint8_t settings_get_raw_packet(char* buf, uint8_t bufLen);
 
+/*
+ * set the beacon text
+ */
 uint8_t settings_set_raw_packet(char* data, uint8_t dataLen);
+
 #endif /* SETTINGS_H_ */

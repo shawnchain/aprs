@@ -26,6 +26,7 @@ SettingsData g_settings = {
 		.path1_ssid=1,
 		.path2_call="",
 		.path2_ssid=0,
+		.symbol="/>",
 		//.location={30,14,0,'N',120,0,9,'E'},
 		//.phgd={0,0,0,0},
 		//.comments="TinyAPRS Rocks!",
@@ -125,6 +126,10 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 			*((uint8_t*)valueOut + 1) = g_settings.symbol[1];
 			*pValueOutLen = 2;
 			break;
+		case SETTINGS_RUN_MODE:
+			*((uint8_t*)valueOut) = g_settings.run_mode;
+			*pValueOutLen = 1;
+			break;
 		default:
 			*pValueOutLen = 0;
 			break;
@@ -167,6 +172,9 @@ void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
 		case SETTINGS_SYMBOL:
 			g_settings.symbol[0] = *((uint8_t*)value);
 			g_settings.symbol[1] = *(((uint8_t*)value)+1);
+			break;
+		case SETTINGS_RUN_MODE:
+			g_settings.run_mode = *((uint8_t*)value);
 			break;
 		default:
 			break;
