@@ -49,7 +49,7 @@
 #define	NM					0.00053995680			// nautical miles per meter
 #define	PARSEC				0.000000000000			// parsecs per meter (approximation)
 #define	MPS					0.51444444 				// meters-per-second in one knot
-#define	KMPH				1.852  					// kilometers-per-hour in one knot
+#define	KMPH				1.852f  				// kilometers-per-hour in one knot
 #define	MPH					1.1507794				// miles-per-hour in one knot
 #define	KTS					1.0 					// knots in one knot
 #define	LIGHTSPEED			0.000000001716			// lightspeeds in one knot
@@ -77,9 +77,7 @@ typedef struct GPS{
 
 typedef struct Location{
 	float latitude;
-	char northOrSouth;
 	float longitude;
-	char westOrEast;
 	float speedInKMH;
 	float heading;
 }Location;
@@ -93,5 +91,7 @@ void gps_init(GPS *gps);
 int gps_parse(GPS *gps, char *sentence, uint8_t len);
 
 void gps_get_location(GPS *gps, Location *pLoc);
+
+float nmea_decimal(char* s);
 
 #endif /* NMEA_H_ */

@@ -66,7 +66,7 @@ typedef struct{
 
 	uint8_t run_mode;		// the run mode ,could be 0|1|2
 
-	uint8_t unused;			// reserved
+	uint8_t smart_beacon;	// smart beacon mode 0 | 1
 } SettingsData;
 
 

@@ -25,6 +25,7 @@
 #include "utils.h"
 #include <drv/ser.h>
 #include <drv/timer.h>
+#include <math.h>
 
 static beacon_exit_callback_t exitCallback = 0;
 
@@ -106,6 +107,20 @@ void beacon_send_fixed(void){
 	}
 }
 
+#define SB_LOW_SPEED 5.0f		// 5KM/h
+#define SB_HI_SPEED 100.0f		// 80KM/H
+
+#define SB_SLOW_RATE 300		// 300s
+#define SB_FAST_RATE 60			// 60s
+
+#define SB_FIXED_RATE 30		// 45s
+
+#define SB_TURN_TIME 15
+#define SB_TURN_MIN 10
+#define SB_TURN_SLOPE 240.f
+
+
+#define SMART_BEACON 0
 /*
  * smart beacon algorithm
  */
@@ -114,16 +129,39 @@ void beacon_update_location(struct GPS *gps){
 		return;
 	}
 
+	// get location data
+	Location location;
+	gps_get_location(gps,&location);
+
+	float beaconRate = SB_FIXED_RATE;
+
+#if SMART_BEACON
+	// smart beacon algorithm - http://www.hamhud.net/hh2/smartbeacon.html
+	if(location.speedInKMH < SB_LOW_SPEED){
+		beaconRate = SB_SLOW_RATE;
+	}else{
+		if(location.speedInKMH > SB_HI_SPEED){
+			beaconRate = SB_FAST_RATE;
+		}else{
+			//beaconRate = (float)SB_FAST_RATE * (SB_HI_SPEED / location.speedInKMH);
+			beaconRate = SB_FAST_RATE + (SB_SLOW_RATE - SB_FAST_RATE) * (SB_HI_SPEED - location.speedInKMH) / (SB_HI_SPEED-SB_LOW_SPEED);
+		}
+	}
+
+	SERIAL_PRINTF_P((&g_serial),PSTR("rate: %d, speed: %d\r\n"),(uint16_t)rate, lroundf(location.speedInKMH));
+#endif
+	mtime_t rate = lroundf(beaconRate);
+
 	static ticks_t ts = 0;
 	// first time will always trigger the send
-	if(ts == 0 || timer_clock() - ts > ms_to_ticks(30000)){
+	if(ts == 0 || timer_clock() - ts > ms_to_ticks(rate * 1000)){
 		// payload
 		char payload[48];
 		char s1 = g_settings.symbol[0];
 		if(s1 == 0) s1 = '/';
 		char s2 = g_settings.symbol[1];
 		if(s2 == 0) s2 = '>';
-		uint8_t payloadLen = snprintf_P(payload,63,PSTR("!%.7s%c%c%.8s%c%cTinyAPRS Rocks"),
+		uint8_t payloadLen = snprintf_P(payload,63,PSTR("!%.7s%c%c%.8s%c%cTinyAPRS"),
 				gps->_term[GPRMC_TERM_LATITUDE],gps->_term[GPRMC_TERM_LATITUDE_NS][0],
 				s1,
 				gps->_term[GPRMC_TERM_LONGITUDE],gps->_term[GPRMC_TERM_LONGITUDE_WE][0],

@@ -360,6 +360,26 @@ static bool cmd_settings_raw_packet(Serial* pSer, char* value, size_t valueLen){
 }
 #endif
 
+
+/*
+ * AT+SB=1 enable/disable smart beacon
+ */
+static bool cmd_settings_smartbeacon(Serial* pSer, char* value, size_t valueLen){
+	(void)pSer;
+	if(valueLen == 1){
+		if(value[0] == '0' && g_settings.smart_beacon == 1){
+			g_settings.smart_beacon = 0;
+			settings_save();
+		}else if(value[0] == '1' && g_settings.smart_beacon == 0){
+			g_settings.smart_beacon = 1;
+			settings_save();
+		}
+	}
+	SERIAL_PRINTF_P(pSer, PSTR("smart beacon: %d\n\r"),g_settings.smart_beacon);
+	return true;
+}
+
+
 #endif // end of #if ENABLE_CONSOLE_AT_COMMANDS
 
 #if CONSOLE_TEST_COMMAND_ENABLED
@@ -402,7 +422,6 @@ static bool cmd_send(Serial* pSer, char* value, size_t len){
 }
 #endif
 
-
 /*
  * Console Initialization Routine
  */
@@ -419,6 +438,9 @@ void console_init(){
     console_add_command(PSTR("PATH"),cmd_settings_path);		// setup path like WIDEn-N for beaco
     console_add_command(PSTR("RESET"),cmd_settings_reset);				// reset the tnc
     console_add_command(PSTR("SYMBOL"),cmd_settings_symbol);	// setup the beacon symbol
+
+    console_add_command(PSTR("SB"),cmd_settings_smartbeacon);	// setup the beacon symbol
+
 	#if SETTINGS_SUPPORT_BEACON_TEXT
     console_add_command(PSTR("RAW"),cmd_settings_raw_packet);
 	#endif

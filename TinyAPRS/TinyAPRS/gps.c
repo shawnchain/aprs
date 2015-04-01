@@ -29,7 +29,6 @@
 #define RAD_TO_DEG 57.295779513082320876798154814105
 
 static int nmea_dehex(char a);
-static float nmea_decimal(char* s);
 
 void gps_init(GPS *gps){
 	memset(gps,0,sizeof(GPS));
@@ -95,7 +94,7 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len){
 			// when parity is zero, checksum was correct!
 			if (parity == 0) {
 				// store values of relevant GPRMC terms
-				gps->valid = (gps->_term[GPRMC_TERM_STATUS])[0] == 'A';
+				gps->valid = ((gps->_term[GPRMC_TERM_STATUS])[0] == 'A');
 				/*
 				if(terms >5){
 					// lat/lon in APRS  is always: hhmm.ssN/hhhmm.ssE
@@ -137,7 +136,7 @@ static int nmea_dehex(char a) {
 	}
 }
 
-static float nmea_decimal(char* s) {
+float nmea_decimal(char* s) {
 	// returns base-10 value of zero-termindated string
 	// that contains only chars '+','-','0'-'9','.';
 	// does not trap invalid strings!

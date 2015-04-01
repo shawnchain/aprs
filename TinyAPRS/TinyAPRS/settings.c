@@ -30,6 +30,7 @@ SettingsData g_settings = {
 		//.location={30,14,0,'N',120,0,9,'E'},
 		//.phgd={0,0,0,0},
 		//.comments="TinyAPRS Rocks!",
+		.smart_beacon=0,
 };
 
 #define NV_SETTINGS_HEAD_BYTE_VALUE 0x88
