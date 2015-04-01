@@ -173,13 +173,12 @@ void beacon_update_location(struct GPS *gps){
 
 #if 1
 		_beacon_send(payload,payloadLen);
+		ts = timer_clock();
 #else   // DEBUG DUMP
 		kfile_print((&(g_serial.fd)),payload);
 		kfile_putc('\r', &(g_serial.fd));
 		kfile_putc('\n', &(g_serial.fd));
 #endif
-
-		ts = timer_clock();
 	}
 
 #if 0
