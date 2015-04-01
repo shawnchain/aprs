@@ -133,7 +133,10 @@ static void serial_read_line_callback(char* line, uint8_t len){
 		case MODE_TRACKER:
 #if CFG_GPS_ENABLED
 			if(gps_parse(&g_gps,line,len) && g_gps.valid){
+				AFSK_LED_RX_ON();
 				beacon_update_location(&g_gps);
+			}else{
+				AFSK_LED_RX_OFF();
 			}
 #endif
 			break;
