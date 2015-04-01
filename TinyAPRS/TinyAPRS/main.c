@@ -85,11 +85,11 @@ static RunMode currentMode = MODE_CFG;
  */
 static void ax25_msg_callback(struct AX25Msg *msg){
 	switch(currentMode){
-	case MODE_CFG:{
+	case MODE_CFG:
 		// Print received message to serial
-		ax25_print(&(g_serial.fd),msg); // less code but need 16 bytes of ram
+		ax25_print(&(g_serial.fd),msg);
 		break;
-	}
+
 	case MODE_KISS:
 		kiss_send_host(0x00/*kiss port id*/,g_ax25.buf,g_ax25.frm_len - 2);
 		break;

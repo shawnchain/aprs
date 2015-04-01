@@ -78,6 +78,6 @@
  *
  * $WIZ$ type = "boolean"
  */
-#define CONFIG_AX25_DEBUG_PRINT_MESSAGE_COUNT 0
+#define CONFIG_AX25_DEBUG_PRINT_MESSAGE_COUNT 1
 
 #endif /* CFG_AX25_H */

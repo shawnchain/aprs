@@ -68,7 +68,7 @@ static void _beacon_send(char* payload, uint8_t payloadLen){
 
 	// dest call: APTI01
 	uint8_t len = 6;
-	snprintf_P((char*)&(path[0].call),6,PSTR("APTI01"));
+	memcpy_P((char*)&(path[0].call),PSTR("APTI01"),6);
 
 	// src call: MyCALL-SSID
 	settings_get(SETTINGS_MY_CALL,&(path[1].call),&len);
@@ -151,26 +151,29 @@ void beacon_update_location(struct GPS *gps){
 	SERIAL_PRINTF_P((&g_serial),PSTR("rate: %d, speed: %d\r\n"),(uint16_t)rate, lroundf(location.speedInKMH));
 #endif
 	mtime_t rate = lroundf(beaconRate);
-
 	static ticks_t ts = 0;
 	// first time will always trigger the send
 	if(ts == 0 || timer_clock() - ts > ms_to_ticks(rate * 1000)){
 		// payload
-		char payload[48];
+		char payload[64];
 		char s1 = g_settings.symbol[0];
 		if(s1 == 0) s1 = '/';
 		char s2 = g_settings.symbol[1];
 		if(s2 == 0) s2 = '>';
-		uint8_t payloadLen = snprintf_P(payload,63,PSTR("!%.7s%c%c%.8s%c%cTinyAPRS"),
+		uint8_t payloadLen = snprintf_P(payload,63,PSTR("!%.7s%c%c%.8s%c%c%03d/%03dTinyAPRS"),
 				gps->_term[GPRMC_TERM_LATITUDE],gps->_term[GPRMC_TERM_LATITUDE_NS][0],
 				s1,
 				gps->_term[GPRMC_TERM_LONGITUDE],gps->_term[GPRMC_TERM_LONGITUDE_WE][0],
-				s2);
+				s2,
+				nmea_decimal_int(gps->_term[GPRMC_TERM_HEADING]), // CSE
+				nmea_decimal_int(gps->_term[GPRMC_TERM_SPEED])  // SPD, see APRS101 P27
+				);
 
+		// TODO support /A=aaaaaa altitude?
+
+#if 1
 		_beacon_send(payload,payloadLen);
-		//ax25_sendVia(&g_ax25, path, countof(path), payload, payloadLen);
-
-#if 0	// DEBUG DUMP
+#else   // DEBUG DUMP
 		kfile_print((&(g_serial.fd)),payload);
 		kfile_putc('\r', &(g_serial.fd));
 		kfile_putc('\n', &(g_serial.fd));
