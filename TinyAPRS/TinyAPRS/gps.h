@@ -92,6 +92,8 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len);
 
 void gps_get_location(GPS *gps, Location *pLoc);
 
-float nmea_decimal(char* s);
+float nmea_decimal_float(char* s);
+
+uint16_t nmea_decimal_int(char* s);
 
 #endif /* NMEA_H_ */
