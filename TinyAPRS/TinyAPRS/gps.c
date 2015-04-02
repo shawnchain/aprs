@@ -47,14 +47,14 @@ void gps_init(GPS *gps){
 	PGM_P pstr_baudrate_P = PSTR("$PSRF100,1,9600,8,1,0*0D\r\n"  /** Sets baud to 9600*/
 							   );
 	ser_setbaudrate(&g_serial, 4800L);
-	timer_delay(50);
+	timer_delay(150);
 	ser_purge(&g_serial);
 	for (i = 0; i < strlen_P(pstr_baudrate_P); i++){
 		kfile_putc(pgm_read_byte(pstr_baudrate_P + i),&(g_serial.fd));
 	}
-	timer_delay(50);
+	timer_delay(150);
 	ser_setbaudrate(&g_serial, 9600L);
-	timer_delay(50);
+	timer_delay(150);
 	ser_purge(&g_serial);
 	PGM_P pstr_config_P = PSTR("$PSRF103,1,0,0,1*25\r\n" 		/** Disables GPGLL */
 							   "$PSRF103,2,0,0,1*26\r\n" 		/** Disables GPGSA */
