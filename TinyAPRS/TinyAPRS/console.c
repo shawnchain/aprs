@@ -129,7 +129,7 @@ void console_parse_command(char* command, size_t commandLen){
 	if(key == NULL && value == NULL){
 		// bail out
 		SERIAL_PRINTF_P(pSer,PSTR("INVALID CMD: %.*s\r\n"),commandLen,command);
-		cmd_info(pSer,0,0);
+		//cmd_info(pSer,0,0);
 		return;
 	}
 

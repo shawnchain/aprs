@@ -18,6 +18,8 @@
 #include <string.h>
 #include <cfg/compiler.h>
 #include <drv/timer.h>
+#include "global.h"
+#include <drv/ser.h>
 
 static uint8_t _buf[READ_BUF_SIZE + 1];
 
@@ -30,8 +32,9 @@ void reader_init(Reader *reader, struct KFile *fd, ReaderCallback callback){
 }
 
 void reader_poll(Reader *reader){
-
-	int c = kfile_getc(reader->fd);
+	//FIXME - kfile_getc(fd) may cause error here!!!!!
+	//kfile_getc(reader->fd);
+	int c = ser_getchar_nowait(&g_serial);
 	if(c == EOF)  return;
 
 	uint8_t *readBuffer = reader->buf;

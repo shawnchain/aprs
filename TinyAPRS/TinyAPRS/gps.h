@@ -96,4 +96,11 @@ float nmea_decimal_float(char* s);
 
 uint16_t nmea_decimal_int(char* s);
 
+
+/*
+ * FIXME temporary solution for GPS signal indicator
+ */
+#define GPS_LED_INIT() do { DDRB |= BV(5);/*PIN13, PIN10*/ } while (0)
+#define GPS_LED_ON()   do { PORTB |= BV(5); } while (0) // PIN9
+#define GPS_LED_OFF()  do { PORTB &= ~BV(5); } while (0)
 #endif /* NMEA_H_ */

@@ -132,12 +132,18 @@ static void serial_read_line_callback(char* line, uint8_t len){
 
 		case MODE_TRACKER:
 #if CFG_GPS_ENABLED
+#if 1
+			kfile_print((&(g_serial.fd)),line);
+			kfile_putc('\r', &(g_serial.fd));
+			kfile_putc('\n', &(g_serial.fd));
+#else
 			if(gps_parse(&g_gps,line,len) && g_gps.valid){
-				AFSK_LED_RX_ON();
+//				AFSK_LED_RX_ON();
 				beacon_update_location(&g_gps);
 			}else{
-				AFSK_LED_RX_OFF();
+//				AFSK_LED_RX_OFF();
 			}
+#endif
 #endif
 			break;
 
@@ -256,7 +262,7 @@ static void init(void)
     // For some reason BertOS sets the serial
     // to 7 bit characters by default. We set
     // it to 8 instead.
-    UCSR0C = _BV(UCSZ01) | _BV(UCSZ00);
+    UCSR0C = _BV(UCSZ01) | _BV(UCSZ00); // see ATMEGA328P datasheet P197, Table 20-11. UCSZn Bits Settings
 
     // Load settings first
     settings_load();
