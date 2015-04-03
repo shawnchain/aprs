@@ -34,6 +34,4 @@
 	#define CONSOLE_MAX_COMMAND	4					// How many AT commands to support
 #endif
 
-#define CONSOLE_SERIAL_BUF_LEN 32					// The serial console command buffer, by default will be 32 bytes only
-
 #endif /* CFG_CONSOLE_H_ */

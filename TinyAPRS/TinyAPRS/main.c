@@ -132,7 +132,7 @@ static void serial_read_line_callback(char* line, uint8_t len){
 
 		case MODE_TRACKER:
 #if CFG_GPS_ENABLED
-#if 1
+#if 0
 			kfile_print((&(g_serial.fd)),line);
 			kfile_putc('\r', &(g_serial.fd));
 			kfile_putc('\n', &(g_serial.fd));
