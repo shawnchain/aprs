@@ -154,7 +154,8 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len){
 					gps->_lon[9] = 0;
 				}
 				*/
-				GPS_LED_ON();
+				if(gps->valid)
+					GPS_LED_ON();
 				return 1;
 			}
 			break;
