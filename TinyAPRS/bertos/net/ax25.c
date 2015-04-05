@@ -361,7 +361,7 @@ void ax25_print(KFile *ch, const AX25Msg *msg)
 {
 
 #if CPU_AVR
-	char buf[64];
+	char buf[16];
 #endif
 
 #if	CONFIG_AX25_DEBUG_PRINT_MESSAGE_COUNT
@@ -390,11 +390,15 @@ void ax25_print(KFile *ch, const AX25Msg *msg)
 	}
 	#endif
 
-#if CPU_AVR
-	snprintf_P(buf,61, PSTR(":%.*s\n"),msg->len,msg->info);
-	kfile_print(ch,buf);
+#if 1
+	//NOTE - snprintf_P seems not support %.*s, so we use kfile_printf instead
+	// to save ram, first use strncpy_P to copy the format string from PROGMEM
+	//sprintf_P(buf,PSTR(":%.*s\n\r"),(msg->len>61?61:msg->len),msg->info);
+	//	kfile_print(ch,buf);
+	strncpy_P(buf,PSTR(":%.*s\n\r"),10);
+	kfile_printf(ch, buf, msg->len, msg->info);
 #else
-	kfile_printf(ch, ":%.*s\n", msg->len, msg->info);
+	kfile_printf(ch, ":%.*s\n\r", msg->len, msg->info);
 #endif
 }
 
