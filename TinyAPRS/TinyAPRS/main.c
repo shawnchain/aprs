@@ -282,7 +282,7 @@ static void init(void)
 
 	// Initialize the kiss module
 	// FIXME - use shared memory
-	kiss_init(&(g_serial.fd),g_shared_buf, SHARED_BUF_LEN, &g_ax25,&g_afsk,kiss_mode_exit_callback);
+	kiss_init(&(g_serial.fd),g_shared_buf, SHARED_BUF_LEN, kiss_mode_exit_callback);
 
 	// Initialize the beacon module
     beacon_init(beacon_mode_exit_callback);

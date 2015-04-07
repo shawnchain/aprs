@@ -7,12 +7,11 @@
 #define LOG_FORMAT KISS_LOG_FORMAT
 #include <cfg/log.h>
 
+#include "global.h"
 
 #define KISS_QUEUE CONFIG_KISS_QUEUE
 
 KFile *kiss_fd;
-AX25Ctx *kiss_ax25;
-Afsk *kiss_afsk;
 
 static kiss_exit_callback_t exitCallback = 0;
 
@@ -22,8 +21,6 @@ uint8_t kiss_queue_state;
 size_t kiss_queue_len = 0;
 struct Kiss_msg kiss_queue[KISS_QUEUE];
 #endif
-
-
 
 uint8_t kiss_txdelay;
 uint8_t kiss_txtail;
@@ -35,7 +32,7 @@ static void kiss_cmd_process(struct Kiss_msg *k);
 
 static struct Kiss_msg k = {.pos = 0};
 
-void kiss_init(KFile *fd, uint8_t *buf, uint16_t bufLen, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook)
+void kiss_init(KFile *fd, uint8_t *buf, uint16_t bufLen, kiss_exit_callback_t hook)
 {
 	kiss_txdelay = 50;
 	kiss_persistence = 63;
@@ -44,8 +41,6 @@ void kiss_init(KFile *fd, uint8_t *buf, uint16_t bufLen, AX25Ctx *ax25, Afsk *af
 	kiss_duplex = KISS_DUPLEX_HALF;
 
 	kiss_fd = fd;
-	kiss_ax25 = ax25;
-	kiss_afsk = afsk;
 
 	exitCallback = hook;
 
@@ -189,13 +184,13 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 
 #define ACTIVE_CSMA_ENABLED 1
 #if KISS_QUEUE == 0 && ACTIVE_CSMA_ENABLED == 1
-static void kiss_csma(AX25Ctx *ctx, uint8_t *buf, size_t len) {
+static void kiss_csma(AX25Ctx *ax25Ctx, uint8_t *buf, size_t len) {
 	bool sent = false;
 	while (!sent) {
-		if (!/*ctx->dcd*/kiss_afsk->hdlc.rxstart) {
+		if (!/*ctx->dcd*/(&g_afsk)->hdlc.rxstart) {
 			uint8_t tp = rand() & 0xFF;
 			if (tp < kiss_persistence) {
-				ax25_sendRaw(ctx, buf, len);
+				ax25_sendRaw(ax25Ctx, buf, len);
 				sent = true;
 			} else {
 				ticks_t start = timer_clock();
@@ -204,16 +199,16 @@ static void kiss_csma(AX25Ctx *ctx, uint8_t *buf, size_t len) {
 				}
 			}
 		} else {
-			while (!sent && /*kiss_ax25->dcd*/ kiss_afsk->hdlc.rxstart) {
+			while (!sent && /*kiss_ax25->dcd*/ (&g_afsk)->hdlc.rxstart) {
 				// Continously poll the modem for data
 				// while waiting, so we don't overrun
 				// receive buffers
-				ax25_poll(ctx);
-				if (kiss_afsk->status != 0) {
+				ax25_poll(ax25Ctx);
+				if ((&g_afsk)->status != 0) {
 					// If an overflow or other error
 					// occurs, we'll back off and drop
 					// this packet silently.
-					kiss_afsk->status = 0;
+					(&g_afsk)->status = 0;
 					sent = true;
 				}
 			}
@@ -234,9 +229,9 @@ void kiss_queue_message(/*channel = 0*/ uint8_t *buf, size_t len){
 	LOG_INFO("Kiss - queue disabled, sending message\n");
 #if ACTIVE_CSMA_ENABLED
 	// perform an active CSMA detection here
-	kiss_csma(kiss_ax25, buf, len);
+	kiss_csma(&g_ax25, buf, len);
 #else
-	ax25_sendRaw(kiss_ax25, buf, len);
+	ax25_sendRaw(&g_ax25, buf, len);
 #endif
 
 #endif

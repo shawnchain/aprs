@@ -49,7 +49,13 @@ struct Kiss_msg {
 	ticks_t last_tick;      // timestamp of last byte into buf
 };
 
-void kiss_init(KFile *fd, uint8_t *buf, uint16_t bufLen, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook);
+/*
+typedef struct KISS{
+
+}KISS;
+*/
+
+void kiss_init(KFile *fd, uint8_t *buf, uint16_t bufLen, kiss_exit_callback_t hook);
 void kiss_serial_poll(void);
 void kiss_queue_message(uint8_t *buf, size_t len);
 void kiss_queue_process(void);
