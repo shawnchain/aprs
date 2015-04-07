@@ -61,6 +61,9 @@ AX25Ctx g_ax25;
 Serial g_serial;
 static Reader serialReader;
 
+#define SHARED_BUF_LEN CONFIG_AX25_FRAME_BUF_LEN //shared buffer is 330 bytes for KISS module reading received AX25 frame.
+uint8_t g_shared_buf[SHARED_BUF_LEN];
+
 #define ADC_CH 0
 #define DAC_CH 0
 #define SER_BAUD_RATE_9600 9600L
@@ -243,9 +246,6 @@ static void check_run_mode(void){
 		ts = timer_clock_unlocked(); // update the timestamp
 	}
 }
-
-#define SHARED_BUF_LEN 330
-uint8_t g_shared_buf[SHARED_BUF_LEN];
 
 static void init(void)
 {
