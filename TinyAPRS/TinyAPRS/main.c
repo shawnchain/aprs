@@ -244,6 +244,9 @@ static void check_run_mode(void){
 	}
 }
 
+#define SHARED_BUF_LEN 330
+uint8_t g_shared_buf[SHARED_BUF_LEN];
+
 static void init(void)
 {
 
@@ -278,7 +281,8 @@ static void init(void)
 	g_ax25.pass_through = false;
 
 	// Initialize the kiss module
-	kiss_init(&(g_serial.fd),&g_ax25,&g_afsk,kiss_mode_exit_callback);
+	// FIXME - use shared memory
+	kiss_init(&(g_serial.fd),g_shared_buf, SHARED_BUF_LEN, &g_ax25,&g_afsk,kiss_mode_exit_callback);
 
 	// Initialize the beacon module
     beacon_init(beacon_mode_exit_callback);
@@ -290,7 +294,7 @@ static void init(void)
     radio_init(&softSer,431, 400);
 #endif
 
-    reader_init(&serialReader,&(g_serial.fd),serial_read_line_callback);
+    reader_init(&serialReader,g_shared_buf, SHARED_BUF_LEN, &(g_serial.fd),serial_read_line_callback);
 
     // Initialize GPS NMEA/GPRMC parser
 #if CFG_GPS_ENABLED

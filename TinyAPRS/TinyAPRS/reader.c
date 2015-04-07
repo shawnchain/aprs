@@ -21,13 +21,12 @@
 #include "global.h"
 #include <drv/ser.h>
 
-static uint8_t _line_buf[READ_BUF_SIZE + 1];
-
-void reader_init(Reader *reader, struct KFile *fd, ReaderCallback callback){
+void reader_init(Reader *reader, uint8_t *buf, uint16_t bufLen, struct KFile *fd, ReaderCallback callback){
 	memset(reader, 0, sizeof(Reader));
 	(void)fd;
 	//reader->fd = fd;
-	//reader->buf = _buf;
+	reader->buf = buf;
+	reader->bufLen = bufLen;
 	reader->readLen = 0;
 	reader->callback = callback;
 }
@@ -38,7 +37,7 @@ void reader_poll(Reader *reader){
 	int c = ser_getchar_nowait(&g_serial);
 	if(c == EOF)  return;
 
-	uint8_t *readBuffer = _line_buf;
+	uint8_t *readBuffer = reader->buf;
 #if READ_TIMEOUT > 0
 	static ticks_t lastReadTick = 0;
 	if((reader->readLen > 0) && (timer_clock() - lastReadTick > ms_to_ticks(READ_TIMEOUT)) ){
@@ -48,7 +47,7 @@ void reader_poll(Reader *reader){
 #endif
 
 	// read until met CR/LF/EOF or buffer is full
-	if ((reader->readLen >= READ_BUF_SIZE) || (c == '\r') || (c == '\n') || (c == EOF) ) {
+	if ((reader->readLen >= reader->bufLen) || (c == '\r') || (c == '\n') || (c == EOF) ) {
 		if(reader->readLen > 0){
 			readBuffer[reader->readLen] = 0; // complete the buffered string
 			if(reader->callback){

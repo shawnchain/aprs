@@ -22,18 +22,18 @@
 
 //Reader parameters
 #define READ_TIMEOUT 0
-#define READ_BUF_SIZE 128
 
 typedef void (*ReaderCallback)(char* line, uint8_t len);
 
 typedef struct Reader{
 //	struct KFile *fd;
-//	uint8_t* buf;
+	uint8_t* buf;
+	uint16_t bufLen;
 	uint8_t readLen; // Counter for counting length of data from serial
 	ReaderCallback callback;
 }Reader;
 
-void reader_init(Reader *pReader,struct KFile *fd,ReaderCallback callback);
+void reader_init(Reader *pReader,uint8_t *buf, uint16_t bufLen, struct KFile *fd,ReaderCallback callback);
 
 void reader_poll(Reader *pReader);
 

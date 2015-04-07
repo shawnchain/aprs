@@ -33,7 +33,9 @@ uint8_t kiss_duplex;
 
 static void kiss_cmd_process(struct Kiss_msg *k);
 
-void kiss_init(KFile *fd, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook)
+static struct Kiss_msg k = {.pos = 0};
+
+void kiss_init(KFile *fd, uint8_t *buf, uint16_t bufLen, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook)
 {
 	kiss_txdelay = 50;
 	kiss_persistence = 63;
@@ -46,9 +48,12 @@ void kiss_init(KFile *fd, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook)
 	kiss_afsk = afsk;
 
 	exitCallback = hook;
-}
 
-static struct Kiss_msg k = {.pos = 0};
+	//NOTE - Atmega328P has limited 2048 RAM, so here we have to use shared read buffer to save memory
+	// NO queue for kiss message
+	k.buf = buf;			// Shared buffer
+	k.bufLen = bufLen; // buffer length, should be >= CONFIG_AX25_FRAME_BUF_LEN
+}
 
 INLINE void kiss_parse(int c){
 	static bool escaped = false;
@@ -60,8 +65,8 @@ INLINE void kiss_parse(int c){
 	}
 
 	// about to overflow buffer? reset
-	if (k.pos >= (CONFIG_AX25_FRAME_BUF_LEN - 2)) {
-		LOG_INFO("Serial - Packet too long %d >= %d\n", k.pos, CONFIG_AX25_FRAME_BUF_LEN - 2);
+	if (k.pos >= (k.bufLen - 2)) {
+		LOG_INFO("Serial - Packet too long %d >= %d\n", k.pos, k.bufLen - 2);
 		k.pos = 0;
 	}
 

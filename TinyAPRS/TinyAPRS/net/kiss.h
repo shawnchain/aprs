@@ -42,13 +42,14 @@ enum {
 typedef void (*kiss_exit_callback_t)(void);
 
 struct Kiss_msg {
-	uint8_t buf[ CONFIG_AX25_FRAME_BUF_LEN ];
-	size_t pos;           // next byte to fill
-	ticks_t last_tick;     // timestamp of last byte into buf
+	//uint8_t buf[ CONFIG_AX25_FRAME_BUF_LEN ];
+	uint8_t *buf;
+	uint16_t bufLen;
+	size_t pos;             // next byte to fill
+	ticks_t last_tick;      // timestamp of last byte into buf
 };
 
-void kiss_init(KFile *fd, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook);
-
+void kiss_init(KFile *fd, uint8_t *buf, uint16_t bufLen, AX25Ctx *ax25, Afsk *afsk, kiss_exit_callback_t hook);
 void kiss_serial_poll(void);
 void kiss_queue_message(uint8_t *buf, size_t len);
 void kiss_queue_process(void);
