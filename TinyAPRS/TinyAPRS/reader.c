@@ -21,12 +21,13 @@
 #include "global.h"
 #include <drv/ser.h>
 
-static uint8_t _buf[READ_BUF_SIZE + 1];
+static uint8_t _line_buf[READ_BUF_SIZE + 1];
 
 void reader_init(Reader *reader, struct KFile *fd, ReaderCallback callback){
 	memset(reader, 0, sizeof(Reader));
-	reader->fd = fd;
-	reader->buf = _buf;
+	(void)fd;
+	//reader->fd = fd;
+	//reader->buf = _buf;
 	reader->readLen = 0;
 	reader->callback = callback;
 }
@@ -37,7 +38,7 @@ void reader_poll(Reader *reader){
 	int c = ser_getchar_nowait(&g_serial);
 	if(c == EOF)  return;
 
-	uint8_t *readBuffer = reader->buf;
+	uint8_t *readBuffer = _line_buf;
 #if READ_TIMEOUT > 0
 	static ticks_t lastReadTick = 0;
 	if((reader->readLen > 0) && (timer_clock() - lastReadTick > ms_to_ticks(READ_TIMEOUT)) ){

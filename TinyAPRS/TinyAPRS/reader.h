@@ -27,8 +27,8 @@
 typedef void (*ReaderCallback)(char* line, uint8_t len);
 
 typedef struct Reader{
-	struct KFile *fd;
-	uint8_t* buf;
+//	struct KFile *fd;
+//	uint8_t* buf;
 	uint8_t readLen; // Counter for counting length of data from serial
 	ReaderCallback callback;
 }Reader;
