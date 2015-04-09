@@ -115,11 +115,11 @@ void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType
 /*
  * get the beacon text
  */
-uint8_t settings_get_raw_packet(char* buf, uint8_t bufLen);
+uint8_t settings_get_beacon_text(char* buf, uint8_t bufLen);
 
 /*
  * set the beacon text
  */
-uint8_t settings_set_raw_packet(char* data, uint8_t dataLen);
+uint8_t settings_set_beacon_packet(char* data, uint8_t dataLen);
 
 #endif /* SETTINGS_H_ */

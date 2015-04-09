@@ -129,7 +129,6 @@ void console_parse_command(char* command, size_t commandLen){
 	if(key == NULL && value == NULL){
 		// bail out
 		SERIAL_PRINTF_P(pSer,PSTR("INVALID CMD: %.*s\r\n"),commandLen,command);
-		//cmd_info(pSer,0,0);
 		return;
 	}
 
@@ -147,14 +146,6 @@ void console_parse_command(char* command, size_t commandLen){
 	}
 
 	return;
-}
-
-// Free ram test
-INLINE uint16_t freeRam (void) {
-  extern int __heap_start, *__brkval;
-  uint8_t v;
-  uint16_t vaddr = (uint16_t)(&v);
-  return (uint16_t) (vaddr - (__brkval == 0 ? (uint16_t) &__heap_start : (uint16_t) __brkval));
 }
 
 static bool cmd_info(Serial* pSer, char* value, size_t len){
@@ -192,12 +183,11 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("\r\nAT commands supported\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("-----------------------------------------------------------\r\n"));
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
-	SERIAL_PRINT_P(pSer,PSTR("AT+MYCALL=[CALLSIGN-SSID]\t;Set my callsign\r\n"));
-	//SERIAL_PRINT_P(pSer,PSTR("AT+MYSSID=[SSID]\t\t;Set my ssid only\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+CALL=[CALLSIGN-SSID]\t;Set my callsign\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN-SSID]\t\t;Set destination callsign\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[WIDE1-1,WIDE2-2]\t;Set PATH, max 2 allowed\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+SYMBOL=[SYMBOL_TABLE/IDX]\t;Set beacon symbol\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+RAW=[!3011.54N/12007.35E>..]\t;Set beacon raw text \r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+TEXT=[!3011.54N/12007.35E>..]\t;Set beacon text \r\n"));
 #endif
 	SERIAL_PRINT_P(pSer,PSTR("AT+MODE=[0|1|2]\t\t\t;Set device run mode\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=[1]\t\t\t;Enter kiss mode\r\n"));
@@ -245,7 +235,7 @@ static bool cmd_settings_myssid(Serial* pSer, char* value, size_t len){
 	SERIAL_PRINTF_P(pSer,PSTR( #NAME ": %s\r\n"),buf);
 
 /*
- * parse AT+MYCALL=CALL-ID
+ * parse AT+CALL=CALL-ID
  */
 static bool cmd_settings_mycall(Serial* pSer, char* value, size_t valueLen){
 	_TEMPLATE_SET_SETTINGS_CALL_SSID_(MYCALL,SETTINGS_MY_CALL,SETTINGS_MY_SSID,value,valueLen);
@@ -342,10 +332,10 @@ static bool cmd_settings_symbol(Serial* pSer, char* value, size_t len){
 }
 
 #if SETTINGS_SUPPORT_BEACON_TEXT
-static bool cmd_settings_raw_packet(Serial* pSer, char* value, size_t valueLen){
+static bool cmd_settings_beacon_text(Serial* pSer, char* value, size_t valueLen){
 	if(valueLen > 0){
 		// set the beacon text
-		settings_set_raw_packet(value,valueLen);
+		settings_set_beacon_packet(value,valueLen);
 		//SERIAL_PRINT_P(pSer, "OK\n\r");
 		//return true;
 	}
@@ -355,7 +345,7 @@ static bool cmd_settings_raw_packet(Serial* pSer, char* value, size_t valueLen){
 	#define BUF_LEN SETTINGS_BEACON_TEXT_MAX + 4
 	char buf[BUF_LEN];
 	buf[0] = '>';
-	uint8_t bytesRead = settings_get_raw_packet(buf+1,BUF_LEN - 4);
+	uint8_t bytesRead = settings_get_beacon_text(buf+1,BUF_LEN - 4);
 	buf[bytesRead + 1] = '\n';
 	buf[bytesRead+2] = '\r';
 	buf[bytesRead+3] = 0;
@@ -440,9 +430,9 @@ void console_init(){
 	// Initialize the commands
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
 	// settings
-    console_add_command(PSTR("MYCALL"),cmd_settings_mycall);	// setup my callsign-ssid
-    console_add_command(PSTR("MYSSID"),cmd_settings_myssid);	// setup callsign-ssid
-    console_add_command(PSTR("DEST"),cmd_settings_destcall);		// setup destination call-ssid
+    console_add_command(PSTR("CALL"),cmd_settings_mycall);		// setup my callsign-ssid
+    console_add_command(PSTR("SSID"),cmd_settings_myssid);		// setup callsign-ssid
+    console_add_command(PSTR("DEST"),cmd_settings_destcall);	// setup destination call-ssid
     console_add_command(PSTR("PATH"),cmd_settings_path);		// setup path like WIDEn-N for beaco
     console_add_command(PSTR("RESET"),cmd_settings_reset);				// reset the tnc
     console_add_command(PSTR("SYMBOL"),cmd_settings_symbol);	// setup the beacon symbol
@@ -450,7 +440,7 @@ void console_init(){
     console_add_command(PSTR("SB"),cmd_settings_smartbeacon);	// setup the beacon symbol
 
 	#if SETTINGS_SUPPORT_BEACON_TEXT
-    console_add_command(PSTR("RAW"),cmd_settings_raw_packet);
+    console_add_command(PSTR("TEXT"),cmd_settings_beacon_text);
 	#endif
 #endif
 

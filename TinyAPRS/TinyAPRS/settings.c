@@ -39,10 +39,10 @@ uint8_t EEMEM nvSetHeadByte;
 uint8_t EEMEM nvSettings[NV_SETTINGS_BLOCK_SIZE];
 
 // TODO - support raw packet
-#define NV_RAW_PACKET_HEAD_BYTE_VALUE 0x99
-#define NV_RAW_PACKET_BLOCK_SIZE SETTINGS_BEACON_TEXT_MAX
-uint8_t EEMEM nvRawPacketHeadByte;
-uint8_t EEMEM nvRawPacket[NV_RAW_PACKET_BLOCK_SIZE];
+#define NV_BEACON_TEXT_HEAD_BYTE_VALUE 0x99
+#define NV_BEACON_TEXT_BLOCK_SIZE SETTINGS_BEACON_TEXT_MAX
+uint8_t EEMEM nvBeaconTextHeadByte;
+uint8_t EEMEM nvBeaconText[NV_BEACON_TEXT_BLOCK_SIZE];
 
 /*
  * Load settings
@@ -71,7 +71,7 @@ bool settings_save(void){
  */
 void settings_clear(void){
 	eeprom_update_byte((void*)&nvSetHeadByte, 0xFF);
-	eeprom_update_byte((void*)&nvRawPacketHeadByte, 0xFF);
+	eeprom_update_byte((void*)&nvBeaconTextHeadByte, 0xFF);
 }
 
 #define ABS(a)		(((a) < 0) ? -(a) : (a))
@@ -227,14 +227,14 @@ void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType
 }
 
 //.raw_packet_text="!3014.00N/12009.00E>000/000/A=000087TinyAPRS Rocks!",
-uint8_t settings_get_raw_packet(char* buf, uint8_t bufLen){
-	uint8_t verification = eeprom_read_byte((void*)&nvRawPacketHeadByte);
-	if (verification != NV_RAW_PACKET_HEAD_BYTE_VALUE) {
+uint8_t settings_get_beacon_text(char* buf, uint8_t bufLen){
+	uint8_t verification = eeprom_read_byte((void*)&nvBeaconTextHeadByte);
+	if (verification != NV_BEACON_TEXT_HEAD_BYTE_VALUE) {
 		buf[0] = 0;
 		return 0;
 	}
 	uint8_t bytesToRead = MIN(bufLen,SETTINGS_BEACON_TEXT_MAX);
-	eeprom_read_block((void*)buf, (void*)nvRawPacket, bytesToRead);
+	eeprom_read_block((void*)buf, (void*)nvBeaconText, bytesToRead);
 
 	// like strlen
 	uint8_t i = 0;
@@ -244,10 +244,10 @@ uint8_t settings_get_raw_packet(char* buf, uint8_t bufLen){
 	return i;
 }
 
-uint8_t settings_set_raw_packet(char* data, uint8_t dataLen){
+uint8_t settings_set_beacon_packet(char* data, uint8_t dataLen){
 	uint8_t bytesToWrite = MIN(dataLen,SETTINGS_BEACON_TEXT_MAX - 1);
-	eeprom_update_block((void*)data, (void*)nvRawPacket, bytesToWrite);
-	eeprom_update_byte((void*)(nvRawPacket + bytesToWrite), 0);
-	eeprom_update_byte((void*)&nvRawPacketHeadByte, NV_RAW_PACKET_HEAD_BYTE_VALUE);
+	eeprom_update_block((void*)data, (void*)nvBeaconText, bytesToWrite);
+	eeprom_update_byte((void*)(nvBeaconText + bytesToWrite), 0);
+	eeprom_update_byte((void*)&nvBeaconTextHeadByte, NV_BEACON_TEXT_HEAD_BYTE_VALUE);
 	return bytesToWrite;
 }

@@ -98,7 +98,7 @@ static void _beacon_send(char* payload, uint8_t payloadLen){
 void beacon_send_fixed(void){
 	// payload
 	char payload[80];
-	uint8_t payloadLen = settings_get_raw_packet(payload,80);
+	uint8_t payloadLen = settings_get_beacon_text(payload,80);
 	if(payloadLen == 0){
 		payloadLen = snprintf_P(payload,127,PSTR(APRS_DEFAULT_TEXT)); // the default one for test purpose
 	}
