@@ -42,10 +42,11 @@ typedef enum {
 	SETTINGS_PATH2_SSID,
 	SETTINGS_SYMBOL,
 	SETTINGS_RUN_MODE,
+	SETTINGS_BEACON_INTERVAL,
 }SETTINGS_TYPE;
 
 #define SETTINGS_MAX_SSID 99
-#define SETTINGS_SIZE 32
+#define SETTINGS_SIZE 34
 
 #define SETTINGS_BEACON_TEXT_MAX 128
 
@@ -65,6 +66,8 @@ typedef struct{
 	uint8_t symbol[2];		// Symbol table and the index
 
 	uint8_t run_mode;		// the run mode ,could be 0|1|2
+
+	uint16_t beacon_interval; // Beacon send interval
 
 	uint8_t smart_beacon;	// smart beacon mode 0 | 1
 } SettingsData;

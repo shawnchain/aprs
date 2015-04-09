@@ -15,6 +15,18 @@
  */
 
 #include "settings.h"
+#include "utils.h"
+
+#define DEFAULT_BEACON_INTERVAL 20 * 60 // 20 minutes of beacon send interval
+#define DEFAULT_BEACON_TEXT "!3014.00N/12009.00E>TinyAPRS Rocks!" //
+
+/*
+ * Helper macros
+ */
+#define ABS(a)		(((a) < 0) ? -(a) : (a))
+#define MIN(a,b)	(((a) < (b)) ? (a) : (b))
+#define MAX(a,b)	(((a) > (b)) ? (a) : (b))
+//#include <cfg/macros.h>
 
 // Instance of the settings data. // TODO - Store default settings in the PROGMEM
 SettingsData g_settings = {
@@ -30,6 +42,7 @@ SettingsData g_settings = {
 		//.location={30,14,0,'N',120,0,9,'E'},
 		//.phgd={0,0,0,0},
 		//.comments="TinyAPRS Rocks!",
+		.beacon_interval = 0, // by default beacon is disabled;
 		.smart_beacon=0,
 };
 
@@ -73,10 +86,6 @@ void settings_clear(void){
 	eeprom_update_byte((void*)&nvSetHeadByte, 0xFF);
 	eeprom_update_byte((void*)&nvBeaconTextHeadByte, 0xFF);
 }
-
-#define ABS(a)		(((a) < 0) ? -(a) : (a))
-#define MIN(a,b)	(((a) < (b)) ? (a) : (b))
-#define MAX(a,b)	(((a) > (b)) ? (a) : (b))
 
 static void settings_copy_call_value(const char* call, char* buf, uint8_t *len){
 	memset(buf, 0, 7);
@@ -131,6 +140,10 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 			*((uint8_t*)valueOut) = g_settings.run_mode;
 			*pValueOutLen = 1;
 			break;
+		case SETTINGS_BEACON_INTERVAL:
+			*((uint16_t*)valueOut) = g_settings.beacon_interval;
+			*pValueOutLen = 2;
+			break;
 		default:
 			*pValueOutLen = 0;
 			break;
@@ -176,6 +189,9 @@ void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
 			break;
 		case SETTINGS_RUN_MODE:
 			g_settings.run_mode = *((uint8_t*)value);
+			break;
+		case SETTINGS_BEACON_INTERVAL:
+			g_settings.beacon_interval =  *((uint16_t*)value);
 			break;
 		default:
 			break;
@@ -226,12 +242,11 @@ void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType
 	}
 }
 
-//.raw_packet_text="!3014.00N/12009.00E>000/000/A=000087TinyAPRS Rocks!",
+//#define DEFAULT_BEACON_TEXT "!3014.00N/12009.00E>000/000/A=000087TinyAPRS Rocks!"
 uint8_t settings_get_beacon_text(char* buf, uint8_t bufLen){
 	uint8_t verification = eeprom_read_byte((void*)&nvBeaconTextHeadByte);
 	if (verification != NV_BEACON_TEXT_HEAD_BYTE_VALUE) {
-		buf[0] = 0;
-		return 0;
+		return snprintf_P(buf,bufLen,PSTR(DEFAULT_BEACON_TEXT));
 	}
 	uint8_t bytesToRead = MIN(bufLen,SETTINGS_BEACON_TEXT_MAX);
 	eeprom_read_block((void*)buf, (void*)nvBeaconText, bytesToRead);
