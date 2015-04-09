@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <io/kfile.h>
+#include <drv/ser.h>
 
 //Reader parameters
 #define READ_TIMEOUT 0
@@ -33,8 +34,7 @@ typedef struct Reader{
 	ReaderCallback callback;
 }Reader;
 
-void reader_init(Reader *pReader,uint8_t *buf, uint16_t bufLen, struct KFile *fd,ReaderCallback callback);
-
-void reader_poll(Reader *pReader);
+void reader_init(uint8_t *buf, uint16_t bufLen, ReaderCallback callback);
+void reader_poll(Serial *pSerial);
 
 #endif /* READER_H_ */

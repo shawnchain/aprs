@@ -21,22 +21,26 @@
 #include "global.h"
 #include <drv/ser.h>
 
-void reader_init(Reader *reader, uint8_t *buf, uint16_t bufLen, struct KFile *fd, ReaderCallback callback){
-	memset(reader, 0, sizeof(Reader));
-	(void)fd;
-	//reader->fd = fd;
+
+static Reader g_reader;
+
+
+void reader_init(uint8_t *buf, uint16_t bufLen, ReaderCallback callback){
+	memset(&g_reader, 0, sizeof(Reader));
+	Reader *reader = &g_reader;
 	reader->buf = buf;
 	reader->bufLen = bufLen;
 	reader->readLen = 0;
 	reader->callback = callback;
 }
 
-void reader_poll(Reader *reader){
+void reader_poll(Serial *pSerial){
 	//FIXME - kfile_getc(fd) may cause error here!!!!!
 	//kfile_getc(reader->fd);
-	int c = ser_getchar_nowait(&g_serial);
+	int c = ser_getchar_nowait(pSerial);
 	if(c == EOF)  return;
 
+	Reader *reader = &g_reader;
 	uint8_t *readBuffer = reader->buf;
 #if READ_TIMEOUT > 0
 	static ticks_t lastReadTick = 0;
