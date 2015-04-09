@@ -68,6 +68,13 @@ struct AX25Msg; // fwd declaration
  */
 typedef void (*ax25_callback_t)(struct AX25Msg *msg);
 
+#if CONFIG_AX25_STAT
+typedef struct AX25Stat{
+	uint32_t rx_ok;
+	uint32_t tx_ok;
+	uint32_t rx_err;
+}AX25Stat;
+#endif
 
 /**
  * AX25 Protocol context.
@@ -85,6 +92,10 @@ typedef struct AX25Ctx
 	bool escape; ///< True when we have to escape the following char.
 	uint8_t dcd_state;
 	bool dcd;
+
+#if CONFIG_AX25_STAT
+	volatile AX25Stat stat;
+#endif
 } AX25Ctx;
 
 

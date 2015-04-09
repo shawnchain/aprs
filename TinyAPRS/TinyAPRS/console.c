@@ -165,12 +165,20 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS (KISS-TNC/GPS-Beacon) 1.1-SNAPSHOT (f%da%d-%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 
 	// print settings
+	{
 	char buf[16];
 	uint8_t bufLen = sizeof(buf);
 	settings_get_call_fullstring(SETTINGS_MY_CALL,SETTINGS_MY_SSID,buf,bufLen);
 	SERIAL_PRINTF_P(pSer, PSTR("MyCall: %s\r\n"),buf);
+	}
 
 	SERIAL_PRINTF_P(pSer, PSTR("Mode: %d\r\n"),g_settings.run_mode);
+
+	// print the ax25 stat
+#if CONFIG_AX25_STAT
+	SERIAL_PRINTF_P(pSer, PSTR("RX:%d, TX:%d, ERR: %d\r\n"),g_ax25.stat.rx_ok,g_ax25.stat.tx_ok,g_ax25.stat.rx_err);
+#endif
+
 	// print free memory
 	SERIAL_PRINTF_P(pSer,PSTR("Free RAM: %u\r\n"),freeRam());
 

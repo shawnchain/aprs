@@ -56,6 +56,8 @@
 #include <stdio.h>
 #endif
 
+#include <cpu/irq.h>
+
 #if CONFIG_AX25_RPT_LST
 	#define AX25_SET_REPEATED(msg, idx, val) \
 		do \
@@ -164,6 +166,9 @@ void ax25_poll(AX25Ctx *ctx)
 				if (ctx->crc_in == AX25_CRC_CORRECT)
 				{
 					LOG_INFO("Frame found!\n");
+#if CONFIG_AX25_STAT
+					ATOMIC(ctx->stat.rx_ok++);
+#endif
 					if (ctx->pass_through) {
 						if (ctx->hook) {
 							//TODO: make MSG union and pass to hook
@@ -176,6 +181,9 @@ void ax25_poll(AX25Ctx *ctx)
 				else
 				{
 					LOG_INFO("CRC error, computed [%04X]\n", ctx->crc_in);
+#if CONFIG_AX25_STAT
+					ATOMIC(ctx->stat.rx_err++);
+#endif
 				}
 			}
 			ctx->sync = true;
@@ -222,6 +230,9 @@ void ax25_poll(AX25Ctx *ctx)
 				LOG_INFO("Buffer overrun");
 				ctx->sync = false;
 				ctx->dcd = false;
+#if CONFIG_AX25_STAT
+				ATOMIC(ctx->stat.rx_err++);
+#endif
 			}
 		}
 		ctx->escape = false;
@@ -231,6 +242,11 @@ void ax25_poll(AX25Ctx *ctx)
 	{
 		LOG_ERR("Channel error [%04x]\n", kfile_error(ctx->ch));
 		kfile_clearerr(ctx->ch);
+#if CONFIG_AX25_STAT
+		if(ctx->dcd){
+			ATOMIC(ctx->stat.rx_err++);
+		}
+#endif
 		ctx->dcd = false;
 	}
 }
@@ -309,6 +325,10 @@ void ax25_sendVia(AX25Ctx *ctx, const AX25Call *path, size_t path_len, const voi
 	ASSERT(ctx->crc_out == AX25_CRC_CORRECT);
 
 	kfile_putc(HDLC_FLAG, ctx->ch);
+
+#if CONFIG_AX25_STAT
+	ATOMIC(ctx->stat.tx_ok++);
+#endif
 }
 
 void ax25_sendRaw(AX25Ctx *ctx, const void *_buf, size_t len)
@@ -362,16 +382,6 @@ void ax25_print(KFile *ch, const AX25Msg *msg)
 
 #if CPU_AVR
 	char buf[16];
-#endif
-
-#if	CONFIG_AX25_DEBUG_PRINT_MESSAGE_COUNT
-	static uint16_t messageCount = 1;
-#if CPU_AVR
-	sprintf_P(buf,PSTR("%d "),messageCount++);
-	kfile_print(ch,buf);
-#else
-	kfile_printf(ch, "%d ",messageCount++);
-#endif
 #endif
 
 	print_call(ch, &msg->src);

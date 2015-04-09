@@ -73,11 +73,9 @@
 #define CONFIG_AX25_RPT_LST 1
 
 /*
- * Enable debug print of received message.
- * Which will be used for decoding benchmark
- *
+ * Enable the stat info on AX25 frames
  * $WIZ$ type = "boolean"
  */
-#define CONFIG_AX25_DEBUG_PRINT_MESSAGE_COUNT 1
+#define CONFIG_AX25_STAT 1
 
 #endif /* CFG_AX25_H */

@@ -130,7 +130,7 @@ void beacon_update_location(struct GPS *gps){
 	}
 
 	// get location data
-	Location location;
+	Location location; // sizeof(Location) = 16;
 	gps_get_location(gps,&location);
 
 	float beaconRate = SB_FIXED_RATE;
