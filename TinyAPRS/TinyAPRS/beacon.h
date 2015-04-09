@@ -30,23 +30,25 @@ typedef void (*beacon_exit_callback_t)(void);
 void beacon_init(beacon_exit_callback_t exitcb);
 
 /*
- * Force send the beacon message
- */
-void beacon_send_fixed(void);
-
-/*
  * Runloop of the beacon module
  */
 void beacon_poll(void);
 
 /*
- * Set beacon repeats.
+ * Send the beacon text payload
+ */
+void beacon_send_text(void);
+
+struct GPS;
+/*
+ * Send the beacon location
+ */
+void beacon_send_location(struct GPS *gps);
+
+/*
+ * Set beacon repeats. 0 means stop, -1 means infinite send
  * Beacon will exit when reaches the max repeat count
  */
 void beacon_set_repeats(int8_t repeats);
-
-
-struct GPS;
-void beacon_update_location(struct GPS *gps);
 
 #endif /* BEACON_H_ */

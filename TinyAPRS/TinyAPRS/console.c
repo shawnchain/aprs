@@ -187,7 +187,8 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN-SSID]\t\t;Set destination callsign\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[WIDE1-1,WIDE2-2]\t;Set PATH, max 2 allowed\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+SYMBOL=[SYMBOL_TABLE/IDX]\t;Set beacon symbol\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+TEXT=[!3011.54N/12007.35E>..]\t;Set beacon text \r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+BEACON=[45]\t\t;Set beacon interval, 0 to disable \r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+TEXT=[!3011.54N/12007.35E>]\t;Set beacon text \r\n"));
 #endif
 	SERIAL_PRINT_P(pSer,PSTR("AT+MODE=[0|1|2]\t\t\t;Set device run mode\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=[1]\t\t\t;Enter kiss mode\r\n"));
@@ -358,24 +359,39 @@ static bool cmd_settings_beacon_text(Serial* pSer, char* value, size_t valueLen)
 }
 #endif
 
-
-/*
- * AT+SB=1 enable/disable smart beacon
- */
-static bool cmd_settings_smartbeacon(Serial* pSer, char* value, size_t valueLen){
-	(void)pSer;
-	if(valueLen == 1){
-		if(value[0] == '0' && g_settings.smart_beacon == 1){
-			g_settings.smart_beacon = 0;
-			settings_save();
-		}else if(value[0] == '1' && g_settings.smart_beacon == 0){
-			g_settings.smart_beacon = 1;
-			settings_save();
-		}
+static bool cmd_settings_beacon_interval(Serial* pSer, char* value, size_t valueLen){
+	uint16_t i = 0;
+	if(valueLen > 0){
+		i = atoi((const char*) value);
+		settings_set(SETTINGS_BEACON_INTERVAL,&i,2);
+		settings_save();
 	}
-	SERIAL_PRINTF_P(pSer, PSTR("smart beacon: %d\n\r"),g_settings.smart_beacon);
+
+	uint8_t bufLen = 2;
+	settings_get(SETTINGS_BEACON_INTERVAL,&i,&bufLen);
+	SERIAL_PRINTF_P(pSer,PSTR("Beacon Interval: %d\r\n"),i);
+
 	return true;
 }
+
+
+/*
+ * enable/disable smart beacon
+ */
+//static bool cmd_settings_smartbeacon(Serial* pSer, char* value, size_t valueLen){
+//	(void)pSer;
+//	if(valueLen == 1){
+//		if(value[0] == '0' && g_settings.smart_beacon == 1){
+//			g_settings.smart_beacon = 0;
+//			settings_save();
+//		}else if(value[0] == '1' && g_settings.smart_beacon == 0){
+//			g_settings.smart_beacon = 1;
+//			settings_save();
+//		}
+//	}
+//	SERIAL_PRINTF_P(pSer, PSTR("smart beacon: %d\n\r"),g_settings.smart_beacon);
+//	return true;
+//}
 
 
 #endif // end of #if ENABLE_CONSOLE_AT_COMMANDS
@@ -409,7 +425,7 @@ static bool cmd_send(Serial* pSer, char* value, size_t len){
 	(void)len;
 	if(len == 0){
 		// send test message
-		beacon_send_fixed();
+		beacon_send_text();
 		SERIAL_PRINT_P(pSer,PSTR("SEND OK\r\n"));
 	}else{
 		//TODO send user input message out, build the ax25 path according settings
@@ -437,7 +453,7 @@ void console_init(){
     console_add_command(PSTR("RESET"),cmd_settings_reset);				// reset the tnc
     console_add_command(PSTR("SYMBOL"),cmd_settings_symbol);	// setup the beacon symbol
 
-    console_add_command(PSTR("SB"),cmd_settings_smartbeacon);	// setup the beacon symbol
+    console_add_command(PSTR("BEACON"), cmd_settings_beacon_interval); // setup beacon interval
 
 	#if SETTINGS_SUPPORT_BEACON_TEXT
     console_add_command(PSTR("TEXT"),cmd_settings_beacon_text);

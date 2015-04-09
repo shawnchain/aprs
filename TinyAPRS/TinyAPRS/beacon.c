@@ -27,10 +27,11 @@
 #include <drv/timer.h>
 #include <math.h>
 
-static beacon_exit_callback_t exitCallback = 0;
-
-static ticks_t lastSend;
+static ticks_t lastSend = 0;
 static int8_t beaconSendCount = 0;
+static beacon_exit_callback_t exitCallback = NULL;
+
+#define DEBUG_BEACON_PAYLOAD 0
 
 /*
  * Initialize the beacon module
@@ -44,10 +45,19 @@ void beacon_set_repeats(int8_t repeats){
 }
 
 void beacon_poll(void){
+	uint8_t beaconSendInterval = g_settings.beacon_interval;
+	if(beaconSendInterval == 0){
+#if CFG_BEACON_DEBUG
+		beaconSendInterval = 2; // OPTIMIZE:move debug logic out of beacon
+#else
+		//it's disabled;
+		return;
+#endif
+	}
 	// Broadcast beacon message n times in every 2s
 	if(beaconSendCount > 0){
-		if(timer_clock() - lastSend > ms_to_ticks(2000L)){
-			beacon_send_fixed();
+		if(timer_clock() - lastSend > ms_to_ticks(beaconSendInterval * 1000)){
+			beacon_send_text();
 			beaconSendCount--;
 			lastSend = timer_clock();
 
@@ -58,7 +68,7 @@ void beacon_poll(void){
 		}
 	}else if (beaconSendCount < 0){
 		// always send
-		beacon_send_fixed();
+		beacon_send_text();
 	}
 }
 
@@ -93,15 +103,13 @@ static void _beacon_send(char* payload, uint8_t payloadLen){
 //#define APRS_TEST_MSG "!3014.00N/12009.00E>000/000/A=000087Rolling!"   // Hangzhou
 //#define APRS_TEST_MSG "!3011.54N/12007.35E>000/000/A=000087TinyAPRS Rocks!"
 //#define APRS_TEST_MSG ">Test Tiny APRS "
-#define APRS_DEFAULT_TEXT "!3014.00N/12009.00E>TinyAPRS Rocks!"
+//#define APRS_DEFAULT_TEXT "!3014.00N/12009.00E>TinyAPRS Rocks!"
 
-void beacon_send_fixed(void){
-	// payload
-	char payload[80];
+
+void beacon_send_text(void){
+	// read beacon text, see settings.c for the default values
+	char payload[80 + 1];
 	uint8_t payloadLen = settings_get_beacon_text(payload,80);
-	if(payloadLen == 0){
-		payloadLen = snprintf_P(payload,127,PSTR(APRS_DEFAULT_TEXT)); // the default one for test purpose
-	}
 	if(payloadLen > 0){
 		_beacon_send(payload,payloadLen);
 	}
@@ -111,9 +119,7 @@ void beacon_send_fixed(void){
 #define SB_HI_SPEED 100.0f		// 80KM/H
 
 #define SB_SLOW_RATE 300		// 300s
-#define SB_FAST_RATE 60			// 60s
-
-#define SB_FIXED_RATE 30		// 45s
+#define SB_FAST_RATE 60			// 45s
 
 #define SB_TURN_TIME 15
 #define SB_TURN_MIN 10
@@ -124,7 +130,7 @@ void beacon_send_fixed(void){
 /*
  * smart beacon algorithm
  */
-void beacon_update_location(struct GPS *gps){
+void beacon_send_location(struct GPS *gps){
 	if(!gps->valid){
 		return;
 	}
@@ -133,7 +139,7 @@ void beacon_update_location(struct GPS *gps){
 	Location location; // sizeof(Location) = 16;
 	gps_get_location(gps,&location);
 
-	float beaconRate = SB_FIXED_RATE;
+	float beaconRate = SB_FAST_RATE;
 
 #if SMART_BEACON
 	// smart beacon algorithm - http://www.hamhud.net/hh2/smartbeacon.html
@@ -170,11 +176,9 @@ void beacon_update_location(struct GPS *gps){
 				);
 
 		// TODO support /A=aaaaaa altitude?
-
-#if 1
 		_beacon_send(payload,payloadLen);
 		ts = timer_clock();
-#else   // DEBUG DUMP
+#if DEBUG_BEACON_PAYLOAD   // DEBUG DUMP
 		kfile_print((&(g_serial.fd)),payload);
 		kfile_putc('\r', &(g_serial.fd));
 		kfile_putc('\n', &(g_serial.fd));
