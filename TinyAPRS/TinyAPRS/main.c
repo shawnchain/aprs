@@ -57,9 +57,7 @@ GPS g_gps;
 
 Afsk g_afsk;
 AX25Ctx g_ax25;
-
 Serial g_serial;
-static Reader serialReader;
 
 #define SHARED_BUF_LEN CONFIG_AX25_FRAME_BUF_LEN //shared buffer is 330 bytes for KISS module reading received AX25 frame.
 uint8_t g_shared_buf[SHARED_BUF_LEN];
@@ -68,6 +66,11 @@ uint8_t g_shared_buf[SHARED_BUF_LEN];
 #define DAC_CH 0
 #define SER_BAUD_RATE_9600 9600L
 #define SER_BAUD_RATE_115200 115200L
+
+// DEBUG FLAGS
+#define DEBUG_FREE_RAM 0
+#define DEBUG_SOFT_SER 0
+#define DEBUG_GPS_OUTPUT 0
 
 typedef enum{
 	MODE_CFG  = 0,
@@ -96,6 +99,10 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 		kiss_send_host(0x00/*kiss port id*/,g_ax25.buf,g_ax25.frm_len - 2);
 		break;
 
+	case MODE_DIGI:
+		//digi_handle_aprs_message(msg);
+		break;
+
 	default:
 		break;
 
@@ -119,10 +126,6 @@ static void beacon_mode_exit_callback(void){
 }
 
 
-//static void _smart_beacon_location(GPS *gps){
-//	beacon_update_location(gps)
-//}
-
 /*
  * Callback when a line is read from the serial port.
  */
@@ -134,15 +137,14 @@ static void serial_read_line_callback(char* line, uint8_t len){
 
 		case MODE_TRACKER:
 #if CFG_GPS_ENABLED
-#if 1
 			if(gps_parse(&g_gps,line,len) && g_gps.valid){
-				beacon_update_location(&g_gps);
+				beacon_send_location(&g_gps);
 			}
-#else
+			#if DEBUG_GPS_OUTPUT
 			kfile_print((&(g_serial.fd)),line);
 			kfile_putc('\r', &(g_serial.fd));
 			kfile_putc('\n', &(g_serial.fd));
-#endif
+			#endif
 #endif
 			break;
 
@@ -294,7 +296,7 @@ static void init(void)
     radio_init(&softSer,431, 400);
 #endif
 
-    reader_init(&serialReader,g_shared_buf, SHARED_BUF_LEN, &(g_serial.fd),serial_read_line_callback);
+    reader_init(g_shared_buf, SHARED_BUF_LEN,serial_read_line_callback);
 
     // Initialize GPS NMEA/GPRMC parser
 #if CFG_GPS_ENABLED
@@ -324,7 +326,7 @@ int main(void){
 		switch(currentMode){
 			case MODE_CFG:
 			case MODE_TRACKER:
-				reader_poll(&serialReader);
+				reader_poll(&g_serial);
 				break;
 
 			case MODE_KISS:{
@@ -343,11 +345,12 @@ int main(void){
 		}// end of switch(runMode)
 
 		// Enable beacon if not under KISS TNC mode
-		if(currentMode != MODE_KISS)
+		if(currentMode != MODE_KISS){
 			beacon_poll();
+		}
 
-#define FREE_RAM_DEBUG 0
-#if FREE_RAM_DEBUG
+
+#if DEBUG_FREE_RAM
 		{
 			static ticks_t ts = 0;
 
@@ -358,7 +361,7 @@ int main(void){
 			}
 		}
 #endif
-#if 0
+#if DEBUG_SOFT_SER
 		// Dump the isr changes
 		{
 			static uint32_t i = 0;
