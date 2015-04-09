@@ -309,15 +309,6 @@ static void init(void)
 }
 
 
-// Free ram test
-INLINE uint16_t freeRam (void) {
-	extern int __heap_start, *__brkval;
-	uint8_t v;
-	uint16_t vaddr = (uint16_t)(&v);
-	return (uint16_t) (vaddr - (__brkval == 0 ? (uint16_t) &__heap_start : (uint16_t) __brkval));
-}
-
-
 int main(void){
 
 	init();

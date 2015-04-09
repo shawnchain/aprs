@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <avr/wdt.h>
 
+uint16_t freeRam (void);
+
 #define SOFT_RESET_ENABLED 0
 
 // Software reset
