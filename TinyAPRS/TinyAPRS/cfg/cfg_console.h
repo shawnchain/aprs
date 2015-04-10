@@ -21,9 +21,7 @@
 
 #define CONSOLE_SERIAL_READ_TIMEOUT 0UL             // Read timeout control. set 0 to disable
 
-
-#define CONSOLE_TEST_COMMAND_ENABLED 1				// enable test command "!n" or "AT+TEST=n"
-#define CONSOLE_SEND_COMMAND_ENABLED 1				// enable the "AT+SEND=XXX" command
+#define CONSOLE_SEND_COMMAND_ENABLED 0				// enable the "AT+SEND=XXX" command
 
 #define CONSOLE_HELP_COMMAND_ENABLED 1				// enable help command "?" or "AT+HELP"
 #define CONSOLE_SETTINGS_COMMANDS_ENABLED 1			// Disable console when the config tool is ready

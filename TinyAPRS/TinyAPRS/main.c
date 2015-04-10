@@ -344,9 +344,9 @@ int main(void){
 				break;
 		}// end of switch(runMode)
 
-		// Enable beacon if not under KISS TNC mode
-		if(currentMode != MODE_KISS){
-			beacon_poll();
+		// dont broadcast under KISS/TRACKER mode
+		if(currentMode == MODE_DIGI || currentMode == MODE_CFG){
+			beacon_broadcast_poll();
 		}
 
 
