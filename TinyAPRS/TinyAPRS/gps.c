@@ -226,7 +226,7 @@ void gps_get_location(GPS *gps, Location *pLoc){
 	// ignoring the years
 	// timestamp is 6 bytes long;
 	char *utc = gps->_term[GPRMC_TERM_UTC_TIME];
-	if(utc && strlen(utc) == 6){
+	if(utc && strlen(utc) >= 6){
 		pLoc->timestamp = (TO_NUM(utc[0]) * 10 + TO_NUM(utc[1]) ) * 3600;	// hour
 		pLoc->timestamp+= (TO_NUM(utc[2]) * 10 + TO_NUM(utc[3]) ) * 60;		// minute
 		pLoc->timestamp+= (TO_NUM(utc[4]) * 10 + TO_NUM(utc[5]) );			// second
