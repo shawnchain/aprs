@@ -32,12 +32,7 @@ void beacon_init(beacon_exit_callback_t exitcb);
 /*
  * Runloop of the beacon module
  */
-void beacon_poll(void);
-
-/*
- * Send the beacon text payload
- */
-void beacon_send_text(void);
+void beacon_broadcast_poll(void);
 
 struct GPS;
 /*
@@ -45,10 +40,12 @@ struct GPS;
  */
 void beacon_send_location(struct GPS *gps);
 
+
+#if CFG_BEACON_TEST
 /*
- * Set beacon repeats. 0 means stop, -1 means infinite send
- * Beacon will exit when reaches the max repeat count
+ * Send the beacon test message payload
  */
-void beacon_set_repeats(int8_t repeats);
+void beacon_send_test_message_immediate(uint8_t repeats, const char* text);
+#endif
 
 #endif /* BEACON_H_ */

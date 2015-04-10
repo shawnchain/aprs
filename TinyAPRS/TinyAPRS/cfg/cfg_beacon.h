@@ -20,4 +20,7 @@
 #define CFG_BEACON_ENABLED 1
 #define CFG_BEACON_DEBUG 1
 
+#define CFG_BEACON_SMART 1  // Beacon smart mode: 0 disabled, 1 by speed and heading
+
+#define CFG_BEACON_TEST 1  // enables the beacon test feature
 #endif /* CFG_BEACON_H_ */
