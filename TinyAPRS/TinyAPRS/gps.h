@@ -76,10 +76,11 @@ typedef struct GPS{
 }GPS;
 
 typedef struct Location{
-	float latitude;
+	float latitude; 	// decimal(xx.xx) degrees of latitude
 	float longitude;
 	float speedInKMH;
 	float heading;
+	uint32_t timestamp;
 }Location;
 
 /*
@@ -96,7 +97,7 @@ float nmea_decimal_float(char* s);
 
 uint16_t nmea_decimal_int(char* s);
 
-
+float gps_distance_between(Location *loc1, Location *loc2, float units_per_meter) ;
 /*
  * FIXME temporary solution for GPS signal indicator
  */

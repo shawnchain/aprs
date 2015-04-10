@@ -34,7 +34,8 @@
 #define DEG_TO_RAD 0.017453292519943295769236907684886
 #define RAD_TO_DEG 57.295779513082320876798154814105
 
-static int nmea_dehex(char a);
+#define RADIANS(x) ((x) * DEG_TO_RAD)
+#define sq(x) ((x)*(x))
 
 void gps_init(GPS *gps){
 	uint8_t i;
@@ -68,12 +69,21 @@ void gps_init(GPS *gps){
 		kfile_putc(pgm_read_byte(pstr_config_P + i),&(g_serial.fd));
 	}
 	timer_delay(50);
+	ser_purge(&g_serial);
 
 	// Initialize the pin13(PORTB BV(5)) for GPS signal indicator
 	GPS_LED_INIT();
 }
 
-
+INLINE int nmea_dehex(char a) {
+	// returns base-16 value of chars '0'-'9' and 'A'-'F';
+	// does not trap invalid chars!
+	if ((int)a >= 65) {
+		return (int)a - 55;
+	} else {
+		return (int)a - 48;
+	}
+}
 //$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A\n
 int gps_parse(GPS *gps, char *sentence, uint8_t len){
 	uint8_t sentenceType = 0;
@@ -168,20 +178,46 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len){
 	return 0;
 }
 
+#define TO_NUM(X) (X - '0'/*48*/)
 void gps_get_location(GPS *gps, Location *pLoc){
-	pLoc->latitude = nmea_decimal_float(gps->_term[GPRMC_TERM_LATITUDE]);
-	pLoc->longitude = nmea_decimal_float(gps->_term[GPRMC_TERM_LONGITUDE]);
+
+	// calculate signed degree-decimal value of latitude term
+	float _gprmc_lat = nmea_decimal_float(gps->_term[GPRMC_TERM_LATITUDE]) / 100.0;
+	float _degs = floor(_gprmc_lat);
+	_gprmc_lat = (100.0 * (_gprmc_lat - _degs)) / 60.0;
+	_gprmc_lat += _degs;
+	// southern hemisphere is negative-valued
+	if ((gps->_term[GPRMC_TERM_LATITUDE_NS])[0] == 'S') {
+		_gprmc_lat = 0.0 - _gprmc_lat;
+	}
+	pLoc->latitude = _gprmc_lat;
+
+	// calculate signed degree-decimal value of longitude term
+	float _gprmc_long = nmea_decimal_float(gps->_term[GPRMC_TERM_LONGITUDE]) / 100.0;
+	_degs = floor(_gprmc_long);
+	_gprmc_long = (100.0 * (_gprmc_long - _degs)) / 60.0;
+	_gprmc_long += _degs;
+	// western hemisphere is negative-valued
+	if ((gps->_term[GPRMC_TERM_LONGITUDE_WE])[0] == 'W') {
+		_gprmc_long = 0.0 - _gprmc_long;
+	}
+	pLoc->longitude = _gprmc_long;
+//	pLoc->latitude = nmea_decimal_float(gps->_term[GPRMC_TERM_LATITUDE]);
+//	pLoc->longitude = nmea_decimal_float(gps->_term[GPRMC_TERM_LONGITUDE]);
+
 	pLoc->speedInKMH = nmea_decimal_float(gps->_term[GPRMC_TERM_SPEED]) * KMPH;
 	pLoc->heading = nmea_decimal_float(gps->_term[GPRMC_TERM_HEADING]);
-}
 
-static int nmea_dehex(char a) {
-	// returns base-16 value of chars '0'-'9' and 'A'-'F';
-	// does not trap invalid chars!
-	if ((int)a >= 65) {
-		return (int)a - 55;
-	} else {
-		return (int)a - 48;
+	// convert the utc in 1 day into seconds
+	// ignoring the years
+	// timestamp is 6 bytes long;
+	char *utc = gps->_term[GPRMC_TERM_UTC_TIME];
+	if(utc && strlen(utc) == 6){
+		pLoc->timestamp = (TO_NUM(utc[0]) * 10 + TO_NUM(utc[1]) ) * 3600;	// hour
+		pLoc->timestamp+= (TO_NUM(utc[2]) * 10 + TO_NUM(utc[3]) ) * 60;		// minute
+		pLoc->timestamp+= (TO_NUM(utc[4]) * 10 + TO_NUM(utc[5]) );			// second
+	}else{
+		pLoc->timestamp = 0;
 	}
 }
 
@@ -236,19 +272,19 @@ float nmea_decimal_float(char* s) {
 	return rr;
 }
 
-#if 0
-
-float gps_distance_between(float lat1, float long1, float lat2, float long2,
-		float units_per_meter) {
+float gps_distance_between(Location *loc1, Location *loc2, float units_per_meter) {
 	// returns distance in meters between two positions, both specified
 	// as signed decimal-degrees latitude and longitude. Uses great-circle
 	// distance computation for hypothised sphere of radius 6372795 meters.
 	// Because Earth is no exact sphere, rounding errors may be upto 0.5%.
-	float delta = radians(long1-long2);
+	float lat1 = loc1->latitude;
+	float lat2 = loc2->latitude;
+
+	float delta = RADIANS(loc1->longitude - loc2->longitude);
 	float sdlong = sin(delta);
 	float cdlong = cos(delta);
-	lat1 = radians(lat1);
-	lat2 = radians(lat2);
+	lat1 = RADIANS(lat1);
+	lat2 = RADIANS(lat2);
 	float slat1 = sin(lat1);
 	float clat1 = cos(lat1);
 	float slat2 = sin(lat2);
@@ -259,9 +295,10 @@ float gps_distance_between(float lat1, float long1, float lat2, float long2,
 	delta = sqrt(delta);
 	float denom = (slat1 * slat2) + (clat1 * clat2 * cdlong);
 	delta = atan2(delta, denom);
-	return delta * 6372795 * units_per_meter;
+	return fabs(delta) * 6372795 * units_per_meter;
 }
 
+#if 0
 float gps_initial_course(float lat1, float long1, float lat2, float long2) {
 	// returns initial course in degrees (North=0, West=270) from
 	// position 1 to position 2, both specified as signed decimal-degrees
