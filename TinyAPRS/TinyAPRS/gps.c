@@ -33,6 +33,7 @@
 #define TWO_PI 6.283185307179586476925286766559
 #define DEG_TO_RAD 0.017453292519943295769236907684886
 #define RAD_TO_DEG 57.295779513082320876798154814105
+#define METER_TO_FEET 3.2808399
 
 #define RADIANS(x) ((x) * DEG_TO_RAD)
 #define sq(x) ((x)*(x))
@@ -175,7 +176,7 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len){
 					if(sentenceType == 2){
 					// read the altitude values
 						float alt = nmea_decimal_float(gps->_term[GPGGA_TERM_ALTITUDE]);
-						gps->altitude = lroundf(alt);
+						gps->altitude = lroundf(alt * METER_TO_FEET);
 						return 0;
 					}
 					return 1;
