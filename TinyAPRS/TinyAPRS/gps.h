@@ -54,7 +54,7 @@
 #define	KTS					1.0 					// knots in one knot
 #define	LIGHTSPEED			0.000000001716			// lightspeeds in one knot
 
-#define MAX_TERMS 			14
+#define MAX_TERMS 			16
 #define MAX_SENTENCEN_CHARS 80
 #define MIN_SENTENCEN_CHARS 7
 
@@ -68,11 +68,16 @@
 #define GPRMC_TERM_HEADING 7
 #define GPRMC_TERM_DATE 8
 
+#define GPGGA_TERM_FIXQUALITY 5
+#define GPGGA_TERM_ALTITUDE 8
+
+
 typedef void (*gps_callback)(void*);
 
 typedef struct GPS{
 	bool	valid;
 	char*	_term[MAX_TERMS];
+	uint16_t altitude;	// altitude value reads from GPGGA[8]
 }GPS;
 
 typedef struct Location{
@@ -80,6 +85,7 @@ typedef struct Location{
 	float longitude;
 	float speedInKMH;
 	float heading;
+	uint16_t altitude;	// altitude value reads from GPGGA[8]
 	uint32_t timestamp;
 }Location;
 

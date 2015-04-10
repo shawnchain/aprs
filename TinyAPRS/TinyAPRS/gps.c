@@ -85,6 +85,9 @@ INLINE int nmea_dehex(char a) {
 	}
 }
 //$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A\n
+
+#define GPRMC_PARITY_INITIAL 0x4b
+#define GPGGA_PARITY_INITIAL 0x56
 int gps_parse(GPS *gps, char *sentence, uint8_t len){
 	uint8_t sentenceType = 0;
 
@@ -92,18 +95,17 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len){
 	if(len <= MIN_SENTENCEN_CHARS || len > MAX_SENTENCEN_CHARS){
 		return 0;
 	}
+	int parity = 0;
 	// make sure it's started with '$GPRMC'
 	if(strncmp_P(sentence,PSTR("$GPRMC"),6) == 0){
 		sentenceType = 1; // GPRMC type
+		parity = GPRMC_PARITY_INITIAL; // check sum of GPRMC: 0x4b
 	}else if(strncmp_P(sentence,PSTR("$GPGGA"),6) == 0){
-		// TODO
-		sentenceType = 2;
-	}
-
-	if(sentenceType != 1) // currently only supports the GPRMC sentence
+		sentenceType = 2; // GPGGA type
+		parity = GPGGA_PARITY_INITIAL; // check sum of GPGGA: 0x56
+	}else{
 		return 0;
-
-	int parity = 0x4b; // the checksum of 'GPRMC'
+	}
 
 	uint8_t state = 0;
 	int terms = 0;
@@ -151,7 +153,11 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len){
 			// when parity is zero, checksum was correct!
 			if (parity == 0) {
 				// store values of relevant GPRMC terms
-				gps->valid = ((gps->_term[GPRMC_TERM_STATUS])[0] == 'A');
+				if(sentenceType == 1){
+					gps->valid = ((gps->_term[GPRMC_TERM_STATUS])[0] == 'A');
+				}else if(sentenceType == 2){
+					gps->valid = ((gps->_term[GPGGA_TERM_FIXQUALITY])[0] != '0');
+				}
 				/*
 				if(terms >5){
 					// lat/lon in APRS  is always: hhmm.ssN/hhhmm.ssE
@@ -164,9 +170,16 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len){
 					gps->_lon[9] = 0;
 				}
 				*/
-				if(gps->valid)
+				if(gps->valid){
 					GPS_LED_ON();
-				return 1;
+					if(sentenceType == 2){
+					// read the altitude values
+						float alt = nmea_decimal_float(gps->_term[GPGGA_TERM_ALTITUDE]);
+						gps->altitude = lroundf(alt);
+						return 0;
+					}
+					return 1;
+				}
 			}
 			break;
 
@@ -219,6 +232,8 @@ void gps_get_location(GPS *gps, Location *pLoc){
 	}else{
 		pLoc->timestamp = 0;
 	}
+
+	pLoc->altitude = gps->altitude;
 }
 
 uint16_t nmea_decimal_int(char* s) {

@@ -245,7 +245,7 @@ void beacon_send_location(struct GPS *gps){
 		if(s1 == 0) s1 = '/';
 		char s2 = g_settings.symbol[1];
 		if(s2 == 0) s2 = '>';
-		uint8_t payloadLen = snprintf_P(payload,63,PSTR("!%.7s%c%c%.8s%c%c%03d/%03dTinyAPRS"),
+		uint8_t len = snprintf_P(payload,63,PSTR("!%.7s%c%c%.8s%c%c%03d/%03d"),
 				gps->_term[GPRMC_TERM_LATITUDE],gps->_term[GPRMC_TERM_LATITUDE_NS][0],
 				s1,
 				gps->_term[GPRMC_TERM_LONGITUDE],gps->_term[GPRMC_TERM_LONGITUDE_WE][0],
@@ -254,13 +254,26 @@ void beacon_send_location(struct GPS *gps){
 				nmea_decimal_int(gps->_term[GPRMC_TERM_SPEED])  // SPD, see APRS101 P27
 				);
 
+		//TODO get text from settings!
+		if(gps->altitude > 0){
+			len += snprintf_P((char*)payload + len,63 - len,PSTR("/A%06d"),gps->altitude);
+		}
+
+		len += snprintf_P((char*)payload + len, 63 - len, PSTR(" TinyAPRS"));
+
 		// TODO support /A=aaaaaa altitude?
-		_do_send(payload,payloadLen);
+		_do_send(payload,len);
 #if CFG_BEACON_SMART // heading support
 		// save current position & timestamp
 		memcpy(&lastLocation,&location,sizeof(Location));
 #endif
 		lastSendTimeSeconds = timer_clock_seconds();
+
+#if DEBUG_BEACON_PAYLOAD   // DEBUG DUMP
+		kfile_print((&(g_serial.fd)),payload);
+		kfile_putc('\r', &(g_serial.fd));
+		kfile_putc('\n', &(g_serial.fd));
+#endif
 	}
 
 //	float beaconRate = SB_FAST_RATE;
@@ -303,14 +316,7 @@ void beacon_send_location(struct GPS *gps){
 //		// TODO support /A=aaaaaa altitude?
 //		_do_send(payload,payloadLen);
 //		ts = timer_clock();
-
-
-#if DEBUG_BEACON_PAYLOAD   // DEBUG DUMP
-		kfile_print((&(g_serial.fd)),payload);
-		kfile_putc('\r', &(g_serial.fd));
-		kfile_putc('\n', &(g_serial.fd));
-#endif
-//	}
+//}
 
 #if 0
 	Location location;
