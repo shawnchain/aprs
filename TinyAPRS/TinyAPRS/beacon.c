@@ -256,7 +256,7 @@ void beacon_send_location(struct GPS *gps){
 
 		//TODO get text from settings!
 		if(gps->altitude > 0){
-			len += snprintf_P((char*)payload + len,63 - len,PSTR("/A%06d"),gps->altitude);
+			len += snprintf_P((char*)payload + len,63 - len,PSTR("/A=%06d"),gps->altitude);
 		}
 
 		len += snprintf_P((char*)payload + len, 63 - len, PSTR(" TinyAPRS"));
