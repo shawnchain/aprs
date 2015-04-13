@@ -245,18 +245,20 @@ void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType
 //#define DEFAULT_BEACON_TEXT "!3014.00N/12009.00E>000/000/A=000087TinyAPRS Rocks!"
 uint8_t settings_get_beacon_text(char* buf, uint8_t bufLen){
 	uint8_t verification = eeprom_read_byte((void*)&nvBeaconTextHeadByte);
-	if (verification != NV_BEACON_TEXT_HEAD_BYTE_VALUE) {
-		return snprintf_P(buf,bufLen,PSTR(DEFAULT_BEACON_TEXT));
-	}
 	uint8_t bytesToRead = MIN(bufLen,SETTINGS_BEACON_TEXT_MAX);
-	eeprom_read_block((void*)buf, (void*)nvBeaconText, bytesToRead);
+	if (verification == NV_BEACON_TEXT_HEAD_BYTE_VALUE) {
+		eeprom_read_block((void*)buf, (void*)nvBeaconText, bytesToRead);
+	}
 
-	// like strlen
+	// get the actual text length, like strlen()
 	uint8_t i = 0;
 	while(buf[i] != 0 && i < bytesToRead){
 		i++;
 	}
-	return i;
+	if(i > 0)
+		return i;
+	else
+		return snprintf_P(buf,bufLen,PSTR(DEFAULT_BEACON_TEXT));
 }
 
 uint8_t settings_set_beacon_packet(char* data, uint8_t dataLen){
