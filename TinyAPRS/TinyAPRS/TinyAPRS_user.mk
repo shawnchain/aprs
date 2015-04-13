@@ -15,7 +15,7 @@ TinyAPRS_PROGRAMMER_BAUD = 57600
 
 # USB = CP2102
 #TinyAPRS_PROGRAMMER_PORT = /dev/cu.SLAB_USBtoUART
-#TinyAPRS_PROGRAMMER_BAUD = 57600 
+#TinyAPRS_PROGRAMMER_BAUD = 57600
 
 # USB = FT232
 #TinyAPRS_PROGRAMMER_PORT = /dev/cu.usbserial-AH02KRAG
@@ -34,6 +34,7 @@ TinyAPRS_USER_CSRC = \
 	$(TinyAPRS_SRC_PATH)/beacon.c \
 	$(TinyAPRS_SRC_PATH)/gps.c \
 	$(TinyAPRS_SRC_PATH)/reader.c \
+	$(TinyAPRS_SRC_PATH)/digi.c \
 	#$(TinyAPRS_SRC_PATH)/hw/hw_softser.c \
 	#$(TinyAPRS_SRC_PATH)/radio.c \
 	#

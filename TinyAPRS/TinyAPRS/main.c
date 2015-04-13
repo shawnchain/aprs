@@ -41,7 +41,16 @@
 
 #include "settings.h"
 #include "console.h"
+
+#include "cfg/cfg_beacon.h"
+#if CFG_BEACON_ENABLED
 #include "beacon.h"
+#endif
+
+#include "cfg/cfg_digi.h"
+#if CFG_DIGI_ENABLED
+#include "digi.h"
+#endif
 
 #include "cfg/cfg_radio.h"
 #if CFG_RADIO_ENABLED
@@ -99,9 +108,11 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 		kiss_send_host(0x00/*kiss port id*/,g_ax25.buf,g_ax25.frm_len - 2);
 		break;
 
+#if CFG_DIGI_ENABLED
 	case MODE_DIGI:
-		//digi_handle_aprs_message(msg);
+		digi_handle_aprs_message(msg);
 		break;
+#endif
 
 	default:
 		break;
@@ -131,12 +142,9 @@ static void beacon_mode_exit_callback(void){
  */
 static void serial_read_line_callback(char* line, uint8_t len){
 	switch(currentMode){
-		case MODE_CFG:
-			console_parse_command(line,len);
-			break;
 
-		case MODE_TRACKER:
 #if CFG_GPS_ENABLED
+		case MODE_TRACKER:
 			if(gps_parse(&g_gps,line,len) && g_gps.valid){
 				beacon_send_location(&g_gps);
 			}
@@ -145,10 +153,15 @@ static void serial_read_line_callback(char* line, uint8_t len){
 			kfile_putc('\r', &(g_serial.fd));
 			kfile_putc('\n', &(g_serial.fd));
 			#endif
+			break;
 #endif
+
+		case MODE_KISS:
+			// do nothing for KISS mode
 			break;
 
 		default:
+			console_parse_command(line,len);
 			break;
 	}
 }
@@ -187,22 +200,21 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 			SERIAL_PRINT_P(pSer,PSTR("Enter KISS mode\r\n"));
 			break;
 
+#if CFG_GPS_ENABLED
 		case MODE_TRACKER:
 			currentMode = MODE_TRACKER;
 			SERIAL_PRINT_P(pSer,PSTR("Enter Tracker mode\r\n"));
 			break;
+#endif
 
-		/*
+#if CFG_DIGI_ENABLED
 		case MODE_DIGI:
 			// DIGI MODE
-			runMode = MODE_DIGI;
-			ax25.pass_through = 0;		// parse ax25 frames
-			kiss_set_enabled(false);	// kiss off
-			beacon_set_enabled(true);	// beacon on
-			ser_purge(pSer);  			// clear serial rx/tx buffer
+			currentMode = MODE_DIGI;
+			g_ax25.pass_through = 0;		// need parse ax25 frames
+			SERIAL_PRINT_P(pSer,PSTR("Enter Digi mode\r\n"));
 			break;
-		*/
-
+#endif
 		default:
 			// unknown mode
 			modeOK = false;
@@ -216,7 +228,7 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 				settings_save();
 			}
 		}else{
-			SERIAL_PRINTF_P(pSer,PSTR("Invalid mode %s, [0|1|2] is accepted\r\n"),value);
+			SERIAL_PRINTF_P(pSer,PSTR("Invalid mode %s, [0|1|2|3] is accepted\r\n"),value);
 		}
 	}else{
 		// no parameters, just dump the mode
@@ -286,8 +298,15 @@ static void init(void)
 	// FIXME - use shared memory
 	kiss_init(&(g_serial.fd),g_shared_buf, SHARED_BUF_LEN, kiss_mode_exit_callback);
 
+#if CFG_BEACON_ENABLED
 	// Initialize the beacon module
     beacon_init(beacon_mode_exit_callback);
+#endif
+
+    // Initialize the digi module
+#if CFG_DIGI_ENABLED
+    digi_init();
+#endif
 
 #if CFG_RADIO_ENABLED
     // Initialize the soft serial and radio
@@ -325,6 +344,12 @@ int main(void){
 
 		switch(currentMode){
 			case MODE_CFG:
+				reader_poll(&g_serial);
+#if CFG_BEACON_ENABLED
+				beacon_broadcast_poll();
+#endif
+				break;
+
 			case MODE_TRACKER:
 				reader_poll(&g_serial);
 				break;
@@ -335,20 +360,17 @@ int main(void){
 				break;
 			}
 
+#if CFG_DIGI_ENABLED
 			case MODE_DIGI:{
+				reader_poll(&g_serial);
+				beacon_broadcast_poll();
 				break;
 			}
-
+#endif
 
 			default:
 				break;
 		}// end of switch(runMode)
-
-		// dont broadcast under KISS/TRACKER mode
-		if(currentMode == MODE_DIGI || currentMode == MODE_CFG){
-			beacon_broadcast_poll();
-		}
-
 
 #if DEBUG_FREE_RAM
 		{
