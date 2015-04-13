@@ -165,11 +165,18 @@ static bool _fixed_interval_beacon_check(void){
 
 /*
  * smart beacon algorithm - http://www.hamhud.net/hh2/smartbeacon.html
+ *
+ * aprsdroid - https://github.com/ge0rg/aprsdroid/blob/master/src/location/SmartBeaconing.scala
  */
 static bool _smart_beacon_check(Location *location){
 #if CFG_BEACON_SMART
 	if(lastSendTimeSeconds == 0 || lastLocation.timestamp == 0){
 		return true;
+	}
+
+	// we're stopped.
+	if(location->speedInKMH == 0 && location->heading == 0){
+		return false;
 	}
 
 	// SMART HEADING CHECK
@@ -180,32 +187,30 @@ static bool _smart_beacon_check(Location *location){
 		return false;
 	}
 
-	uint16_t speed_kmh = _calc_speed_kmh(location,&lastLocation);    //[meters per second]
-	if(speed_kmh == 0){
-		// we are stopped, drop
-		return false;
+	// prevLocation.heading == 0 means we're just started.
+	if(lastLocation.heading == 0){
+		return secs_since_beacon >=  SB_TURN_TIME;
 	}
 
 	uint16_t heading_change_since_beacon =_calc_heading(location,&lastLocation); // (0~180 degrees)
-	uint16_t turn_threshold = lroundf(SB_TURN_MIN + (SB_TURN_SLOPE/speed_kmh)); // slope/speed [kmh]
-
-	//DEBUG
-	//kfile_printf(&g_serial.fd,"%d,%d,%d,%d\r\n",secs_since_beacon,speed_kmh,heading_change_since_beacon,turn_threshold);
-
+	uint16_t turn_threshold = lroundf(SB_TURN_MIN + (SB_TURN_SLOPE/location->speedInKMH)); // slope/speed [kmh]
 	if(secs_since_beacon >= SB_TURN_TIME && heading_change_since_beacon > turn_threshold){
 		return true;
 	}
+	//DEBUG
+	//kfile_printf(&g_serial.fd,"%d,%d,%d,%d\r\n",secs_since_beacon,speed_kmh,heading_change_since_beacon,turn_threshold);
 
 	// SMART TIME CHECK
 	float beaconRate;
-	if(speed_kmh/*location->speedInKMH*/ < SB_LOW_SPEED){
+	uint16_t calculated_speed_kmh = _calc_speed_kmh(location,&lastLocation);    //calcluated speed based on current/previous locations
+	if(calculated_speed_kmh/*location->speedInKMH*/ < SB_LOW_SPEED){
 		beaconRate = SB_SLOW_RATE;
 	}else{
-		if(speed_kmh /*location->speedInKMH*/ > SB_HI_SPEED){
+		if(calculated_speed_kmh /*location->speedInKMH*/ > SB_HI_SPEED){
 			beaconRate = SB_FAST_RATE;
 		}else{
 			//beaconRate = (float)SB_FAST_RATE * (SB_HI_SPEED / location.speedInKMH);
-			beaconRate = SB_FAST_RATE + (SB_SLOW_RATE - SB_FAST_RATE) * (SB_HI_SPEED - speed_kmh/*location->speedInKMH*/) / (SB_HI_SPEED-SB_LOW_SPEED);
+			beaconRate = SB_FAST_RATE + (SB_SLOW_RATE - SB_FAST_RATE) * (SB_HI_SPEED - calculated_speed_kmh/*location->speedInKMH*/) / (SB_HI_SPEED-SB_LOW_SPEED);
 		}
 	}
 	mtime_t rate = lroundf(beaconRate);
