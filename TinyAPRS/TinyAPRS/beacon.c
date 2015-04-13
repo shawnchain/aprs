@@ -125,20 +125,20 @@ static void _do_send(char* payload, uint8_t payloadLen){
 #define SB_LOW_SPEED 5		// 5KM/h
 #define SB_HI_SPEED 70		// 80KM/H
 #define SB_TURN_TIME 15
-#define SB_TURN_MIN 10
+#define SB_TURN_MIN 10.f
 #define SB_TURN_SLOPE 240.f
 
 static Location lastLocation = {
 		.latitude=0.f,
 		.longitude=0.f,
 		.speedInKMH=0.f,
-		.heading=0.f,
+		.heading=0,
 		.timestamp = 0
 };
 
-INLINE float _calc_heading(Location *l1, Location *l2){
-	float d = abs(l1->heading - l2->heading) / 360;
-	return (d <= 180.f)? d : 360 - d;
+INLINE uint16_t _calc_heading(Location *l1, Location *l2){
+	uint16_t d = abs(l1->heading - l2->heading) % 360;
+	return (d <= 180)? d : 360 - d;
 }
 
 /*
@@ -186,8 +186,8 @@ static bool _smart_beacon_check(Location *location){
 		return false;
 	}
 
-	uint16_t heading_change_since_beacon =lroundf(_calc_heading(location,&lastLocation)); //degress
-	uint16_t turn_threshold = SB_TURN_MIN + lroundf(SB_TURN_SLOPE/speed_kmh); // slope/speed [kmh]
+	uint16_t heading_change_since_beacon =_calc_heading(location,&lastLocation); // (0~180 degrees)
+	uint16_t turn_threshold = lroundf(SB_TURN_MIN + (SB_TURN_SLOPE/speed_kmh)); // slope/speed [kmh]
 
 	//DEBUG
 	//kfile_printf(&g_serial.fd,"%d,%d,%d,%d\r\n",secs_since_beacon,speed_kmh,heading_change_since_beacon,turn_threshold);

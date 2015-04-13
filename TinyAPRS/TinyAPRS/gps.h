@@ -84,7 +84,7 @@ typedef struct Location{
 	float latitude; 	// decimal(xx.xx) degrees of latitude
 	float longitude;
 	float speedInKMH;
-	float heading;
+	uint16_t heading;
 	uint16_t altitude;	// altitude value reads from GPGGA[8]
 	uint32_t timestamp;
 }Location;

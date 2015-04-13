@@ -220,7 +220,7 @@ void gps_get_location(GPS *gps, Location *pLoc){
 //	pLoc->longitude = nmea_decimal_float(gps->_term[GPRMC_TERM_LONGITUDE]);
 
 	pLoc->speedInKMH = nmea_decimal_float(gps->_term[GPRMC_TERM_SPEED]) * KMPH;
-	pLoc->heading = nmea_decimal_float(gps->_term[GPRMC_TERM_HEADING]);
+	pLoc->heading = nmea_decimal_int(gps->_term[GPRMC_TERM_HEADING]);
 
 	// convert the utc in 1 day into seconds
 	// ignoring the years
