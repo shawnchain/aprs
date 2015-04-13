@@ -30,6 +30,9 @@ void digi_init(void){
 }
 
 static bool _digi_repeat_message(AX25Msg *msg){
+	// force delay 100ms
+	timer_delayTicks(ms_to_ticks(250));
+
 	{
 	char fmt[16];
 	sprintf_P(fmt,PSTR("digipeat:\r\n"));

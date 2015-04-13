@@ -369,7 +369,7 @@ static bool cmd_settings_beacon_interval(Serial* pSer, char* value, size_t value
 
 	uint8_t bufLen = 2;
 	settings_get(SETTINGS_BEACON_INTERVAL,&i,&bufLen);
-	SERIAL_PRINTF_P(pSer,PSTR("Beacon Interval: %d\r\n"),i);
+	SERIAL_PRINTF_P(pSer,PSTR("Beacon Interval: %d seconds\r\n"),i);
 
 	return true;
 }
