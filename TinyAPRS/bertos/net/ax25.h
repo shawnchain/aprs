@@ -146,6 +146,16 @@ typedef struct AX25Msg
 	size_t len;    ///< Payload length
 } AX25Msg;
 
+#if CONFIG_AX25_RPT_LST
+	#define AX25_SET_REPEATED(msg, idx, val) \
+		do \
+		{ \
+			if (val) \
+				(msg)->rpt_flags |= BV(idx) ; \
+			else \
+				(msg)->rpt_flags &= ~BV(idx) ; \
+		} while(0)
+#endif
 
 #define AX25_CTRL_UI      0x03
 #define AX25_PID_NOLAYER3 0xF0
@@ -187,6 +197,7 @@ void ax25_sendVia(AX25Ctx *ctx, const AX25Call *path, size_t path_len, const voi
 void ax25_sendRaw(AX25Ctx *ctx, const void *_buf, size_t len);
 void ax25_putchar(AX25Ctx *ctx, uint8_t c);
 
+void ax25_sendMsg(AX25Ctx *ctx, const AX25Msg *msg);
 /**
  * Send an AX25 frame on the channel.
  * \param ctx AX25 context to operate on.

@@ -58,17 +58,6 @@
 
 #include <cpu/irq.h>
 
-#if CONFIG_AX25_RPT_LST
-	#define AX25_SET_REPEATED(msg, idx, val) \
-		do \
-		{ \
-			if (val) \
-				(msg)->rpt_flags |= BV(idx) ; \
-			else \
-				(msg)->rpt_flags &= ~BV(idx) ; \
-		} while(0) 
-#endif
-
 /*
  * Decode the CALL field, assume addr is a fix-size array
  */
@@ -329,6 +318,50 @@ void ax25_sendVia(AX25Ctx *ctx, const AX25Call *path, size_t path_len, const voi
 #if CONFIG_AX25_STAT
 	ATOMIC(ctx->stat.tx_ok++);
 #endif
+}
+
+void ax25_sendMsg(AX25Ctx *ctx, const AX25Msg *msg){
+	if(msg->rpt_cnt == 0 || msg->len == 0){
+		return;
+	}
+	const uint8_t *buf = msg->info;
+	size_t len = msg->len;
+
+	ctx->crc_out = CRC_CCITT_INIT_VAL;
+	kfile_putc(HDLC_FLAG, ctx->ch);
+
+	// Send dest call
+	ax25_sendCall(ctx, &(msg->dst), false);
+	// send src call
+	ax25_sendCall(ctx, &(msg->src), false);
+
+	/* Send path calls */
+	for (uint8_t i = 0; i < msg->rpt_cnt; i++){
+		ax25_sendCall(ctx, msg->rpt_lst + i, (i == msg->rpt_cnt - 1));
+	}
+
+	ax25_putchar(ctx, AX25_CTRL_UI);
+	ax25_putchar(ctx, AX25_PID_NOLAYER3);
+
+	while (len--)
+		ax25_putchar(ctx, *buf++);
+
+	/*
+	 * According to AX25 protocol,
+	 * CRC is sent in reverse order!
+	 */
+	uint8_t crcl = (ctx->crc_out & 0xff) ^ 0xff;
+	uint8_t crch = (ctx->crc_out >> 8) ^ 0xff;
+	ax25_putchar(ctx, crcl);
+	ax25_putchar(ctx, crch);
+
+	ASSERT(ctx->crc_out == AX25_CRC_CORRECT);
+
+	kfile_putc(HDLC_FLAG, ctx->ch);
+
+	#if CONFIG_AX25_STAT
+		ATOMIC(ctx->stat.tx_ok++);
+	#endif
 }
 
 void ax25_sendRaw(AX25Ctx *ctx, const void *_buf, size_t len)
