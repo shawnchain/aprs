@@ -100,7 +100,7 @@ bool digi_handle_aprs_message(struct AX25Msg *msg){
 			// check duplications;
 			if(!_digi_check_duplication(msg)){
 				// seems duplicated in cache, drop
-				kfile_printf(&g_serial.fd,"duplicated!\r\n");
+				//kfile_printf(&g_serial.fd,"duplicated!\r\n");
 				return false;
 			}
 
