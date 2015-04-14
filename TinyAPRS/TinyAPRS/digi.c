@@ -25,8 +25,21 @@
 #include "global.h"
 #include "settings.h"
 
-void digi_init(void){
+typedef struct CacheEntry{
+	uint16_t hash;
+	uint32_t timestamp; // in seconds
+}CacheEntry;
 
+#define CACHE_SIZE CFG_DIGI_DUP_CHECK_CACHE_SIZE
+#define DUP_CHECK_INTERVAL CFG_DIGI_DUP_CHECK_INTERVAL
+static CacheEntry cache[CACHE_SIZE];
+static uint8_t cacheIndex;
+#define CURRENT_TIME_SECONDS() (ticks_to_ms(timer_clock()) / 1000)
+
+
+void digi_init(void){
+	memset(&cache,0,sizeof(CacheEntry) * CACHE_SIZE);
+	cacheIndex = 0;
 }
 
 static bool _digi_repeat_message(AX25Msg *msg){
@@ -43,6 +56,39 @@ static bool _digi_repeat_message(AX25Msg *msg){
 	return true;
 }
 
+
+
+static uint16_t _digi_calc_hash(AX25Msg *msg){
+	uint16_t hash = 0;
+	for(size_t i = 0;i < msg->len;i++){
+		hash = hash * 31 + msg->info[i];
+	}
+	return hash;
+}
+
+/*
+ * duplication checks
+ */
+static bool _digi_check_duplication(AX25Msg *msg){
+	(void)msg;
+	bool dup = false;
+	uint16_t hash = _digi_calc_hash(msg);
+	for(uint8_t i = CACHE_SIZE ;cacheIndex > 0 &&  i >0 ;i--){
+		uint8_t j = (cacheIndex - 1 + i) % CACHE_SIZE;
+		if((cache[j].hash == hash) && (CURRENT_TIME_SECONDS() - cache[j].timestamp) < DUP_CHECK_INTERVAL ){
+			dup = true;
+			break;
+		}
+	}
+	if(!dup){
+		cacheIndex = (cacheIndex + 1) % CACHE_SIZE;
+		cache[cacheIndex - 1].hash = hash;
+		cache[cacheIndex - 1].timestamp = ticks_to_ms(timer_clock()) / 1000;
+		return true;
+	}
+	return false;
+}
+
 bool digi_handle_aprs_message(struct AX25Msg *msg){
 	for(int i = 0;i < msg->rpt_cnt;i++){
 		AX25Call *rpt = msg->rpt_lst + i;
@@ -50,6 +96,14 @@ bool digi_handle_aprs_message(struct AX25Msg *msg){
 		if( ((strncasecmp_P(rpt->call,PSTR("WIDE1"),5) == 0) || (strncasecmp_P(rpt->call,PSTR("WIDE2"),5) == 0) || (strncasecmp_P(rpt->call,PSTR("WIDE3"),5) == 0))
 				&& (rpt->ssid > 0)
 				&& !(AX25_REPEATED(msg,i)) ){
+
+			// check duplications;
+			if(!_digi_check_duplication(msg)){
+				// seems duplicated in cache, drop
+				kfile_printf(&g_serial.fd,"duplicated!\r\n");
+				return false;
+			}
+
 			if(rpt->ssid >1){
 				rpt->ssid--; // SSID-1
 				if(i < AX25_MAX_RPT - 1){

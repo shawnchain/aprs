@@ -19,4 +19,8 @@
 
 #define CFG_DIGI_ENABLED 1
 
+#define CFG_DIGI_DUP_CHECK_CACHE_SIZE 8
+
+#define CFG_DIGI_DUP_CHECK_INTERVAL 15
+
 #endif /* CFG_DIGI_H_ */
