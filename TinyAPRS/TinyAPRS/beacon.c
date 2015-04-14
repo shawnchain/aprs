@@ -163,27 +163,10 @@ static bool _fixed_interval_beacon_check(void){
 	return (currentTimeStamp - lastSendTimeSeconds > (rate));
 }
 
-/*
- * smart beacon algorithm - http://www.hamhud.net/hh2/smartbeacon.html
- *
- * aprsdroid - https://github.com/ge0rg/aprsdroid/blob/master/src/location/SmartBeaconing.scala
- */
-static bool _smart_beacon_check(Location *location){
 #if CFG_BEACON_SMART
-	if(lastSendTimeSeconds == 0 || lastLocation.timestamp == 0){
-		return true;
-	}
-
+static bool _smart_beacon_turn_angle_check(Location *location,uint16_t secs_since_beacon){
 	// we're stopped.
 	if(location->speedInKMH == 0 && location->heading == 0){
-		return false;
-	}
-
-	// SMART HEADING CHECK
-	// get the delta of time/speed/heading for current location vs last location
-	int16_t secs_since_beacon = location->timestamp - lastLocation.timestamp; //[second]
-	if(secs_since_beacon <= 0){
-		//	that could happen when current and last spot spans one day, so drop that
 		return false;
 	}
 
@@ -199,6 +182,30 @@ static bool _smart_beacon_check(Location *location){
 	}
 	//DEBUG
 	//kfile_printf(&g_serial.fd,"%d,%d,%d,%d\r\n",secs_since_beacon,speed_kmh,heading_change_since_beacon,turn_threshold);
+	return false;
+}
+#endif
+
+/*
+ * smart beacon algorithm - http://www.hamhud.net/hh2/smartbeacon.html
+ *
+ * reference aprsdroid - https://github.com/ge0rg/aprsdroid/blob/master/src/location/SmartBeaconing.scala
+ */
+static bool _smart_beacon_check(Location *location){
+#if CFG_BEACON_SMART
+	if(lastSendTimeSeconds == 0 || lastLocation.timestamp == 0){
+		return true;
+	}
+	// get the delta of time/speed/heading for current location vs last location
+	int16_t secs_since_beacon = location->timestamp - lastLocation.timestamp; //[second]
+	if(secs_since_beacon <= 0){
+		//	that could happen when current and last spot spans one day, so drop that
+		return false;
+	}
+
+	// SMART HEADING CHECK
+	if(_smart_beacon_turn_angle_check(location,secs_since_beacon))
+		return true;
 
 	// SMART TIME CHECK
 	float beaconRate;
