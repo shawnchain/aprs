@@ -30,12 +30,12 @@ typedef struct CacheEntry{
 	uint32_t timestamp; // in seconds
 }CacheEntry;
 
-#define CACHE_SIZE CFG_DIGI_DUP_CHECK_CACHE_SIZE
+#define DIGI_DEBUG CFG_DIGI_DEBUG
 #define DUP_CHECK_INTERVAL CFG_DIGI_DUP_CHECK_INTERVAL
+#define CURRENT_TIME_SECONDS() (ticks_to_ms(timer_clock()) / 1000)
+#define CACHE_SIZE CFG_DIGI_DUP_CHECK_CACHE_SIZE
 static CacheEntry cache[CACHE_SIZE];
 static uint8_t cacheIndex;
-#define CURRENT_TIME_SECONDS() (ticks_to_ms(timer_clock()) / 1000)
-
 
 void digi_init(void){
 	memset(&cache,0,sizeof(CacheEntry) * CACHE_SIZE);
@@ -45,24 +45,27 @@ void digi_init(void){
 static bool _digi_repeat_message(AX25Msg *msg){
 	// force delay 150ms
 	timer_delayTicks(ms_to_ticks(150));
-
+#if DIGI_DEBUG
 	{
 	char fmt[16];
 	sprintf_P(fmt,PSTR("digipeat:\r\n"));
 	kfile_printf(&g_serial.fd,fmt);
 	}
 	ax25_print(&g_serial.fd, msg);
+#endif
 	ax25_sendMsg(&g_ax25, msg);
 	return true;
 }
 
 
-
+/*
+ * Calculate the digi message hashcode
+ */
 static uint16_t _digi_calc_hash(AX25Msg *msg){
 	uint16_t hash = 0;
 	size_t i = 0;
 
-	for(i = 0;i < 6;i++){						//APRS src/dst call size is fixed to 6 bytes
+	for(i = 0;i < 6;i++){	//APRS src/dst call size is fixed to 6 bytes
 		hash = hash * 31 +  msg->src.call[i];
 	}
 	hash = hash * 31 + msg->src.ssid;
@@ -84,6 +87,7 @@ static uint16_t _digi_calc_hash(AX25Msg *msg){
 static bool _digi_check_is_duplicated(AX25Msg *msg){
 	bool dup = false;
 	uint16_t hash = _digi_calc_hash(msg);
+	// check starts from the latest cache entry
 	for(uint8_t i = CACHE_SIZE ;cacheIndex > 0 &&  i >0 ;i--){
 		uint8_t j = (cacheIndex - 1 + i) % CACHE_SIZE;
 		if((cache[j].hash == hash) && (CURRENT_TIME_SECONDS() - cache[j].timestamp) < DUP_CHECK_INTERVAL ){

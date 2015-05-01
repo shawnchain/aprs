@@ -23,4 +23,5 @@
 
 #define CFG_DIGI_DUP_CHECK_INTERVAL 15
 
+#define CFG_DIGI_DEBUG 1
 #endif /* CFG_DIGI_H_ */

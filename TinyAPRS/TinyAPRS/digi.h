@@ -20,11 +20,6 @@
 #include "cfg/cfg_digi.h"
 #include <stdbool.h>
 
-
-typedef struct Digipeater{
-
-}Digipeater;
-
 void digi_init(void);
 
 struct AX25Msg *msg;
