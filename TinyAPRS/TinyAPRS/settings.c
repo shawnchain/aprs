@@ -43,7 +43,7 @@ SettingsData g_settings = {
 		//.phgd={0,0,0,0},
 		//.comments="TinyAPRS Rocks!",
 		.beacon_interval = 0, // by default beacon is disabled;
-		.smart_beacon=0,
+		.beacon_type=0, // 0 = smart, 1 = fixed interval
 };
 
 #define NV_SETTINGS_HEAD_BYTE_VALUE 0x88

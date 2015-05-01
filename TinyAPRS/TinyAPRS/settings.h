@@ -69,7 +69,7 @@ typedef struct{
 
 	uint16_t beacon_interval; // Beacon send interval
 
-	uint8_t smart_beacon;	// smart beacon mode 0 | 1
+	uint8_t beacon_type;	// 0 = smart, 1 = fixed interval
 } SettingsData;
 
 
