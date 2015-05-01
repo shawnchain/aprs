@@ -166,11 +166,11 @@ static bool _fixed_interval_beacon_check(void){
 #if CFG_BEACON_SMART
 static bool _smart_beacon_turn_angle_check(Location *location,uint16_t secs_since_beacon){
 	// we're stopped.
-	if(location->speedInKMH == 0 && location->heading == 0){
+	if(location->heading == 0 || location->speedInKMH == 0){
 		return false;
 	}
 
-	// prevLocation.heading == 0 means we're just started.
+	// previous location.heading == 0 means we're just started from last stop point.
 	if(lastLocation.heading == 0){
 		return secs_since_beacon >=  SB_TURN_TIME;
 	}
