@@ -17,12 +17,17 @@
 #include "settings.h"
 #include "utils.h"
 
+#include <net/ax25.h>
+
 #define DEFAULT_BEACON_INTERVAL 20 * 60 // 20 minutes of beacon send interval
 #define DEFAULT_BEACON_TEXT "!3014.00N/12009.00E>TinyAPRS Rocks!" //
 
 /*
  * Helper macros
  */
+#undef ABS
+#undef MIN
+#undef MAX
 #define ABS(a)		(((a) < 0) ? -(a) : (a))
 #define MIN(a,b)	(((a) < (b)) ? (a) : (b))
 #define MAX(a,b)	(((a) > (b)) ? (a) : (b))
@@ -30,14 +35,6 @@
 
 // Instance of the settings data. // TODO - Store default settings in the PROGMEM
 SettingsData g_settings = {
-		.my_call="N0CALL",
-		.my_ssid=0,
-		.dest_call="APTI01",
-		.dest_ssid=0,
-		.path1_call="WIDE1",
-		.path1_ssid=1,
-		.path2_call="",
-		.path2_ssid=0,
 		.symbol="/>",
 		//.location={30,14,0,'N',120,0,9,'E'},
 		//.phgd={0,0,0,0},
@@ -51,11 +48,21 @@ SettingsData g_settings = {
 uint8_t EEMEM nvSetHeadByte;
 uint8_t EEMEM nvSettings[NV_SETTINGS_BLOCK_SIZE];
 
-// TODO - support raw packet
+uint8_t EEMEM nvMyCallHeadByte;
+uint8_t EEMEM nvMyCall[7];
+uint8_t EEMEM nvDestCallHeadByte;
+uint8_t EEMEM nvDestCall[7];
+uint8_t EEMEM nvPath1CallHeadByte;
+uint8_t EEMEM nvPath1Call[7];
+uint8_t EEMEM nvPath2CallHeadByte;
+uint8_t EEMEM nvPath2Call[7];
+
+// beacon text(raw packet)
 #define NV_BEACON_TEXT_HEAD_BYTE_VALUE 0x99
 #define NV_BEACON_TEXT_BLOCK_SIZE SETTINGS_BEACON_TEXT_MAX
 uint8_t EEMEM nvBeaconTextHeadByte;
 uint8_t EEMEM nvBeaconText[NV_BEACON_TEXT_BLOCK_SIZE];
+
 
 /*
  * Load settings
@@ -85,16 +92,10 @@ bool settings_save(void){
 void settings_clear(void){
 	eeprom_update_byte((void*)&nvSetHeadByte, 0xFF);
 	eeprom_update_byte((void*)&nvBeaconTextHeadByte, 0xFF);
-}
-
-static void settings_copy_call_value(const char* call, char* buf, uint8_t *len){
-	memset(buf, 0, 7);
-	int i = 0;
-	while (i < 6 && call[i] != 0) {
-		buf[i] = call[i];
-		i++;
-	}
-	*len = i;
+	eeprom_update_byte((void*)&nvMyCallHeadByte,0xFF);
+	eeprom_update_byte((void*)&nvDestCallHeadByte,0xFF);
+	eeprom_update_byte((void*)&nvPath1CallHeadByte,0xFF);
+	eeprom_update_byte((void*)&nvPath2CallHeadByte,0xFF);
 }
 
 /*
@@ -103,34 +104,6 @@ static void settings_copy_call_value(const char* call, char* buf, uint8_t *len){
 void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 	if(*pValueOutLen <= 0) return;
 	switch(type){
-		case SETTINGS_MY_CALL:
-			settings_copy_call_value((const char*)g_settings.my_call,valueOut,pValueOutLen);
-			break;
-		case SETTINGS_MY_SSID:
-			*((uint8_t*)valueOut) = g_settings.my_ssid;
-			*pValueOutLen = 1;
-			break;
-		case SETTINGS_DEST_CALL:
-			settings_copy_call_value((const char*)g_settings.dest_call,valueOut,pValueOutLen);
-			break;
-		case SETTINGS_DEST_SSID:
-			*((uint8_t*)valueOut) = g_settings.dest_ssid;
-			*pValueOutLen = 1;
-			break;
-		case SETTINGS_PATH1_CALL:
-			settings_copy_call_value((const char*)g_settings.path1_call,valueOut,pValueOutLen);
-			break;
-		case SETTINGS_PATH1_SSID:
-			*((uint8_t*)valueOut) = g_settings.path1_ssid;
-			*pValueOutLen = 1;
-			break;
-		case SETTINGS_PATH2_CALL:
-			settings_copy_call_value((const char*)g_settings.path2_call,valueOut,pValueOutLen);
-			break;
-		case SETTINGS_PATH2_SSID:
-			*((uint8_t*)valueOut) = g_settings.path2_ssid;
-			*pValueOutLen = 1;
-			break;
 		case SETTINGS_SYMBOL:
 			*((uint8_t*)valueOut) = g_settings.symbol[0];
 			*((uint8_t*)valueOut + 1) = g_settings.symbol[1];
@@ -154,35 +127,8 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
  * Set settings value
  */
 void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
+	(void)valueLen;
 	switch(type){
-		case SETTINGS_MY_CALL:
-			memset(g_settings.my_call,0,6);
-			memcpy(g_settings.my_call,value,MIN(6,valueLen));
-			break;
-		case SETTINGS_MY_SSID:
-			g_settings.my_ssid = *((uint8_t*)value);
-			break;
-		case SETTINGS_DEST_CALL:
-			memset(g_settings.dest_call,0,6);
-			memcpy(g_settings.dest_call,value,MIN(6,valueLen));
-			break;
-		case SETTINGS_DEST_SSID:
-			g_settings.dest_ssid = *((uint8_t*)value);
-			break;
-		case SETTINGS_PATH1_CALL:
-			memset(g_settings.path1_call,0,6);
-			memcpy(g_settings.path1_call,value,MIN(6,valueLen));
-			break;
-		case SETTINGS_PATH1_SSID:
-			g_settings.path1_ssid = *((uint8_t*)value);
-			break;
-		case SETTINGS_PATH2_CALL:
-			memset(g_settings.path2_call,0,6);
-			memcpy(g_settings.path2_call,value,MIN(6,valueLen));
-			break;
-		case SETTINGS_PATH2_SSID:
-			g_settings.path2_ssid = *((uint8_t*)value);
-			break;
 		case SETTINGS_SYMBOL:
 			g_settings.symbol[0] = *((uint8_t*)value);
 			g_settings.symbol[1] = *(((uint8_t*)value)+1);
@@ -199,51 +145,88 @@ void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
 }
 
 /*
- * This method will accept like BG5HHP, BG5HHP-99 and BG5HHP-X. but will not accept "BG5HHP-" or BG5HHP-100
+ * Get call object from settings
  */
-bool settings_set_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType, char* callString, uint8_t callStringLen){
-	const char s[] = "-";
-	char *call = NULL;
-	uint8_t ssid=0, callLen = 0;
-	if(callStringLen > 0 && callStringLen < 10){
-		// split the "call-ssid" string
-		char* t = strtok((callString),s);
-		if(t != NULL){
-			call = t;
-			callLen = strlen(t);
-			t = strtok(NULL,s);
-			if(t){
-				ssid = atoi((const char*)t);
-				if(ssid > SETTINGS_MAX_SSID){
-					return false; // bail out as ssid is invalid
-				}
-				settings_set(ssidType,&ssid,1);
-			}
-			settings_set(callType,call,callLen);
-			return true;
+void settings_get_call(SETTINGS_TYPE callType, struct AX25Call *call){
+	memset(call,0,sizeof(struct AX25Call));
+	uint8_t head = 0;
+	switch(callType){
+	case SETTINGS_MY_CALL:
+		head = eeprom_read_byte((void*)&nvMyCallHeadByte);
+		if(head == NV_SETTINGS_HEAD_BYTE_VALUE){
+			eeprom_read_block((void*)call,(void*)nvMyCall,7);
+		}else{
+			// read the default values "N0CALL"
+			snprintf_P(call->call,7,PSTR("N0CALL"));
 		}
+		break;
+	case SETTINGS_DEST_CALL:
+		head = eeprom_read_byte((void*)&nvDestCallHeadByte);
+		if(head == NV_SETTINGS_HEAD_BYTE_VALUE){
+			eeprom_read_block((void*)call,(void*)nvDestCall,7);
+		}else{
+			// read the default values "N0CALL"
+			snprintf_P(call->call,7,PSTR("APTI01"));
+		}
+		break;
+	case SETTINGS_PATH1_CALL:
+		head = eeprom_read_byte((void*)&nvPath1CallHeadByte);
+		if(head == NV_SETTINGS_HEAD_BYTE_VALUE){
+			eeprom_read_block((void*)call,(void*)nvPath1Call,7);
+		}else{
+			// read the default values "N0CALL"
+			snprintf_P(call->call,6,PSTR("WIDE1"));
+			call->ssid = 1;
+		}
+		break;
+	case SETTINGS_PATH2_CALL:
+		head = eeprom_read_byte((void*)&nvPath2CallHeadByte);
+		if(head == NV_SETTINGS_HEAD_BYTE_VALUE){
+			eeprom_read_block((void*)call,(void*)nvPath2Call,7);
+		}else{
+			// read the default values "N0CALL"
+			snprintf_P(call->call,6,PSTR("WIDE2"));
+			call->ssid = 2;
+		}
+		break;
+	default:
+		break;
 	}
-	return false;
 }
 
-void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType, char* buf, uint8_t bufLen){
-	// read the call and ssid
-	memset(buf,0,bufLen);
-	uint8_t call_len = bufLen - 4;
-	settings_get(callType,buf,&call_len);
-	if(call_len > 0){
-		// read ssid only when buffer is available
-		uint8_t ssid = 0, ssid_len = 1;
-		settings_get(ssidType,&ssid,&ssid_len);
-		if(ssid > 0){
-			buf[call_len++] = '-';
-			itoa(ssid,(char*)(buf + call_len),10);
-		}
+
+/*
+ * Set call object to settings
+ */
+void settings_set_call(SETTINGS_TYPE callType, struct AX25Call *call){
+	switch(callType){
+	case SETTINGS_MY_CALL:
+		eeprom_update_block((void*)call,(void*)nvMyCall,7);
+		eeprom_update_byte((void*)&nvMyCallHeadByte,NV_SETTINGS_HEAD_BYTE_VALUE);
+		break;
+	case SETTINGS_DEST_CALL:
+		eeprom_update_block((void*)call,(void*)nvDestCall,7);
+		eeprom_update_byte((void*)&nvDestCallHeadByte,NV_SETTINGS_HEAD_BYTE_VALUE);
+		break;
+	case SETTINGS_PATH1_CALL:
+		eeprom_update_block((void*)call,(void*)nvPath1Call,7);
+		eeprom_update_byte((void*)&nvPath1CallHeadByte,NV_SETTINGS_HEAD_BYTE_VALUE);
+		break;
+	case SETTINGS_PATH2_CALL:
+		eeprom_update_block((void*)call,(void*)nvPath2Call,7);
+		eeprom_update_byte((void*)&nvPath2CallHeadByte,NV_SETTINGS_HEAD_BYTE_VALUE);
+		break;
+	default:
+		break;
 	}
 }
 
 //#define DEFAULT_BEACON_TEXT "!3014.00N/12009.00E>000/000/A=000087TinyAPRS Rocks!"
+/*
+ * get beacon text from settings
+ */
 uint8_t settings_get_beacon_text(char* buf, uint8_t bufLen){
+	buf[0] = 0;
 	uint8_t verification = eeprom_read_byte((void*)&nvBeaconTextHeadByte);
 	uint8_t bytesToRead = MIN(bufLen,SETTINGS_BEACON_TEXT_MAX);
 	if (verification == NV_BEACON_TEXT_HEAD_BYTE_VALUE) {
@@ -261,8 +244,11 @@ uint8_t settings_get_beacon_text(char* buf, uint8_t bufLen){
 		return snprintf_P(buf,bufLen,PSTR(DEFAULT_BEACON_TEXT));
 }
 
-uint8_t settings_set_beacon_packet(char* data, uint8_t dataLen){
-	uint8_t bytesToWrite = MIN(dataLen,SETTINGS_BEACON_TEXT_MAX - 1);
+/*
+ * set beacon text to settings
+ */
+uint8_t settings_set_beacon_text(char* data, uint8_t dataLen){
+	uint8_t bytesToWrite = MIN(dataLen,(SETTINGS_BEACON_TEXT_MAX - 1));
 	eeprom_update_block((void*)data, (void*)nvBeaconText, bytesToWrite);
 	eeprom_update_byte((void*)(nvBeaconText + bytesToWrite), 0);
 	eeprom_update_byte((void*)&nvBeaconTextHeadByte, NV_BEACON_TEXT_HEAD_BYTE_VALUE);

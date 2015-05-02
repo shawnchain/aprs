@@ -33,36 +33,20 @@
  */
 typedef enum {
 	SETTINGS_MY_CALL = 1,
-	SETTINGS_MY_SSID,
 	SETTINGS_DEST_CALL,
-	SETTINGS_DEST_SSID,
 	SETTINGS_PATH1_CALL,
-	SETTINGS_PATH1_SSID,
 	SETTINGS_PATH2_CALL,
-	SETTINGS_PATH2_SSID,
 	SETTINGS_SYMBOL,
 	SETTINGS_RUN_MODE,
 	SETTINGS_BEACON_INTERVAL,
 }SETTINGS_TYPE;
 
 #define SETTINGS_MAX_SSID 99
-#define SETTINGS_SIZE 34
+#define SETTINGS_SIZE 8
 
 #define SETTINGS_BEACON_TEXT_MAX 128
 
 typedef struct{
-	uint8_t my_call[6]; 	// the call sign like BG5HHP
-	uint8_t my_ssid;		// the call ssid from 1-10
-
-	uint8_t dest_call[6];	// the destination callsign and ssid
-	uint8_t dest_ssid;
-
-	uint8_t path1_call[6];	// the path1 callsign and ssid
-	uint8_t path1_ssid;
-
-	uint8_t path2_call[6];	// the path2
-	uint8_t path2_ssid;
-
 	uint8_t symbol[2];		// Symbol table and the index
 
 	uint8_t run_mode;		// the run mode ,could be 0|1|2
@@ -70,6 +54,8 @@ typedef struct{
 	uint16_t beacon_interval; // Beacon send interval
 
 	uint8_t beacon_type;	// 0 = smart, 1 = fixed interval
+
+	uint8_t unused[2];
 } SettingsData;
 
 
@@ -106,16 +92,6 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* valueOutLen);
 void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen);
 
 /*
- * Accept CALL string like "BG5HHP-1" and update specific setting values
- */
-bool settings_set_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType, char* callString, uint8_t callStringLen);
-
-/*
- * Get specific CALL setting values and format to a string like "BG5HHP-1"
- */
-void settings_get_call_fullstring(SETTINGS_TYPE callType, SETTINGS_TYPE ssidType, char* buf, uint8_t bufLen);
-
-/*
  * get the beacon text
  */
 uint8_t settings_get_beacon_text(char* buf, uint8_t bufLen);
@@ -123,6 +99,17 @@ uint8_t settings_get_beacon_text(char* buf, uint8_t bufLen);
 /*
  * set the beacon text
  */
-uint8_t settings_set_beacon_packet(char* data, uint8_t dataLen);
+uint8_t settings_set_beacon_text(char* data, uint8_t dataLen);
+
+struct AX25Call;
+/*
+ * Get call object from settings
+ */
+void settings_get_call(SETTINGS_TYPE callType, struct AX25Call *call);
+
+/*
+ * Set call object from settings
+ */
+void settings_set_call(SETTINGS_TYPE callType, struct AX25Call *call);
 
 #endif /* SETTINGS_H_ */

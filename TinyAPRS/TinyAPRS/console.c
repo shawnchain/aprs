@@ -158,8 +158,9 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 	// print settings
 	{
 	char buf[16];
-	uint8_t bufLen = sizeof(buf);
-	settings_get_call_fullstring(SETTINGS_MY_CALL,SETTINGS_MY_SSID,buf,bufLen);
+	AX25Call call;
+	settings_get_call(SETTINGS_MY_CALL,&call);
+	ax25call_to_string(&call,buf);
 	SERIAL_PRINTF_P(pSer, PSTR("MyCall: %s\r\n"),buf);
 	}
 
@@ -204,42 +205,20 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 // AT SETTINGS COMMAND SUPPORT
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
 
-static bool cmd_settings_myssid(Serial* pSer, char* value, size_t len){
-	if(len > 0){
-		uint8_t ssid = atoi((const char*)value);
-		if(ssid > SETTINGS_MAX_SSID){
-			return false;
-		}
-		settings_set(SETTINGS_MY_SSID,&ssid,1);
-		settings_save();
-	}
-
-	uint8_t iSSID = 0;
-	uint8_t bufLen = 1;
-	settings_get(SETTINGS_MY_SSID,&iSSID,&bufLen);
-	SERIAL_PRINTF_P(pSer,PSTR("MY_SSID: %d\r\n"),iSSID);
-
-	return true;
-}
-
-#define _TEMPLATE_SET_SETTINGS_CALL_SSID_(NAME,CALL_TYPE,SSID_TYPE,VALUE,LEN) \
-	if(LEN > 0){ \
-		strupr(VALUE); \
-		if(!settings_set_call_fullstring(CALL_TYPE,SSID_TYPE,VALUE,LEN)){ \
-			return false; \
-		} \
-		settings_save(); \
-	} \
-	char buf[16]; \
-	uint8_t bufLen = sizeof(buf); \
-	settings_get_call_fullstring(CALL_TYPE,SSID_TYPE,buf,bufLen); \
-	SERIAL_PRINTF_P(pSer,PSTR( #NAME ": %s\r\n"),buf);
-
 /*
  * parse AT+CALL=CALL-ID
  */
 static bool cmd_settings_mycall(Serial* pSer, char* value, size_t valueLen){
-	_TEMPLATE_SET_SETTINGS_CALL_SSID_(MYCALL,SETTINGS_MY_CALL,SETTINGS_MY_SSID,value,valueLen);
+	AX25Call call;
+	memset(&call,0,sizeof(AX25Call));
+	if(valueLen > 0){
+		ax25call_from_string(&call,value);
+		settings_set_call(SETTINGS_MY_CALL, &call);
+	}
+	settings_get_call(SETTINGS_MY_CALL, &call);
+	char callString[16];
+	ax25call_to_string(&call,callString);
+	SERIAL_PRINTF_P(pSer,PSTR("My Call: %s\r\n"),callString);
 	return true;
 }
 
@@ -247,7 +226,17 @@ static bool cmd_settings_mycall(Serial* pSer, char* value, size_t valueLen){
  * parse AT+DEST=CALL-ID
  */
 static bool cmd_settings_destcall(Serial* pSer, char* value, size_t valueLen){
-	_TEMPLATE_SET_SETTINGS_CALL_SSID_(DEST,SETTINGS_DEST_CALL,SETTINGS_DEST_SSID,value,valueLen);
+	AX25Call call;
+	memset(&call,0,sizeof(AX25Call));
+	if(valueLen > 0){
+		ax25call_from_string(&call,value);
+		settings_set_call(SETTINGS_DEST_CALL, &call);
+	}
+	settings_get_call(SETTINGS_DEST_CALL, &call);
+	char callString[16];
+	memset(callString,0,16);
+	ax25call_to_string(&call,callString);
+	SERIAL_PRINTF_P(pSer,PSTR("DEST Call: %s\r\n"),callString);
 	return true;
 }
 
@@ -255,9 +244,10 @@ static bool cmd_settings_destcall(Serial* pSer, char* value, size_t valueLen){
  * parse AT+PATH=PATH1,PATH2
  */
 static bool cmd_settings_path(Serial* pSer, char* value, size_t valueLen){
+	AX25Call call;
 	if(valueLen > 0){
 		// convert to upper case
-		strupr(value);
+		//strupr(value);
 		const char s[] = ",";
 		char *path1 = NULL, *path2=NULL;
 		uint8_t path1Len = 0, path2Len = 0;
@@ -273,33 +263,27 @@ static bool cmd_settings_path(Serial* pSer, char* value, size_t valueLen){
 				path2Len = strlen(t);
 			}
 			if(path1Len > 0){
-				if(!settings_set_call_fullstring(SETTINGS_PATH1_CALL,SETTINGS_PATH1_SSID,path1,path1Len)){
-					return false;
-				}
+				ax25call_from_string(&call,path1);
+				settings_set_call(SETTINGS_PATH1_CALL,&call);
+
 				if(path2Len > 0){
-					if(!settings_set_call_fullstring(SETTINGS_PATH2_CALL,SETTINGS_PATH2_SSID,path2,path2Len)){
-						return false;
-					}
+					ax25call_from_string(&call,path2);
+				}else{
+					// no path2, so set an empty call object
+					memset(&call,0,sizeof(AX25Call));
 				}
-				settings_save();
+				settings_set_call(SETTINGS_PATH2_CALL,&call);
 			}
 		}
 	}
 
 	// display the path
 	char p1[10],p2[10];
-	uint8_t len = 10;
-	settings_get_call_fullstring(SETTINGS_PATH1_CALL,SETTINGS_PATH1_SSID,p1,len);
-	if(strlen(p1) > 0){
-		settings_get_call_fullstring(SETTINGS_PATH2_CALL,SETTINGS_PATH2_SSID,p2,len);
-		if(strlen(p2) > 0){
-			SERIAL_PRINTF_P(pSer,PSTR("PATH: %s,%s\r\n"),p1,p2);
-		}else{
-			SERIAL_PRINTF_P(pSer,PSTR("PATH: %s\r\n"),p1);
-		}
-	}else{
-		SERIAL_PRINT_P(pSer,PSTR("PATH:\r\n"));
-	}
+	settings_get_call(SETTINGS_PATH1_CALL,&call);
+	ax25call_to_string(&call,p1);
+	settings_get_call(SETTINGS_PATH2_CALL,&call);
+	ax25call_to_string(&call,p2);
+	SERIAL_PRINTF_P(pSer,PSTR("PATH: %s,%s\r\n"),p1,p2);
 	return true;
 }
 
@@ -336,7 +320,7 @@ static bool cmd_settings_symbol(Serial* pSer, char* value, size_t len){
 static bool cmd_settings_beacon_text(Serial* pSer, char* value, size_t valueLen){
 	if(valueLen > 0){
 		// set the beacon text
-		settings_set_beacon_packet(value,valueLen);
+		settings_set_beacon_text(value,valueLen);
 		//SERIAL_PRINT_P(pSer, "OK\n\r");
 		//return true;
 	}
@@ -448,7 +432,6 @@ void console_init(){
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
 	// settings
     console_add_command(PSTR("CALL"),cmd_settings_mycall);		// setup my callsign-ssid
-    console_add_command(PSTR("SSID"),cmd_settings_myssid);		// setup callsign-ssid
     console_add_command(PSTR("DEST"),cmd_settings_destcall);	// setup destination call-ssid
     console_add_command(PSTR("PATH"),cmd_settings_path);		// setup path like WIDEn-N for beaco
     console_add_command(PSTR("RESET"),cmd_settings_reset);				// reset the tnc

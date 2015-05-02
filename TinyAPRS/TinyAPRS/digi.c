@@ -106,7 +106,7 @@ static bool _digi_check_is_duplicated(AX25Msg *msg){
 bool digi_handle_aprs_message(struct AX25Msg *msg){
 	for(int i = 0;i < msg->rpt_cnt;i++){
 		AX25Call *rpt = msg->rpt_lst + i;
-		uint8_t len = 5;
+		//uint8_t len = 5;
 		if( ((strncasecmp_P(rpt->call,PSTR("WIDE1"),5) == 0) || (strncasecmp_P(rpt->call,PSTR("WIDE2"),5) == 0) || (strncasecmp_P(rpt->call,PSTR("WIDE3"),5) == 0))
 				&& (rpt->ssid > 0)
 				&& !(AX25_REPEATED(msg,i)) ){
@@ -131,8 +131,8 @@ bool digi_handle_aprs_message(struct AX25Msg *msg){
 					return false;
 				}
 			}
-			settings_get(SETTINGS_MY_CALL,rpt->call,&len);
-			settings_get(SETTINGS_MY_SSID,&rpt->ssid,&len);
+			// replace the path with digi call and mark repeated.
+			settings_get_call(SETTINGS_MY_CALL,rpt);
 			AX25_SET_REPEATED(msg,i,1);
 			return _digi_repeat_message(msg);
 		}

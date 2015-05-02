@@ -85,25 +85,27 @@ void beacon_broadcast_poll(void){
 }
 
 static void _do_send(char* payload, uint8_t payloadLen){
-	AX25Call path[3];
-	memset(path,0,sizeof(AX25Call) * 3);
+	AX25Call path[4];// dest,src,rpt1,rpt2
 
 	// dest call: APTI01
-	uint8_t len = 6;
-	memcpy_P((char*)&(path[0].call),PSTR("APTI01"),6);
-
+	settings_get_call(SETTINGS_DEST_CALL,&(path[0]));
 	// src call: MyCALL-SSID
-	settings_get(SETTINGS_MY_CALL,&(path[1].call),&len);
-	len = 1;
-	settings_get(SETTINGS_MY_SSID,&(path[1].ssid),&len);
+	settings_get_call(SETTINGS_MY_CALL,&(path[1]));
 	// path1: WIDE1-1
-	len = 6;
-	settings_get(SETTINGS_PATH1_CALL,&(path[2].call),&len);
-	len = 1;
-	settings_get(SETTINGS_PATH1_SSID,&(path[2].ssid),&len);
+	settings_get_call(SETTINGS_PATH1_CALL,&(path[2]));
+	// path2: WIDE2-2
+	settings_get_call(SETTINGS_PATH2_CALL,&(path[3]));
 
-	//TODO supports WIDE2-2?
-	ax25_sendVia(&g_ax25, path, countof(path), payload, payloadLen);
+	// if the digi path is set, just increase that
+	uint8_t pathCount = 2;
+	if(path[2].call[0] > 0){
+		pathCount++;
+	}
+	if(path[3].call[0] > 0){
+		pathCount++;
+	}
+
+	ax25_sendVia(&g_ax25, path, pathCount, payload, payloadLen);
 
 #if CFG_BEACON_DEBUG
 	kfile_putc('.',&(g_serial.fd));

@@ -68,4 +68,8 @@ uint16_t freeRam (void);
 	kfile_printf((&(pSER->fd)),__ser_print_p_buf);	\
 }
 
+
+struct AX25Call;
+uint8_t ax25call_to_string(struct AX25Call *call, char* buf);
+void ax25call_from_string(struct AX25Call *call, char* buf);
 #endif /* SYS_UTILS_H_ */
