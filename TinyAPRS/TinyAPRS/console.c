@@ -79,13 +79,19 @@ void console_parse_command(char* command, size_t commandLen){
 	}
 #endif
 
-	if(commandLen >0 && command[0] == '?'){
+	if(commandLen ==1 && command[0] == '?'){
+		cmd_info(pSer,0,0);
+		return;
+	}
+
+	if(commandLen ==2 && command[0] == '?' && command[1] == '?'){
 		cmd_info(pSer,0,0);
 #if CONSOLE_HELP_COMMAND_ENABLED
 		cmd_help(pSer,0,0);
 #endif
 		return;
 	}
+
 
 	//TinyAPRS AT Command Handler
 	if(commandLen >=6 && (command[0] == 'A' || command[0] == 'a') && (command[1] == 'T' || command[1] == 't') && (command[2] == '+') ){
@@ -184,16 +190,16 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("\r\nAT commands supported\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("-----------------------------------------------------------\r\n"));
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
-	SERIAL_PRINT_P(pSer,PSTR("AT+CALL=[CALLSIGN-SSID]\t;Set my callsign\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+CALL=[CALLSIGN-SSID]\t\t;Set my callsign\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN-SSID]\t\t;Set destination callsign\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[WIDE1-1,WIDE2-2]\t;Set PATH, max 2 allowed\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+SYMBOL=[SYMBOL_TABLE/IDX]\t;Set beacon symbol\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("AT+BEACON=[45]\t\t;Set beacon interval, 0 to disable \r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+BEACON=[45]\t\t\t;Set beacon interval, 0 to disable \r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+TEXT=[!3011.54N/12007.35E>]\t;Set beacon text \r\n"));
 #endif
 	SERIAL_PRINT_P(pSer,PSTR("AT+MODE=[0|1|2]\t\t\t;Set device run mode\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=[1]\t\t\t;Enter kiss mode\r\n"));
-	SERIAL_PRINT_P(pSer,PSTR("?\t\t\t\t;Display help messages\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("??\t\t\t\t;Display this help messages\r\n"));
 
 	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyright 2015, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
 
