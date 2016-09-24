@@ -249,7 +249,7 @@ void ax25_putchar(AX25Ctx *ctx, uint8_t c)
 	kfile_putc(c, ctx->ch);
 }
 
-static void ax25_sendCall(AX25Ctx *ctx, const AX25Call *addr, bool last)
+static void ax25_sendCall(AX25Ctx *ctx, const AX25Call *addr, bool last,bool repeated)
 {
 	unsigned len = MIN(sizeof(addr->call), strlen(addr->call));
 
@@ -270,6 +270,7 @@ static void ax25_sendCall(AX25Ctx *ctx, const AX25Call *addr, bool last)
 	/* Bits6:5 should be set to 1 for all SSIDs (0x60) */
 	/* The bit0 of last call SSID should be set to 1 */
 	uint8_t ssid = 0x60 | (addr->ssid << 1) | (last ? 0x01 : 0);
+	if(repeated) ssid |= 0x80;
 	ax25_putchar(ctx, ssid);
 }
 
@@ -294,7 +295,7 @@ void ax25_sendVia(AX25Ctx *ctx, const AX25Call *path, size_t path_len, const voi
 
 	/* Send call */
 	for (size_t i = 0; i < path_len; i++)
-		ax25_sendCall(ctx, &path[i], (i == path_len - 1));
+		ax25_sendCall(ctx, &path[i], (i == path_len - 1), false /*repeated is not implemented*/);
 
 	ax25_putchar(ctx, AX25_CTRL_UI);
 	ax25_putchar(ctx, AX25_PID_NOLAYER3);
@@ -331,13 +332,13 @@ void ax25_sendMsg(AX25Ctx *ctx, const AX25Msg *msg){
 	kfile_putc(HDLC_FLAG, ctx->ch);
 
 	// Send dest call
-	ax25_sendCall(ctx, &(msg->dst), false);
+	ax25_sendCall(ctx, &(msg->dst), false, false);
 	// send src call
-	ax25_sendCall(ctx, &(msg->src), false);
+	ax25_sendCall(ctx, &(msg->src), false, false);
 
 	/* Send path calls */
 	for (uint8_t i = 0; i < msg->rpt_cnt; i++){
-		ax25_sendCall(ctx, msg->rpt_lst + i, (i == msg->rpt_cnt - 1));
+		ax25_sendCall(ctx, msg->rpt_lst + i, (i == msg->rpt_cnt - 1),AX25_REPEATED(msg,i));
 	}
 
 	ax25_putchar(ctx, AX25_CTRL_UI);
