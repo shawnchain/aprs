@@ -61,6 +61,7 @@ static SoftSerial softSer;
 #if MOD_TRACKER
 #include "cfg/cfg_gps.h"
 #include "gps.h"
+#include "tracker.h"
 GPS g_gps;
 #endif
 
@@ -156,12 +157,14 @@ static void beacon_mode_exit_callback(void){
  * Callback when a line is read from the serial port.
  */
 static void serial_read_line_callback(char* line, uint8_t len){
+	(void)line;
+	(void)len;
 	switch(currentMode){
 
 #if MOD_TRACKER
 		case MODE_TRACKER:
 			if(gps_parse(&g_gps,line,len) && g_gps.valid){
-				beacon_send_location(&g_gps);
+				tracker_update_location(&g_gps);
 			}
 			#if DEBUG_GPS_OUTPUT
 			kfile_print((&(g_serial.fd)),line);

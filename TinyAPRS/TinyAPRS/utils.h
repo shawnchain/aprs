@@ -72,4 +72,11 @@ uint16_t freeRam (void);
 struct AX25Call;
 uint8_t ax25call_to_string(struct AX25Call *call, char* buf);
 void ax25call_from_string(struct AX25Call *call, char* buf);
+
+
+/*
+ * Get timer clock count in seconds
+ */
+#define timer_clock_seconds(void) ticks_to_ms(timer_clock()) / 1000
+
 #endif /* SYS_UTILS_H_ */

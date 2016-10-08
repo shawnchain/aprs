@@ -57,7 +57,8 @@ endif
 ifeq ($(MOD_TRACKER),1)
 MOD_BEACON = 1
 TinyAPRS_USER_CSRC += \
-	$(TinyAPRS_SRC_PATH)/gps.c	
+	$(TinyAPRS_SRC_PATH)/gps.c \
+	$(TinyAPRS_SRC_PATH)/tracker.c
 endif
 
 ifeq ($(MOD_DIGI),1)

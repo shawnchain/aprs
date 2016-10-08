@@ -34,12 +34,10 @@ void beacon_init(beacon_exit_callback_t exitcb);
  */
 void beacon_broadcast_poll(void);
 
-struct GPS;
 /*
- * Send the beacon location
+ * Send raw payload
  */
-void beacon_send_location(struct GPS *gps);
-
+void beacon_send(char* payload, uint8_t payloadLen);
 
 #if CFG_BEACON_TEST
 /*
