@@ -11,7 +11,10 @@
 #include "settings.h"
 
 #include <net/ax25.h>
+
+#if MOD_BEACON
 #include "beacon.h"
+#endif
 
 #include <cfg/cfg_afsk.h> // afst configuration info
 #include <cfg/cfg_kiss.h> // kiss config
@@ -29,11 +32,11 @@ static bool cmd_help(Serial* pSer, char* command, size_t len);
 
 static bool cmd_info(Serial* pSer, char* value, size_t len);
 
-#if CONSOLE_SEND_COMMAND_ENABLED
+#if MOD_BEACON && CONSOLE_SEND_COMMAND_ENABLED
 static bool cmd_send(Serial* pSer, char* command, size_t len);
 #endif
 
-#if CFG_BEACON_TEST
+#if MOD_BEACON && CFG_BEACON_TEST
 static bool cmd_test_send(Serial* pSer, char* command, size_t len);
 #endif
 
@@ -72,7 +75,7 @@ void console_parse_command(char* command, size_t commandLen){
 	Serial *pSer = &g_serial;
 
 	// A simple hack to command "!5"
-#if CFG_BEACON_TEST
+#if MOD_BEACON && CFG_BEACON_TEST
 	if(commandLen > 0 && command[0] == '!'){
 		cmd_test_send(pSer, command+1,commandLen - 1);
 		return;
@@ -386,7 +389,7 @@ static bool cmd_settings_beacon_interval(Serial* pSer, char* value, size_t value
 
 #endif // end of #if ENABLE_CONSOLE_AT_COMMANDS
 
-#if CFG_BEACON_TEST
+#if MOD_BEACON && CFG_BEACON_TEST
 /*
  * !{n} - send {n} test packets
  */
@@ -405,7 +408,7 @@ static bool cmd_test_send(Serial* pSer, char* command, size_t len){
 #endif
 
 
-#if CONSOLE_SEND_COMMAND_ENABLED
+#if MOD_BEACON && CONSOLE_SEND_COMMAND_ENABLED
 /*
  * AT+SEND - just send the beacon message once
  */

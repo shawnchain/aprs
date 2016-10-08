@@ -26,15 +26,57 @@ TinyAPRS_PROGRAMMER_BAUD = 57600
 TinyAPRS_USER_CSRC = \
 	$(TinyAPRS_SRC_PATH)/main.c \
 	$(TinyAPRS_SRC_PATH)/hw/hw_afsk.c \
-	$(TinyAPRS_SRC_PATH)/lcd/hw_lcd_4884.c \
-	$(TinyAPRS_SRC_PATH)/console.c \
-	$(TinyAPRS_SRC_PATH)/settings.c \
-	$(TinyAPRS_SRC_PATH)/net/kiss.c \
 	$(TinyAPRS_SRC_PATH)/utils.c \
-	$(TinyAPRS_SRC_PATH)/beacon.c \
-	$(TinyAPRS_SRC_PATH)/gps.c \
 	$(TinyAPRS_SRC_PATH)/reader.c \
-	$(TinyAPRS_SRC_PATH)/digi.c \
+	$(TinyAPRS_SRC_PATH)/settings.c
+
+ifeq ($(ALL),1)
+MOD_CONSOLE := 1
+MOD_KISS := 1
+MOD_TRACKER := 1
+MOD_DIGI := 1
+else
+MOD_CONSOLE := 0
+MOD_KISS := 0
+MOD_TRACKER := 0
+MOD_DIGI := 0
+MOD_BEACON := 0
+endif
+
+
+ifeq ($(MOD_CONSOLE),1)
+TinyAPRS_USER_CSRC += \
+	$(TinyAPRS_SRC_PATH)/console.c
+endif
+
+ifeq ($(MOD_KISS),1)
+TinyAPRS_USER_CSRC += \
+	$(TinyAPRS_SRC_PATH)/net/kiss.c
+endif
+
+ifeq ($(MOD_TRACKER),1)
+MOD_BEACON = 1
+TinyAPRS_USER_CSRC += \
+	$(TinyAPRS_SRC_PATH)/gps.c	
+endif
+
+ifeq ($(MOD_DIGI),1)
+MOD_BEACON = 1
+TinyAPRS_USER_CSRC += \
+	$(TinyAPRS_SRC_PATH)/digi.c
+endif
+
+ifeq ($(MOD_WX),1)
+endif
+
+ifeq ($(MOD_BEACON),1)
+TinyAPRS_USER_CSRC += \
+	$(TinyAPRS_SRC_PATH)/beacon.c
+endif
+
+MOD_RADIO := 0
+#TinyAPRS_USER_CSRC += \
+	#$(TinyAPRS_SRC_PATH)/lcd/hw_lcd_4884.c \	
 	#$(TinyAPRS_SRC_PATH)/hw/hw_softser.c \
 	#$(TinyAPRS_SRC_PATH)/radio.c \
 	#
@@ -68,6 +110,15 @@ TinyAPRS_USER_CPPFLAGS = \
 	-fno-strict-aliasing \
 	-fwrapv \
 	#
+
+#Append the module flags to CC flags
+TinyAPRS_USER_CPPFLAGS += \
+	-D'MOD_KISS=$(MOD_KISS)' \
+	-D'MOD_TRACKER=$(MOD_TRACKER)' \
+	-D'MOD_DIGI=$(MOD_DIGI)' \
+	-D'MOD_BEACON=$(MOD_BEACON)' \
+	-D'MOD_RADIO=$(MOD_RADIO)' \
+	-D'MOD_CONSOLE=$(MOD_CONSOLE)'
 
 # Print binary size, make sure avr-size is in the PATH env
 AVRSIZE=avr-size
