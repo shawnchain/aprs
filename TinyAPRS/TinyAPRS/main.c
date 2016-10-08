@@ -24,7 +24,6 @@
 
 #include <net/afsk.h>
 #include <net/ax25.h>
-#include <net/kiss.h>
 
 #include <drv/ser.h>
 #include <drv/timer.h>
@@ -37,38 +36,48 @@
 
 #include "utils.h"
 
+#include "settings.h"
 #include "reader.h"
 
-#include "settings.h"
+#if MOD_CONSOLE
 #include "console.h"
-
-#include "cfg/cfg_beacon.h"
-#if CFG_BEACON_ENABLED
-#include "beacon.h"
 #endif
 
+#if MOD_KISS
+#include <net/kiss.h>
+#endif
+
+#if MOD_DIGI
 #include "cfg/cfg_digi.h"
-#if CFG_DIGI_ENABLED
 #include "digi.h"
 #endif
 
+#if MOD_RADIO
 #include "cfg/cfg_radio.h"
-#if CFG_RADIO_ENABLED
 #include "radio.h"
 static SoftSerial softSer;
 #endif
 
+#if MOD_TRACKER
 #include "cfg/cfg_gps.h"
-#if CFG_GPS_ENABLED
 #include "gps.h"
 GPS g_gps;
+#endif
+
+#if MOD_BEACON
+#include "cfg/cfg_beacon.h"
+#include "beacon.h"
 #endif
 
 Afsk g_afsk;
 AX25Ctx g_ax25;
 Serial g_serial;
 
+#if MOD_KISS
 #define SHARED_BUF_LEN CONFIG_AX25_FRAME_BUF_LEN //shared buffer is 330 bytes for KISS module reading received AX25 frame.
+#else
+#define SHARED_BUF_LEN 128
+#endif
 uint8_t g_shared_buf[SHARED_BUF_LEN];
 
 #define ADC_CH 0
@@ -104,11 +113,13 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 		ax25_print(&(g_serial.fd),msg);
 		break;
 
+#if MOD_KISS
 	case MODE_KISS:
 		kiss_send_host(0x00/*kiss port id*/,g_ax25.buf,g_ax25.frm_len - 2);
 		break;
+#endif
 
-#if CFG_DIGI_ENABLED
+#if MOD_DIGI
 	case MODE_DIGI:
 		digi_handle_aprs_message(msg);
 		break;
@@ -123,11 +134,14 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 /*
  * callback when kiss mode is end
  */
+#if MOD_KISS
 static void kiss_mode_exit_callback(void){
 	currentMode = MODE_CFG;
 	SERIAL_PRINT_P((&g_serial),PSTR("Exit KISS mode\r\n"));
 }
+#endif
 
+#if MOD_BEACON
 /*
  * callback when beacon mode is end
  */
@@ -135,6 +149,7 @@ static void beacon_mode_exit_callback(void){
 	currentMode = MODE_CFG;
 	SERIAL_PRINT_P((&g_serial),PSTR("Exit Beacon mode\r\n"));
 }
+#endif
 
 
 /*
@@ -143,7 +158,7 @@ static void beacon_mode_exit_callback(void){
 static void serial_read_line_callback(char* line, uint8_t len){
 	switch(currentMode){
 
-#if CFG_GPS_ENABLED
+#if MOD_TRACKER
 		case MODE_TRACKER:
 			if(gps_parse(&g_gps,line,len) && g_gps.valid){
 				beacon_send_location(&g_gps);
@@ -155,13 +170,15 @@ static void serial_read_line_callback(char* line, uint8_t len){
 			#endif
 			break;
 #endif
-
+#if MOD_KISS
 		case MODE_KISS:
 			// do nothing for KISS mode
 			break;
-
+#endif
 		default:
+#if MOD_CONSOLE
 			console_parse_command(line,len);
+#endif
 			break;
 	}
 }
@@ -191,7 +208,7 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 			ser_purge(pSer);  			// clear all rx/tx buffer
 			SERIAL_PRINT_P(pSer,PSTR("Enter Config mode\r\n"));
 			break;
-
+#if MOD_KISS
 		case MODE_KISS:
 			// Enter KISS MODE
 			currentMode = MODE_KISS;
@@ -199,15 +216,16 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 			ser_purge(pSer);  			// clear serial rx/tx buffer
 			SERIAL_PRINT_P(pSer,PSTR("Enter KISS mode\r\n"));
 			break;
+#endif
 
-#if CFG_GPS_ENABLED
+#if MOD_TRACKER
 		case MODE_TRACKER:
 			currentMode = MODE_TRACKER;
 			SERIAL_PRINT_P(pSer,PSTR("Enter Tracker mode\r\n"));
 			break;
 #endif
 
-#if CFG_DIGI_ENABLED
+#if MOD_DIGI
 		case MODE_DIGI:
 			// DIGI MODE
 			currentMode = MODE_DIGI;
@@ -238,6 +256,7 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 	return true;
 }
 
+#if MOD_KISS
 /*
  * AT+KISS=1 enter KISS mode, same as AT+MODE=1, where MODE_KISS = 1
  */
@@ -247,6 +266,7 @@ static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
 	char c[] = "1"; //
 	return cmd_switch_mode(pSer, c, 1);
 }
+#endif
 
 static void check_run_mode(void){
 	static ticks_t ts = 0;
@@ -295,20 +315,22 @@ static void init(void)
 	g_ax25.pass_through = false;
 
 	// Initialize the kiss module
-	// FIXME - use shared memory
+	// NOTE - use shared memory buffer
+#if MOD_KISS
 	kiss_init(&(g_serial.fd),g_shared_buf, SHARED_BUF_LEN, kiss_mode_exit_callback);
+#endif
 
-#if CFG_BEACON_ENABLED
+#if MOD_BEACON
 	// Initialize the beacon module
     beacon_init(beacon_mode_exit_callback);
 #endif
 
     // Initialize the digi module
-#if CFG_DIGI_ENABLED
+#if MOD_DIGI
     digi_init();
 #endif
 
-#if CFG_RADIO_ENABLED
+#if MOD_RADIO
     // Initialize the soft serial and radio
     softser_init(&softSer, CFG_RADIO_RX_PIN,CFG_RADIO_TX_PIN);
     softser_start(&softSer,9600);
@@ -318,15 +340,19 @@ static void init(void)
     reader_init(g_shared_buf, SHARED_BUF_LEN,serial_read_line_callback);
 
     // Initialize GPS NMEA/GPRMC parser
-#if CFG_GPS_ENABLED
+#if MOD_TRACKER
     gps_init(&g_gps);
 #endif
 
+#if MOD_CONSOLE
     //////////////////////////////////////////////////////////////
     // Initialize the console & commands
     console_init();
     console_add_command(PSTR("MODE"),cmd_switch_mode);			// setup tnc run mode
+#if MOD_KISS
     console_add_command(PSTR("KISS"),cmd_enter_kiss_mode);		// enable KISS mode
+#endif
+#endif
 }
 
 
@@ -345,22 +371,25 @@ int main(void){
 		switch(currentMode){
 			case MODE_CFG:
 				reader_poll(&g_serial);
-#if CFG_BEACON_ENABLED
+#if MOD_BEACON
 				beacon_broadcast_poll();
 #endif
 				break;
-
+#if MOD_TRACKER
 			case MODE_TRACKER:
 				reader_poll(&g_serial);
 				break;
+#endif
 
+#if MOD_KISS
 			case MODE_KISS:{
 				kiss_serial_poll();
 				kiss_queue_process();
 				break;
 			}
+#endif
 
-#if CFG_DIGI_ENABLED
+#if MOD_DIGI
 			case MODE_DIGI:{
 				reader_poll(&g_serial);
 				beacon_broadcast_poll();
