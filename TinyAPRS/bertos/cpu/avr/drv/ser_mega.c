@@ -421,21 +421,22 @@ extern struct Serial *ser_handles[SER_CNT];
 /* TX and RX buffers */
 static unsigned char uart0_txbuffer[CONFIG_UART0_TXBUFSIZE];
 static unsigned char uart0_rxbuffer[CONFIG_UART0_RXBUFSIZE];
-#if AVR_HAS_UART1
+#if AVR_HAS_UART1 && CONFIG_UART1_ENABLED
 	static unsigned char uart1_txbuffer[CONFIG_UART1_TXBUFSIZE];
 	static unsigned char uart1_rxbuffer[CONFIG_UART1_RXBUFSIZE];
 #endif
-#if AVR_HAS_UART2
+#if AVR_HAS_UART2 && CONFIG_UART2_ENABLED
 	static unsigned char uart2_txbuffer[CONFIG_UART2_TXBUFSIZE];
 	static unsigned char uart2_rxbuffer[CONFIG_UART2_RXBUFSIZE];
 #endif
-#if AVR_HAS_UART3
+#if AVR_HAS_UART3 && CONFIG_UART3_ENABLED
 	static unsigned char uart3_txbuffer[CONFIG_UART3_TXBUFSIZE];
 	static unsigned char uart3_rxbuffer[CONFIG_UART3_RXBUFSIZE];
 #endif
+#if CONFIG_SPI_ENABLED
 static unsigned char spi_txbuffer[CONFIG_SPI_TXBUFSIZE];
 static unsigned char spi_rxbuffer[CONFIG_SPI_RXBUFSIZE];
-
+#endif
 
 /**
  * Internal hardware state structure
@@ -461,10 +462,10 @@ struct AvrSerial
 
 static uint16_t uart_period(unsigned long bps)
 {
-	uint16_t period = DIV_ROUND(CPU_FREQ / 16UL, bps) - 1;
+	uint16_t period = DIV_ROUND(CPU_FREQ / 8UL, bps) - 1;
 
 	#ifdef _DEBUG
-		long skew = bps - (long)(period + 1) * (CPU_FREQ / 16);
+		long skew = bps - ((CPU_FREQ / 8UL) / (long)(period + 1));
 		/* 8N1 is reliable within 3% skew */
 		if ((unsigned long)ABS(skew) > bps / (100 / 3))
 			kprintf("Baudrate off by %ldbps\n", skew);
@@ -512,6 +513,7 @@ static void uart0_setbaudrate(UNUSED_ARG(struct SerialHardware *, _hw), unsigned
 	uint16_t period = uart_period(rate);
 
 #if !CPU_AVR_ATMEGA103
+	UCSR0A = BV(U2X0); /* The Arduino Uno bootloader turns on U2X0 */ \
 	UBRR0H = period >> 8;
 #endif
 	UBRR0L = period;
@@ -560,6 +562,7 @@ static void uart1_enabletxirq(struct SerialHardware *_hw)
 static void uart1_setbaudrate(UNUSED_ARG(struct SerialHardware *, _hw), unsigned long rate)
 {
 	uint16_t period = uart_period(rate);
+	UCSR1A = BV(U2X1);
 	UBRR1H = period >> 8;
 	UBRR1L = period;
 }
@@ -607,6 +610,7 @@ static void uart2_enabletxirq(struct SerialHardware *_hw)
 static void uart2_setbaudrate(UNUSED_ARG(struct SerialHardware *, _hw), unsigned long rate)
 {
 	uint16_t period = uart_period(rate);
+	UCSR2A = BV(U2X2);
 	UBRR2H = period >> 8;
 	UBRR2L = period;
 }
@@ -654,6 +658,7 @@ static void uart3_enabletxirq(struct SerialHardware *_hw)
 static void uart3_setbaudrate(UNUSED_ARG(struct SerialHardware *, _hw), unsigned long rate)
 {
 	uint16_t period = uart_period(rate);
+	UCSR3A = BV(U2X3);
 	UBRR3H = period >> 8;
 	UBRR3L = period;
 }
@@ -665,7 +670,7 @@ static void uart3_setparity(UNUSED_ARG(struct SerialHardware *, _hw), int parity
 
 #endif // AVR_HAS_UART3
 
-
+#if CONFIG_SPI_ENABLED
 static void spi_init(UNUSED_ARG(struct SerialHardware *, _hw), UNUSED_ARG(struct Serial *, ser))
 {
 	/*
@@ -778,6 +783,7 @@ static void spi_setparity(UNUSED_ARG(struct SerialHardware *, _hw), UNUSED_ARG(i
 {
 	// nop
 }
+#endif
 
 static bool tx_sending(struct SerialHardware* _hw)
 {
@@ -846,6 +852,7 @@ static const struct SerialHardwareVT UART3_VT =
 };
 #endif // AVR_HAS_UART3
 
+#if CONFIG_SPI_ENABLED
 static const struct SerialHardwareVT SPI_VT =
 {
 	C99INIT(init, spi_init),
@@ -855,6 +862,7 @@ static const struct SerialHardwareVT SPI_VT =
 	C99INIT(txStart, spi_starttx),
 	C99INIT(txSending, tx_sending),
 };
+#endif
 
 static struct AvrSerial UARTDescs[SER_CNT] =
 {
@@ -868,7 +876,7 @@ static struct AvrSerial UARTDescs[SER_CNT] =
 		},
 		C99INIT(sending, false),
 	},
-#if AVR_HAS_UART1
+#if AVR_HAS_UART1 && CONFIG_UART1_ENABLED
 	{
 		C99INIT(hw, /**/) {
 			C99INIT(table, &UART1_VT),
@@ -880,7 +888,7 @@ static struct AvrSerial UARTDescs[SER_CNT] =
 		C99INIT(sending, false),
 	},
 #endif
-#if AVR_HAS_UART2
+#if AVR_HAS_UART2 && CONFIG_UART2_ENABLED
 	{
 		C99INIT(hw, /**/) {
 			C99INIT(table, &UART2_VT),
@@ -892,7 +900,7 @@ static struct AvrSerial UARTDescs[SER_CNT] =
 		C99INIT(sending, false),
 	},
 #endif
-#if AVR_HAS_UART3
+#if AVR_HAS_UART3 && CONFIG_UART3_ENABLED
 	{
 		C99INIT(hw, /**/) {
 			C99INIT(table, &UART3_VT),
@@ -904,6 +912,7 @@ static struct AvrSerial UARTDescs[SER_CNT] =
 		C99INIT(sending, false),
 	},
 #endif
+#if CONFIG_SPI_ENABLED
 	{
 		C99INIT(hw, /**/) {
 			C99INIT(table, &SPI_VT),
@@ -914,6 +923,7 @@ static struct AvrSerial UARTDescs[SER_CNT] =
 		},
 		C99INIT(sending, false),
 	}
+#endif
 };
 
 struct SerialHardware *ser_hw_getdesc(int unit)
