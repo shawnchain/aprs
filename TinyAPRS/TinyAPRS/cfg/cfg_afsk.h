@@ -108,7 +108,7 @@
  * $WIZ$ type = "int"
  * $WIZ$ min = 1
  */
-#define CONFIG_AFSK_PREAMBLE_LEN 350UL
+#define CONFIG_AFSK_PREAMBLE_LEN 300UL
 
 
 
@@ -117,11 +117,14 @@
  * $WIZ$ type = "int"
  * $WIZ$ min = 1
  */
-#define CONFIG_AFSK_TRAILER_LEN 75UL
+#define CONFIG_AFSK_TRAILER_LEN 50UL
 
 /**
  * AFSK Enable AREF pin to use external reference voltage (likely 3.3V) for improving the ADC sensitivity
  */
 #define CONFIG_AFSK_ADC_USE_EXTERNAL_AREF 0
+
+
+#define CONFIG_AFSK_PWM_TX 1
 
 #endif /* CFG_AFSK_H */

@@ -94,45 +94,6 @@ static const uint8_t PROGMEM sin_table[] =
 
 STATIC_ASSERT(sizeof(sin_table) == SIN_LEN / 4);
 
-#if (CONFIG_AFSK_FILTER == AFSK_FIR)
-enum fir_filters
-{
-	FIR_1200_BP=0,
-	FIR_2200_BP=1,
-	FIR_1200_LP=2
-};
-
-static FIR fir_table[] =
-{
-	[FIR_1200_BP] = {
-		.taps = 11,
-		.coef = {
-			-12, -16, -15, 0, 20, 29, 20, 0, -15, -16, -12
-		},
-		.mem = {
-			0,
-		},
-	},
-	[FIR_2200_BP] = {
-		.taps = 11,
-		.coef = {
-			11, 15, -8, -26, 4, 30, 4, -26, -8, 15, 11
-		},
-		.mem = {
-			0,
-		},
-	},
-	[FIR_1200_LP] = {
-		.taps = 8,
-		.coef = {
-			-9, 3, 26, 47, 47, 26, 3, -9
-		},
-		.mem = {
-			0,
-		},
-	},
-};
-#endif
 
 /**
  * Given the index, this function computes the correct sine sample
@@ -149,122 +110,9 @@ INLINE uint8_t sin_sample(uint16_t idx)
 	return (idx >= (SIN_LEN / 2)) ? (255 - data) : data;
 }
 
-#if (CONFIG_AFSK_FILTER == AFSK_FIR)
-static int8_t fir_filter(int8_t s, enum fir_filters f)
-{
-	int8_t Q = fir_table[f].taps - 1;
-	int8_t *B = fir_table[f].coef;
-	int16_t *Bmem = fir_table[f].mem;
-
-	int8_t i;
-	int16_t y;
-
-	Bmem[0] = s;
-	y = 0;
-
-	for (i = Q; i >= 0; i--)
-	{
-		y += Bmem[i] * B[i];
-		Bmem[i + 1] = Bmem[i];
-	}
-
-	return (int8_t) (y / 128);
-}
-#endif
 
 #define BIT_DIFFER(bitline1, bitline2) (((bitline1) ^ (bitline2)) & 0x01)
 #define EDGE_FOUND(bitline)            BIT_DIFFER((bitline), (bitline) >> 1)
-
-/**
- * High-Level Data Link Control parsing function.
- * Parse bitstream in order to find characters.
- *
- * \param hdlc HDLC context.
- * \param bit  current bit to be parsed.
- * \param fifo FIFO buffer used to push characters.
- *
- * \return true if all is ok, false if the fifo is full.
- */
-static bool hdlc_parse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo)
-{
-	bool ret = true;
-
-	hdlc->demod_bits <<= 1;
-	hdlc->demod_bits |= bit ? 1 : 0;
-
-	/* HDLC Flag */
-	if (hdlc->demod_bits == HDLC_FLAG)
-	{
-		if (!fifo_isfull(fifo))
-		{
-			fifo_push(fifo, HDLC_FLAG);
-			hdlc->rxstart = true;
-			AFSK_LED_RX_ON();
-		}
-		else
-		{
-			ret = false;
-			hdlc->rxstart = false;
-			AFSK_LED_RX_OFF();
-		}
-
-		hdlc->currchar = 0;
-		hdlc->bit_idx = 0;
-		return ret;
-	}
-
-	/* Reset */
-	if ((hdlc->demod_bits & HDLC_RESET) == HDLC_RESET)
-	{
-		hdlc->rxstart = false;
-		AFSK_LED_RX_OFF();
-		return ret;
-	}
-
-	if (!hdlc->rxstart)
-		return ret;
-
-	/* Stuffed bit */
-	if ((hdlc->demod_bits & 0x3f) == 0x3e)
-		return ret;
-
-	if (hdlc->demod_bits & 0x01)
-		hdlc->currchar |= 0x80;
-
-	if (++hdlc->bit_idx >= 8)
-	{
-		if ((hdlc->currchar == HDLC_FLAG
-			|| hdlc->currchar == HDLC_RESET
-			|| hdlc->currchar == AX25_ESC))
-		{
-			if (!fifo_isfull(fifo))
-				fifo_push(fifo, AX25_ESC);
-			else
-			{
-				hdlc->rxstart = false;
-				AFSK_LED_RX_OFF();
-				ret = false;
-			}
-		}
-
-		if (!fifo_isfull(fifo))
-			fifo_push(fifo, hdlc->currchar);
-		else
-		{
-			hdlc->rxstart = false;
-			AFSK_LED_RX_OFF();
-			ret = false;
-		}
-
-		hdlc->currchar = 0;
-		hdlc->bit_idx = 0;
-	}
-	else
-		hdlc->currchar >>= 1;
-
-	return ret;
-}
-
 
 /**
  * ADC ISR callback.
@@ -275,6 +123,8 @@ static bool hdlc_parse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo)
  */
 void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 {
+	uint8_t this_bit = 0;
+
 	/*
 	 * Frequency discriminator and LP IIR filter.
 	 * This filter is designed to work
@@ -283,8 +133,6 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 	STATIC_ASSERT(SAMPLERATE == 9600);
 	STATIC_ASSERT(BITRATE == 1200);
 
-#if (CONFIG_AFSK_FILTER != AFSK_FIR)
-
 	/*
 	 * Frequency discrimination is achieved by simply multiplying
 	 * the sample with a delayed sample of (samples per bit) / 2.
@@ -292,6 +140,7 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 	 * 600 Hz filter. The filter implementation is selectable
 	 * through the CONFIG_AFSK_FILTER config variable.
 	 */
+
 	af->iir_x[0] = af->iir_x[1];
 
 	#if (CONFIG_AFSK_FILTER == AFSK_BUTTERWORTH)
@@ -321,7 +170,7 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 		 * This should be (af->iir_y[0] * 0.438) but
 		 * (af->iir_y[0] >> 1) is a faster approximation :-)
 		 */
-		af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] >> 3);
+		af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] >> 1);
 		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + af->iir_y[0] * 0.4379097269;
 	#endif
 
@@ -329,55 +178,8 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 	af->sampled_bits <<= 1;
 	af->sampled_bits |= (af->iir_y[1] > 0) ? 1 : 0;
 
-	if (ABS(af->iir_y[1]) - 20 > 0) {
-		af->cd_state++;
-		if (af->cd_state > 30) {
-			af->cd_state = 30;
-			af->cd = true;
-		}
-	} else {
-		if (af->cd_state > 0) {
-			af->cd_state --;
-
-			if (af->cd_state == 0) {
-				af->cd = false;
-			}
-		}
-	}
-
 	/* Store current ADC sample in the af->delay_fifo */
 	fifo_push(&af->delay_fifo, curr_sample);
-
-#elif (CONFIG_AFSK_FILTER == AFSK_FIR)
-
-#define DCD_LEVEL 5
-
-	af->iir_y[0] = ABS(fir_filter(curr_sample, FIR_1200_BP));
-	af->iir_y[1] = ABS(fir_filter(curr_sample, FIR_2200_BP));
-
-	af->sampled_bits <<= 1;
-	af->sampled_bits |= fir_filter(af->iir_y[1] - af->iir_y[0], FIR_1200_LP) > 0;
-
-	if (af->iir_y[1] > DCD_LEVEL || af->iir_y[0] > DCD_LEVEL) {
-		af->cd_state++;
-		if (af->cd_state > 30) {
-			af->cd_state = 30;
-			af->cd = true;
-		}
-	} else {
-		if (af->cd_state > 0) {
-			af->cd_state --;
-
-			if (af->cd_state == 0) {
-				af->cd = false;
-			}
-		}
-	}
-
-#endif
-
-//kprintf("%+03d %+03d %+03d %d\n", curr_sample, af->iir_x[1], af->iir_y[1], (af->cd)?1:0);
-
 
 	/* If there is an edge, adjust phase sampling */
 	if (EDGE_FOUND(af->sampled_bits))
@@ -394,9 +196,6 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 	{
 		af->curr_phase %= PHASE_MAX;
 
-		/* Shift 1 position in the shift register of the found bits */
-		af->found_bits <<= 1;
-
 		/*
 		 * Determine bit value by reading the last 3 sampled bits.
 		 * If the number of ones is two or greater, the bit value is a 1,
@@ -405,19 +204,20 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 		 */
 		STATIC_ASSERT(SAMPLEPERBIT == 8);
 		uint8_t bits = af->sampled_bits & 0x07;
-		if (bits == 0x07 // 111, 3 bits set to 1
-		 || bits == 0x06 // 110, 2 bits
-		 || bits == 0x05 // 101, 2 bits
-		 || bits == 0x03 // 011, 2 bits
-		)
-			af->found_bits |= 1;
+		if (bits == 0x07			  // 111, 3 bits set to 1
+			 || bits == 0x06		  // 110, 2 bits
+			 || bits == 0x05		  // 101, 2 bits
+			 || bits == 0x03		  // 011, 2 bits
+			)
+			this_bit = 1;
 
-		/*
-		 * NRZI coding: if 2 consecutive bits have the same value
-		 * a 1 is received, otherwise it's a 0.
-		 */
-		if (!hdlc_parse(&af->hdlc, !EDGE_FOUND(af->found_bits), &af->rx_fifo))
-			af->status |= AFSK_RXFIFO_OVERRUN;
+		af->status = hdlc_decode (&af->rx_hdlc, this_bit, &af->rx_fifo);
+	}
+
+	if(af->rx_hdlc.state == RX_IN_FRAME){
+		AFSK_LED_RX_ON ();
+	}else{
+		AFSK_LED_RX_OFF();
 	}
 }
 
@@ -427,17 +227,11 @@ static void afsk_txStart(Afsk *af)
 	{
 		af->phase_inc = MARK_INC;
 		af->phase_acc = 0;
-		af->stuff_cnt = 0;
 		af->sending = true;
-		af->preamble_len = DIV_ROUND(CONFIG_AFSK_PREAMBLE_LEN * BITRATE, 8000);
-		AFSK_DAC_IRQ_START(af->dac_ch);
+		AFSK_DAC_IRQ_START (af->dac_ch);
 	}
-	ATOMIC(af->trailer_len  = DIV_ROUND(CONFIG_AFSK_TRAILER_LEN  * BITRATE, 8000));
 }
 
-#define BIT_STUFF_LEN 5
-
-#define SWITCH_TONE(inc)  (((inc) == MARK_INC) ? SPACE_INC : MARK_INC)
 
 /**
  * DAC ISR callback.
@@ -450,111 +244,29 @@ static void afsk_txStart(Afsk *af)
  */
 uint8_t afsk_dac_isr(Afsk *af)
 {
-	uint8_t value = 0;
 	AFSK_LED_TX_ON();
 
 	/* Check if we are at a start of a sample cycle */
 	if (af->sample_count == 0)
 	{
-		if (af->tx_bit == 0)
-		{
-			/* We have just finished transimitting a char, get a new one. */
-			if (fifo_isempty(&af->tx_fifo) && af->trailer_len == 0)
-			{
-				AFSK_DAC_IRQ_STOP(af->dac_ch);
-				af->sending = false;
-				goto exit; // return;
-			}
-			else
-			{
-				/*
-				 * If we have just finished sending an unstuffed byte,
-				 * reset bitstuff counter.
-				 */
-				if (!af->bit_stuff)
-					af->stuff_cnt = 0;
-
-				af->bit_stuff = true;
-
-				/*
-				 * Handle preamble and trailer
-				 */
-				if (af->preamble_len == 0)
-				{
-					if (fifo_isempty(&af->tx_fifo))
-					{
-						af->trailer_len--;
-						af->curr_out = HDLC_FLAG;
-					}
-					else
-						af->curr_out = fifo_pop(&af->tx_fifo);
-				}
-				else
-				{
-					af->preamble_len--;
-					af->curr_out = HDLC_FLAG;
-				}
-
-				/* Handle char escape */
-				if (af->curr_out == AX25_ESC)
-				{
-					if (fifo_isempty(&af->tx_fifo))
-					{
-						AFSK_DAC_IRQ_STOP(af->dac_ch);
-						af->sending = false;
-						goto exit; // return;
-					}
-					else{
-						af->curr_out = fifo_pop(&af->tx_fifo);
-					}
-				}
-				else if (af->curr_out == HDLC_FLAG || af->curr_out == HDLC_RESET){
-					/* If these chars are not escaped disable bit stuffing */
-					af->bit_stuff = false;
-				}
-			}
-			/* Start with LSB mask */
-			af->tx_bit = 0x01;
-		}
-
-		/* check for bit stuffing */
-		if (af->bit_stuff && af->stuff_cnt >= BIT_STUFF_LEN)
-		{
-			/* If there are more than 5 ones in a row insert a 0 */
-			af->stuff_cnt = 0;
-			/* switch tone */
-			af->phase_inc = SWITCH_TONE(af->phase_inc);
-		}
-		else
-		{
-			/*
-			 * NRZI: if we want to transmit a 1 the modulated frequency will stay
-			 * unchanged; with a 0, there will be a change in the tone.
-			 */
-			if (af->curr_out & af->tx_bit)
-			{
-				/*
-				 * Transmit a 1:
-				 * - Stay on the previous tone
-				 * - Increase bit stuff counter
-				 */
-				af->stuff_cnt++;
-			}
-			else
-			{
-				/*
-				 * Transmit a 0:
-				 * - Reset bit stuff counter
-				 * - Switch tone
-				 */
-				af->stuff_cnt = 0;
-				af->phase_inc = SWITCH_TONE(af->phase_inc);
-			}
-
-			/* Go to the next bit */
-			af->tx_bit <<= 1;
-		}
+		/* We have just finished transmitting a bit, get a new one. */
+		/* note that hdlc module does all the NRZI as well as bit stuffing etc */
+		af->curr_out = hdlc_encode (&af->tx_hdlc, &af->tx_fifo);
 		af->sample_count = DAC_SAMPLEPERBIT;
+		switch (af->curr_out)
+		{
+		case -1:
+			AFSK_DAC_IRQ_STOP (af->dac_ch);
+			af->sending = false;
+			AFSK_LED_TX_OFF ();
+			return 0;
+		case 1:
+			af->phase_inc = MARK_INC;
+			break;
+		case 0:
+			af->phase_inc = SPACE_INC;
+			break;
+		}
 	}
 
 	/* Get new sample and put it out on the DAC */
@@ -562,10 +274,8 @@ uint8_t afsk_dac_isr(Afsk *af)
 	af->phase_acc %= SIN_LEN;
 
 	af->sample_count--;
-	value = sin_sample(af->phase_acc);
-exit:
 	AFSK_LED_TX_OFF();
-	return value;
+	return sin_sample(af->phase_acc);
 }
 
 
@@ -619,9 +329,8 @@ static size_t afsk_write(KFile *fd, const void *_buf, size_t size)
 static int afsk_flush(KFile *fd)
 {
 	Afsk *af = AFSK_CAST(fd);
-	while (af->sending){
+	while (af->sending)
 		cpu_relax();
-	}
 	return 0;
 }
 
@@ -634,10 +343,40 @@ static int afsk_error(KFile *fd)
 	return err;
 }
 
-static void afsk_clearerr(KFile *fd)
+static void afsk_clearerr (KFile * fd)
 {
-	Afsk *af = AFSK_CAST(fd);
-	ATOMIC(af->status = 0);
+	Afsk *af = AFSK_CAST (fd);
+	ATOMIC (af->status = 0);
+}
+
+/**
+ * Sets head timings by defining the number of flags to output
+ * Has to be done here as this is the only module that interfaces directly to hdlc!!
+ *
+ * \param fd caste afsk context.
+ * \param c value
+ *
+ */
+void afsk_head (KFile * fd, int c)
+{
+	Afsk *af = AFSK_CAST (fd);
+
+	hdlc_head (&af->tx_hdlc, c, BITRATE);
+}
+
+/**
+ * Sets tail timings by defining the number of flags to output
+ * Has to be done here as this is the only module that interfaces directly to hdlc!!
+ *
+ * \param fd caste afsk context.
+ * \param c value
+ *
+ */
+void afsk_tail (KFile * fd, int c)
+{
+	Afsk *af = AFSK_CAST (fd);
+
+	hdlc_tail (&af->tx_hdlc, c, BITRATE);
 }
 
 
@@ -656,8 +395,6 @@ void afsk_init(Afsk *af, int adc_ch, int dac_ch)
 	af->adc_ch = adc_ch;
 	af->dac_ch = dac_ch;
 
-	af->phase_inc = MARK_INC;
-
 	fifo_init(&af->delay_fifo, (uint8_t *)af->delay_buf, sizeof(af->delay_buf));
 	fifo_init(&af->rx_fifo, af->rx_buf, sizeof(af->rx_buf));
 
@@ -672,13 +409,18 @@ void afsk_init(Afsk *af, int adc_ch, int dac_ch)
 	AFSK_LED_INIT();
 	AFSK_LED_RX_OFF();
 	AFSK_LED_TX_OFF();
-
 	LOG_INFO("MARK_INC %d, SPACE_INC %d\n", MARK_INC, SPACE_INC);
 
-	DB(af->fd._type = KFT_AFSK);
+	hdlc_init (&af->rx_hdlc);
+	hdlc_init (&af->tx_hdlc);
+	// set initial defaults for timings
+	hdlc_head (&af->tx_hdlc, CONFIG_AFSK_PREAMBLE_LEN, BITRATE);
+	hdlc_tail (&af->tx_hdlc, CONFIG_AFSK_TRAILER_LEN, BITRATE);
+	DB (af->fd._type = KFT_AFSK);
 	af->fd.write = afsk_write;
 	af->fd.read = afsk_read;
 	af->fd.flush = afsk_flush;
 	af->fd.error = afsk_error;
 	af->fd.clearerr = afsk_clearerr;
+	af->phase_inc = MARK_INC;
 }

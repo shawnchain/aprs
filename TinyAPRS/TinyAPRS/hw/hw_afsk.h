@@ -40,6 +40,7 @@
 #define HW_AFSK_H
 
 #include "cfg/cfg_arch.h"
+#include "cfg/cfg_afsk.h"
 
 #include <avr/io.h>
 
@@ -49,6 +50,7 @@ void hw_afsk_dacInit(int ch, struct Afsk *_ctx);
 
 /* ------------------------------------------------------------------------
  *  Configurations:
+ *    D?     -->  Data OUT(PWM)
  *    D4-D7  -->  Data OUT
  *    D8     -->  PTT OUT
  *    D9     -->  TX(RED) LED OUT
@@ -85,9 +87,9 @@ void hw_afsk_dacInit(int ch, struct Afsk *_ctx);
  * to turn the pins on or off.
  *
  * Use D9 for TX, D10 for RX, where the register is:
- * D8:  PORTB |= BV(0)  PTT
- * D9:  PORTB |= BV(1)  TX
- * D10: PORTB |= BV(2)  RX
+ * Arduino D8:  PORTB |= BV(0)  PTT
+ * Arduino D9:  PORTB |= BV(1)  TX
+ * Arduino D10:  PORTB |= BV(2)  RX
  */
 // Use PIN9 for TX, D10 for RX, the corresponding register:
 #define AFSK_LED_INIT() do { DDRB |= BV(1)|BV(2);/*PIN9, PIN10*/ } while (0)
@@ -96,6 +98,7 @@ void hw_afsk_dacInit(int ch, struct Afsk *_ctx);
 #define AFSK_LED_RX_ON()   do { PORTB |= BV(2); } while (0) // PIN10
 #define AFSK_LED_RX_OFF()  do { PORTB &= ~BV(2); } while (0)
 
+#define DAC_TIMER_VALUE (DIV_ROUND((CPU_FREQ / 8), CONFIG_AFSK_DAC_SAMPLERATE))
 
 /**
  * Initialize the specified channel of the DAC for AFSK needs.
@@ -107,7 +110,20 @@ void hw_afsk_dacInit(int ch, struct Afsk *_ctx);
  * \param ctx AFSK context (\see Afsk).  This parameter must be saved and
  *             passed back to afsk_dac_isr() for every convertion.
  */
-#define AFSK_DAC_INIT(ch, ctx)   do { (void)ch, (void)ctx; DDRD |= 0xF0/*D4-D7 as data*/; DDRB |= BV(0)/*D8 as PTT*/; } while (0)
+#if CONFIG_AFSK_PWM_TX == 1
+// If using a PWM output then use mode 3 fast (asymmetric) mode running as fast as possible
+// on port D bit 3 (Arduino D3) thus keeping PTT on the original port B bit 0 (Arduino D8).
+#define AFSK_DAC_INIT(ch, ctx)\
+        do { \
+                (void)ch, (void)ctx;\
+                        TCCR2A = BV(COM2B1) | BV(COM2B0) | BV(WGM21) | BV(WGM20);\
+                        TCCR2B = BV(CS20);\
+                        DDRB |= BV(0);\
+                        DDRD &= ~BV(3);\
+                } while (0)
+#else
+#define AFSK_DAC_INIT(ch, ctx)   do { (void)ch, (void)ctx; DDRD |= 0xF0/*D4-D7 as data*/;DDRB |= BV(0); } while (0)
+#endif
 
 /**
  * Start DAC convertions on channel \a ch.

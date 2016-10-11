@@ -162,7 +162,7 @@ static void messageout_hook(struct AX25Msg *msg)
 	ASSERT(msg->pid == AX25_PID_NOLAYER3);
 	ASSERT(msg->len == 256);
 	for (int i = 0; i < 256; i++)
-		ASSERT(msg->info[i] == i);
+		ASSERT (msg->info[i] == (uint8_t) (i + 1));
 }
 
 int afsk_testRun(void)
@@ -170,7 +170,7 @@ int afsk_testRun(void)
 	int c;
 	while ((c = fgetc(fp_adc)) != EOF)
 	{
-		afsk_adc_isr(&afsk_fd, (int8_t)c);
+		afsk_adc_isr (&afsk_fd, (uint8_t) c);
 
 		ax25_poll(&ax25);
 	}
@@ -178,8 +178,9 @@ int afsk_testRun(void)
 	ASSERT(msg_cnt >= 15);
 
 	char buf[256];
-	for (unsigned i = 0; i < sizeof(buf); i++)
-		buf[i] = i;
+	// start from 1 and then wrap round to 0 otherwise null termination prevents display of data
+	for (unsigned i = 0; i < sizeof (buf); i++)
+		buf[i] = i + 1;
 
 	ax25_send(&ax25, AX25_CALL("abcdef", 0), AX25_CALL("123456", 1), buf, sizeof(buf));
 

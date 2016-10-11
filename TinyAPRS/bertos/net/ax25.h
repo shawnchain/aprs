@@ -84,8 +84,6 @@ typedef struct AX25Ctx
 	uint8_t buf[CONFIG_AX25_FRAME_BUF_LEN]; ///< buffer for received chars
 	KFile *ch;        ///< KFile used to access the physical medium
 	size_t frm_len;   ///< received frame length.
-	uint16_t crc_in;  ///< CRC for current received frame
-	uint16_t crc_out; ///< CRC of current sent frame
 	ax25_callback_t hook; ///< Hook function to be called when a message is received
 	bool pass_through;
 	bool sync;   ///< True if we have received a HDLC flag.

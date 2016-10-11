@@ -187,7 +187,7 @@ static void kiss_cmd_process(struct Kiss_msg *k)
 static void kiss_csma(AX25Ctx *ax25Ctx, uint8_t *buf, size_t len) {
 	bool sent = false;
 	while (!sent) {
-		if (!/*ctx->dcd*/(&g_afsk)->hdlc.rxstart) {
+		if ((&g_afsk)->rx_hdlc.state != RX_IN_FRAME ) {
 			uint8_t tp = rand() & 0xFF;
 			if (tp < kiss_persistence) {
 				ax25_sendRaw(ax25Ctx, buf, len);
@@ -199,7 +199,7 @@ static void kiss_csma(AX25Ctx *ax25Ctx, uint8_t *buf, size_t len) {
 				}
 			}
 		} else {
-			while (!sent && /*kiss_ax25->dcd*/ (&g_afsk)->hdlc.rxstart) {
+			while (!sent &&  (&g_afsk)->rx_hdlc.state == RX_IN_FRAME) {
 				// Continously poll the modem for data
 				// while waiting, so we don't overrun
 				// receive buffers

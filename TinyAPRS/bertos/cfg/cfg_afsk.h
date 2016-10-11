@@ -54,15 +54,6 @@
  */
 #define AFSK_LOG_FORMAT     LOG_FMT_TERSE
 
-/**
- * \name Afsk filter types.
- * $WIZ$ afsk_filter_list = "AFSK_BUTTERWORTH", "AFSK_CHEBYSHEV", "AFSK_FIR"
- * \{
- */
-#define AFSK_BUTTERWORTH  0
-#define AFSK_CHEBYSHEV    1
-#define AFSK_FIR          2
-/* \} */
 
 /**
  * AFSK discriminator filter type.
@@ -73,7 +64,7 @@
 
 
 /**
- * AFSK receiver buffer length.
+ * AFSK receiver buffer fifo length.
  *
  * $WIZ$ type = "int"
  * $WIZ$ min = 2
@@ -81,7 +72,7 @@
 #define CONFIG_AFSK_RX_BUFLEN 32
 
 /**
- * AFSK transimtter buffer length.
+ * AFSK transimtter buffer fifo length.
  *
  * $WIZ$ type = "int"
  * $WIZ$ min = 2
@@ -108,8 +99,7 @@
  * $WIZ$ type = "int"
  * $WIZ$ min = 1
  */
-#define CONFIG_AFSK_PREAMBLE_LEN 400UL
-
+#define CONFIG_AFSK_PREAMBLE_LEN 300UL
 
 
 /**
@@ -117,6 +107,14 @@
  * $WIZ$ type = "int"
  * $WIZ$ min = 1
  */
-#define CONFIG_AFSK_TRAILER_LEN 75UL
+#define CONFIG_AFSK_TRAILER_LEN 50UL
+
+/**
+ * Use PWM TX rather than weighted resistor DAC
+ *
+ * $WIZ$ type = "boolean"
+ */
+#define CONFIG_AFSK_PWM_TX   1
+
 
 #endif /* CFG_AFSK_H */

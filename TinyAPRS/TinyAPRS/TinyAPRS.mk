@@ -29,6 +29,7 @@ TinyAPRS_WIZARD_CSRC = \
 	bertos/io/kfile.c \
 	bertos/mware/formatwr.c \
 	bertos/mware/hex.c \
+	bertos/net/hdlc.c \
 	bertos/net/afsk.c \
 	bertos/net/ax25.c
 	#bertos/mware/event.c
