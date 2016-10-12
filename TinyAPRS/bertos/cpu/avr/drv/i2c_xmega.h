@@ -26,40 +26,35 @@
  * invalidate any other reasons why the executable file might be covered by
  * the GNU General Public License.
  *
- * Copyright 2008 Develer S.r.l. (http://www.develer.com/)
- * All Rights Reserved.
+ * Copyright 2010 Develer S.r.l. (http://www.develer.com/)
+ *
  * -->
  *
- * \brief Configuration file for formatted write module.
+ * \brief Driver for the AVR ATXMega TWI (implementation)
  *
- * \author Daniele Basile <asterix@develer.com>
+ * \author Onno <developer@gorgoz.org>
  */
 
-#ifndef CFG_FORMATWR_H
-#define CFG_FORMATWR_H
+#ifndef I2C_XMEGA_H
+#define I2C_XMEGA_H
+
+#include <drv/i2c.h>
 
 /**
- * printf()-style formatter configuration.
- * $WIZ$ type = "enum"; value_list = "printf_list"
+ * \name I2C devices enum
  *
- * \sa PRINTF_DISABLED
- * \sa PRINTF_NOMODIFIERS
- * \sa PRINTF_REDUCED
- * \sa PRINTF_NOFLOAT
- * \sa PRINTF_FULL
+ * All XMega families have at least 2 TWI devices
+ * The XMega A1 family has even 4 TWI devices
  */
-#define CONFIG_PRINTF PRINTF_NOFLOAT
+enum
+{
+	I2C0,
+	I2C1,
+#if CPU_AVR_XMEGA_A1
+	I2C2,
+	I2C3,
+#endif
+	I2C_CNT  /**< Number of serial ports */
+};
 
-/**
- * Size of buffer to format "%" sequences in printf.
- *
- * Warning: no check on buffer size is done when formatting, be careful especially
- * with big numbers and %f formatting.
- *
- * $WIZ$ type = "int"
- * $WIZ$ min = 4
- */
-#define CONFIG_FRMWRI_BUFSIZE  16
-
-#endif /* CFG_FORMATWR_H */
-
+#endif /* I2C_XMEGA_H */

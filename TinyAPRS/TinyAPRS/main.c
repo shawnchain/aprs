@@ -27,6 +27,7 @@
 
 #include <drv/ser.h>
 #include <drv/timer.h>
+#include <drv/i2c.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -68,6 +69,11 @@ GPS g_gps;
 #if MOD_BEACON
 #include "cfg/cfg_beacon.h"
 #include "beacon.h"
+#endif
+
+#define MOD_I2C 1
+#if MOD_I2C
+I2c g_i2c;
 #endif
 
 Afsk g_afsk;
@@ -117,6 +123,9 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 #if MOD_KISS
 	case MODE_KISS:
 		kiss_send_host(0x00/*kiss port id*/,g_ax25.buf,g_ax25.frm_len - 2);
+#if MOD_I2C
+		// TODO - just send the location ?
+#endif
 		break;
 #endif
 
@@ -299,6 +308,12 @@ static void init(void)
     // to 7 bit characters by default. We set
     // it to 8 instead.
     UCSR0C = _BV(UCSZ01) | _BV(UCSZ00); // see ATMEGA328P datasheet P197, Table 20-11. UCSZn Bits Settings
+
+
+#if MOD_I2C
+    /* Initialize the I2C part*/
+    i2c_init(&g_i2c,I2C0, CONFIG_I2C_FREQ);
+#endif
 
     // Load settings first
     settings_load();

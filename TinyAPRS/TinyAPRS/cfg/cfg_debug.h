@@ -30,36 +30,41 @@
  * All Rights Reserved.
  * -->
  *
- * \brief Configuration file for formatted write module.
+ * \brief Configuration file for Debug module.
+ *
  *
  * \author Daniele Basile <asterix@develer.com>
  */
 
-#ifndef CFG_FORMATWR_H
-#define CFG_FORMATWR_H
+#ifndef CFG_DEBUG_H
+#define CFG_DEBUG_H
 
 /**
- * printf()-style formatter configuration.
- * $WIZ$ type = "enum"; value_list = "printf_list"
- *
- * \sa PRINTF_DISABLED
- * \sa PRINTF_NOMODIFIERS
- * \sa PRINTF_REDUCED
- * \sa PRINTF_NOFLOAT
- * \sa PRINTF_FULL
+ * Debug console port.
+ * $WIZ$ type = "int"; min = 0
  */
-#define CONFIG_PRINTF PRINTF_NOFLOAT
+#define CONFIG_KDEBUG_PORT 0
 
 /**
- * Size of buffer to format "%" sequences in printf.
- *
- * Warning: no check on buffer size is done when formatting, be careful especially
- * with big numbers and %f formatting.
- *
- * $WIZ$ type = "int"
- * $WIZ$ min = 4
+ * Baudrate for the debug console.
+ * $WIZ$ type = "int"; min = 300
  */
-#define CONFIG_FRMWRI_BUFSIZE  16
+#define CONFIG_KDEBUG_BAUDRATE  115200UL
 
-#endif /* CFG_FORMATWR_H */
+/**
+ * Clock source for the UART module. You need to write the code to reprogram the respective clock at the required frequency in your project before calling kdbg_init().
+ *
+ * $WIZ$ type = "enum"
+ * $WIZ$ value_list = "kdbg_clk_src"
+ * $WIZ$ supports = "msp430"
+ */
+#define CONFIG_KDEBUG_CLOCK_SOURCE  KDBG_UART_SMCLK
 
+/**
+ * Clock frequency. (Only if different from MCLK's frequency, otherwise leave it zero)
+ * $WIZ$ type = "int"; min = 0
+ * $WIZ$ supports = "msp430"
+ */
+#define CONFIG_KDEBUG_CLOCK_FREQ 0UL
+
+#endif /* CFG_DEBUG_H */

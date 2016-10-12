@@ -60,7 +60,7 @@
  *
  * $WIZ$ type = "boolean"
  */
-#define CONFIG_I2C_DISABLE_OLD_API   0
+#define CONFIG_I2C_DISABLE_OLD_API   1
 
 /**
  * Module logging level.

@@ -24,8 +24,11 @@ TinyAPRS_WIZARD_CSRC = \
 	bertos/cpu/avr/drv/ser_mega.c \
 	bertos/cpu/avr/drv/timer_avr.c \
 	bertos/cpu/avr/drv/timer_mega.c \
+	bertos/cpu/avr/drv/i2c_avr.c \
+	bertos/cpu/avr/drv/i2c_mega.c \
 	bertos/drv/ser.c \
 	bertos/drv/timer.c \
+	bertos/drv/i2c.c \
 	bertos/io/kfile.c \
 	bertos/mware/formatwr.c \
 	bertos/mware/hex.c \

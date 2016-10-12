@@ -24,11 +24,21 @@ TinyAPRS_PROGRAMMER_BAUD = 57600
 
 # Files included by the user.
 TinyAPRS_USER_CSRC = \
-	$(TinyAPRS_SRC_PATH)/main.c \
 	$(TinyAPRS_SRC_PATH)/hw/hw_afsk.c \
 	$(TinyAPRS_SRC_PATH)/utils.c \
 	$(TinyAPRS_SRC_PATH)/reader.c \
-	$(TinyAPRS_SRC_PATH)/settings.c
+	$(TinyAPRS_SRC_PATH)/settings.c \
+	$(TinyAPRS_SRC_PATH)/twi.c
+
+ifeq ($(I2C_TEST_MASTER),1)
+TinyAPRS_USER_CSRC += $(TinyAPRS_SRC_PATH)/i2c_test_master.c
+endif
+ifeq ($(I2C_TEST_SLAVE),1)
+TinyAPRS_USER_CSRC += $(TinyAPRS_SRC_PATH)/i2c_test_slave.c
+endif
+ifeq ($(I2C_TEST_MASTER)$(I2C_TEST_SLAVE),)
+TinyAPRS_USER_CSRC += $(TinyAPRS_SRC_PATH)/main.c
+endif
 
 ifeq ($(ALL),1)
 MOD_CONSOLE := 1

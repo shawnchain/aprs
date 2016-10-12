@@ -29,4 +29,7 @@ extern struct Afsk g_afsk;
 struct GPS;
 extern struct GPS g_gps;
 
+struct I2c;
+extern struct I2c g_i2c;
+
 #endif /* GLOBAL_H_ */

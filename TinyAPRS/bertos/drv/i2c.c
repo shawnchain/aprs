@@ -39,62 +39,6 @@
 
 #include "cfg/cfg_i2c.h"
 
-#if !CONFIG_I2C_DISABLE_OLD_API
-
-I2c local_i2c_old_api;
-
-/**
- * Send a sequence of bytes in master transmitter mode
- * to the selected slave device through the I2C bus.
- *
- * \return true on success, false on error.
- */
-bool i2c_send(const void *_buf, size_t count)
-{
-	const uint8_t *buf = (const uint8_t *)_buf;
-
-	while (count--)
-	{
-		if (!i2c_put(*buf++))
-			return false;
-	}
-	return true;
-}
-
-/**
- * Receive a sequence of one or more bytes from the
- * selected slave device in master receive mode through
- * the I2C bus.
- *
- * Received data is placed in \c buf.
- *
- * \note a NACK is automatically given on the last received
- *         byte.
- *
- * \return true on success, false on error
- */
-bool i2c_recv(void *_buf, size_t count)
-{
-	uint8_t *buf = (uint8_t *)_buf;
-
-	while (count--)
-	{
-		/*
-		 * The last byte read does not has an ACK
-		 * to stop communication.
-		 */
-		int c = i2c_get(count);
-
-		if (c == EOF)
-			return false;
-		else
-			*buf++ = c;
-	}
-
-	return true;
-}
-#endif /* !CONFIG_I2C_DISABLE_OLD_API */
-
 void i2c_genericWrite(struct I2c *i2c, const void *_buf, size_t count)
 {
 	const uint8_t *buf = (const uint8_t *)_buf;

@@ -27,39 +27,35 @@
  * the GNU General Public License.
  *
  * Copyright 2008 Develer S.r.l. (http://www.develer.com/)
- * All Rights Reserved.
+ *
  * -->
  *
- * \brief Configuration file for formatted write module.
+ * \brief Configuration file for KFile interface module.
  *
  * \author Daniele Basile <asterix@develer.com>
  */
 
-#ifndef CFG_FORMATWR_H
-#define CFG_FORMATWR_H
+#ifndef CFG_KFILE_H
+#define CFG_KFILE_H
 
 /**
- * printf()-style formatter configuration.
- * $WIZ$ type = "enum"; value_list = "printf_list"
- *
- * \sa PRINTF_DISABLED
- * \sa PRINTF_NOMODIFIERS
- * \sa PRINTF_REDUCED
- * \sa PRINTF_NOFLOAT
- * \sa PRINTF_FULL
+ * Module logging level.
+ * $WIZ$ type = "enum"
+ * $WIZ$ value_list = "log_level"
  */
-#define CONFIG_PRINTF PRINTF_NOFLOAT
+#define KFILE_LOG_LEVEL        LOG_LVL_WARN
 
 /**
- * Size of buffer to format "%" sequences in printf.
- *
- * Warning: no check on buffer size is done when formatting, be careful especially
- * with big numbers and %f formatting.
- *
- * $WIZ$ type = "int"
- * $WIZ$ min = 4
+ * Module logging format.
+ * $WIZ$ type = "enum"
+ * $WIZ$ value_list = "log_format"
  */
-#define CONFIG_FRMWRI_BUFSIZE  16
+#define KFILE_LOG_FORMAT       LOG_FMT_TERSE
 
-#endif /* CFG_FORMATWR_H */
+/**
+ * Enable the gets function with echo.
+ * $WIZ$ type = "boolean"
+ */
+#define CONFIG_KFILE_GETS      0
 
+#endif /* CFG_KFILE_H */
