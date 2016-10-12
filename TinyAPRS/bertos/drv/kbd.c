@@ -52,8 +52,8 @@
 
 
 /* Configuration sanity checks */
-#if !defined(CONFIG_KBD_POLL) || (CONFIG_KBD_POLL != KBD_POLL_SOFTINT)
-	#error CONFIG_KBD_POLL must be defined to either KBD_POLL_SOFTINT
+#if !defined(CONFIG_KBD_POLL) || ((CONFIG_KBD_POLL != KBD_POLL_SYNC_TIMER) && (CONFIG_KBD_POLL != KBD_POLL_SOFTINT))
+	#error CONFIG_KBD_POLL must be defined to either KBD_POLL_SOFTINT or KBD_POLL_SYNC_TIMER
 #endif
 #if !defined(CONFIG_KBD_BEEP) || (CONFIG_KBD_BEEP != 0 && CONFIG_KBD_BEEP != 1)
 	#error CONFIG_KBD_BEEP must be defined to either 0 or 1
@@ -91,8 +91,12 @@ static volatile keymask_t kbd_buf; /**< Single entry keyboard buffer */
 static volatile keymask_t kbd_cnt; /**< Number of keypress events in \c kbd_buf */
 static keymask_t kbd_rpt_mask;     /**< Mask of repeatable keys. */
 
-#if CONFIG_KBD_POLL == KBD_POLL_SOFTINT
+#if ((CONFIG_KBD_POLL == KBD_POLL_SOFTINT) || ( CONFIG_KBD_POLL == KBD_POLL_SYNC_TIMER))
 static Timer kbd_timer;            /**< Keyboard softtimer */
+#endif
+
+#if  ( CONFIG_KBD_POLL == KBD_POLL_SYNC_TIMER)
+extern List timer_task_list;
 #endif
 
 static List kbd_rawHandlers;       /**< Raw keyboard handlers */
@@ -155,7 +159,15 @@ static void kbd_softint(UNUSED_ARG(iptr_t, arg))
 	kbd_poll();
 	timer_add(&kbd_timer);
 }
-
+#elif CONFIG_KBD_POLL == KBD_POLL_SYNC_TIMER
+/**
+ * Keyboard soft-irq handler.
+ */
+static void kbd_softint(UNUSED_ARG(iptr_t, arg))
+{
+	kbd_poll();
+	synctimer_add(&kbd_timer,&timer_task_list);
+}
 #else
 	#error "Define keyboard poll method"
 
@@ -177,6 +189,12 @@ static void kbd_softint(UNUSED_ARG(iptr_t, arg))
  */
 keymask_t kbd_peek(void)
 {
+	return kbd_peekMask((keymask_t)0xFFFFFFFFFFFFFFFFULL);
+}
+
+
+keymask_t kbd_peekMask(keymask_t mask)
+{
 	keymask_t key = 0;
 
 #if CONFIG_KBD_SCHED
@@ -187,10 +205,12 @@ keymask_t kbd_peek(void)
 
 	/* Extract an event from the keyboard buffer */
 	IRQ_DISABLE;
-	if (kbd_cnt)
+	if (kbd_cnt && (kbd_buf & mask))
 	{
-		--kbd_cnt;
-		key = kbd_buf;
+		key = kbd_buf & mask;
+		kbd_buf &= ~mask;
+		if (!kbd_buf)
+			--kbd_cnt;
 	}
 	IRQ_ENABLE;
 
@@ -204,13 +224,22 @@ keymask_t kbd_peek(void)
  */
 keymask_t kbd_get(void)
 {
+	return kbd_getMask((keymask_t)0xFFFFFFFFFFFFFFFFULL);
+}
+
+keymask_t kbd_getMask(keymask_t mask)
+{
 	keymask_t key;
 
-	#if CONFIG_KBD_POLL == KBD_POLL_SOFTINT
-		event_wait(&key_pressed);
-		key = kbd_peek();
+	#if ((CONFIG_KBD_POLL == KBD_POLL_SOFTINT) || (CONFIG_KBD_POLL == KBD_POLL_SYNC_TIMER))
+		do
+		{
+			event_wait(&key_pressed);
+			key = kbd_peekMask(mask);
+		}
+		while (!key);
 	#else
-		while (!(key = kbd_peek()))
+		while (!(key = kbd_peekMask(mask)))
 			cpu_relax();
 	#endif
 
@@ -279,7 +308,7 @@ static keymask_t kbd_defHandlerFunc(keymask_t key)
 		/* Force a single event in kbd buffer */
 		kbd_buf = key;
 		kbd_cnt = 1;
-		#if CONFIG_KBD_POLL == KBD_POLL_SOFTINT
+		#if ((CONFIG_KBD_POLL == KBD_POLL_SOFTINT) || (CONFIG_KBD_POLL == KBD_POLL_SYNC_TIMER))
 			event_do(&key_pressed);
 		#endif
 
@@ -338,14 +367,32 @@ static keymask_t kbd_lngHandlerFunc(keymask_t key)
 {
 	static ticks_t start;
 	ticks_t now = timer_clock();
+	static keymask_t lastLong = 0;
 
 	if (key & K_LNG_MASK)
 	{
 		if (now - start > ms_to_ticks(KBD_LNG_DELAY))
+		{
 			key |= K_LONG;
+			lastLong = 0;
+		}
+		else
+		{
+			lastLong = key;
+			key = 0;
+		}
 	}
 	else
+	{
+		//key has been released check if the last long key press was one we ate
+		if (lastLong)
+		{
+			key = lastLong;
+			lastLong = 0;
+			//send it on  as a short
+		}
 		start = now;
+	}
 	return key;
 }
 #endif
@@ -486,7 +533,19 @@ void kbd_init(void)
 	event_initSoftint(&kbd_timer.expire, kbd_softint, NULL);
 	timer_setDelay(&kbd_timer, ms_to_ticks(KBD_CHECK_INTERVAL));
 	timer_add(&kbd_timer);
+#elif CONFIG_KBD_POLL == KBD_POLL_SYNC_TIMER
+	MOD_CHECK(timer);
+	#if CONFIG_KERN
+	MOD_CHECK(proc);
+	#endif
 
+	/* Initialize the keyboard event (key pressed) */
+	event_initGeneric(&key_pressed);
+
+	/* Add kbd handler to soft timers list */
+	event_initSoftint(&kbd_timer.expire, kbd_softint, NULL);
+	timer_setDelay(&kbd_timer, ms_to_ticks(KBD_CHECK_INTERVAL));
+	synctimer_add(&kbd_timer,&timer_task_list);
 #else
 	#error "Define keyboard poll method"
 

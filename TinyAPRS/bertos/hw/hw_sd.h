@@ -45,8 +45,13 @@
 #define SD_CS_ON()   do { /* implement me */} while(0)
 #define SD_CS_OFF()  do { /* implement me */} while(0)
 
-#define SD_PIN_INIT()      do { /* implement me */} while(0)
-#define SD_CARD_PRESENT()  true /* implement me */
-#define SD_WRITE_PROTECT() false /* implement me */
+#define SD_STROBE_ON()   do { /* implement me */ } while(0)
+#define SD_STROBE_OFF()  do { /* implement me */ } while(0)
+
+#define SD_STROBE_INIT() do { /* implement me */} while(0)
+#define SD_PIN_INIT()    do { /* implement me */} while(0)
+
+#define SD_CARD_PRESENT()  /* implement me */
+#define SD_WRITE_PROTECT() /* implement me */
 
 #endif /* HW_SD_H */

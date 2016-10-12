@@ -1,96 +1,188 @@
-/**
- * \file
- * <!--
- * This file is part of BeRTOS.
- *
- * Bertos is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- *
- * As a special exception, you may use this file as part of a free software
- * library without restriction.  Specifically, if other files instantiate
- * templates or use macros or inline functions from this file, or you compile
- * this file and link it with other files to produce an executable, this
- * file does not by itself cause the resulting executable to be covered by
- * the GNU General Public License.  This exception does not however
- * invalidate any other reasons why the executable file might be covered by
- * the GNU General Public License.
- *
- * Copyright 2007 Develer S.r.l. (http://www.develer.com/)
- *
- * -->
- *
- * \brief PCF8574 i2c port expander driver.
- *
- * This driver controls the PCF8574.
- * The PCF8574 is an 8bit i2c port expander.
- * You can read/write 8 pins through an i2c bus.
- * The pins are quasi-bidirectionals, this mean that
- * without the need of a direction register you can use
- * each pin as input or output, see datasheet on how this
- * is achieved.
- *
- * \author Francesco Sacchi <batt@develer.com>
- */
+/*
+pcf8574 lib 0x02
 
+copyright (c) Davide Gironi, 2012
+
+Released under GPLv3.
+Please refer to LICENSE file for licensing information.
+*/
+
+
+#include <drv/timer.h>
+#include <drv/i2c.h>
+#include <cfg/cfg_i2c.h>
 #include "pcf8574.h"
 
-#include "cfg/cfg_i2c.h"
+static I2c i2c;
 
-#include <cfg/module.h>
-
-#include <drv/i2c.h>
-
-/**
- * Read PCF8574 \a pcf bit status.
- * \return the pins status or EOF on errors.
+/*
+ * initialize
  */
-int pcf8574_get_2(I2c *i2c, Pcf8574 *pcf)
+void
+pcf8574_init (void)
 {
-	i2c_start_r(i2c, PCF8574ID | ((pcf->addr << 1) & 0xF7), 1, I2C_STOP);
+#if PCF8574_I2CINIT == 1
+   //init i2c
+   i2c_hw_init (&i2c, 0, CONFIG_I2C_FREQ);
+   timer_udelay (10);
+#endif
 
-	int data = i2c_getc(i2c);
+   //reset the pin status
+   uint8_t i = 0;
+   for (i = 0; i < PCF8574_MAXDEVICES; i++)
+      pcf8574_pinstatus[i] = 0;
 
-	if (i2c_error(i2c))
-		data = EOF;
-
-	return data;
 }
 
-/**
- * Write to PCF8574 \a pcf port \a data.
- * \return true if ok, false on errors.
+/*
+ * get output status
  */
-bool pcf8574_put_3(I2c *i2c, Pcf8574 *pcf, uint8_t data)
+int8_t
+pcf8574_getoutput (uint8_t deviceid)
 {
-	i2c_start_w(i2c, PCF8574ID | ((pcf->addr << 1) & 0xF7), 1, I2C_STOP);
-	i2c_putc(i2c, data);
-
-	if (i2c_error(i2c))
-		return false;
-
-	return true;
+   int8_t data = -1;
+   if ((deviceid < PCF8574_MAXDEVICES))
+   {
+      data = pcf8574_pinstatus[deviceid];
+   }
+   return data;
 }
 
-/**
- * Init a PCF8574 on the bus with addr \a addr.
- * \return true if device is found, false otherwise.
+/*
+ * get output pin status
  */
-bool pcf8574_init_3(I2c *i2c, Pcf8574 *pcf, pcf8574_addr addr)
+int8_t
+pcf8574_getoutputpin (uint8_t deviceid, uint8_t pin)
 {
-	ASSERT(i2c);
-	pcf->addr = addr;
-
-	return (pcf8574_get(i2c, pcf) != EOF);
+   int8_t data = -1;
+   if ((deviceid < PCF8574_MAXDEVICES)
+       && (pin < PCF8574_MAXPINS))
+   {
+      data = pcf8574_pinstatus[deviceid];
+      data = (data >> pin) & 0b00000001;
+   }
+   return data;
 }
 
+/*
+ * set output pins
+ */
+int8_t
+pcf8574_setoutput (uint8_t deviceid, uint8_t data)
+{
+   if ((deviceid < PCF8574_MAXDEVICES))
+   {
+      pcf8574_pinstatus[deviceid] = data;
+      i2c_start_w (&i2c, (PCF8574_ADDRBASE + deviceid) << 1, 1, I2C_STOP);
+      i2c_putc (&i2c, data);
+      return 0;
+   }
+   return -1;
+}
+
+/*
+ * set output pins, replace actual status of a device from pinstart for pinlength with data
+ */
+int8_t
+pcf8574_setoutputpins (uint8_t deviceid, uint8_t pinstart, uint8_t pinlength,
+                       int8_t data)
+{
+   //example:
+   //actual data is         0b01101110
+   //want to change              ---
+   //pinstart                    4
+   //data                        101   (pinlength 3)
+   //result                 0b01110110
+   if ((deviceid < PCF8574_MAXDEVICES)
+       && (pinstart - pinlength + 1 >= 0 && pinstart - pinlength + 1 >= 0
+           && pinstart < PCF8574_MAXPINS && pinstart > 0 && pinlength > 0))
+   {
+      uint8_t b = 0;
+      b = pcf8574_pinstatus[deviceid];
+      uint8_t mask = ((1 << pinlength) - 1) << (pinstart - pinlength + 1);
+      data <<= (pinstart - pinlength + 1);
+      data &= mask;
+      b &= ~(mask);
+      b |= data;
+      pcf8574_pinstatus[deviceid] = b;
+      //update device
+      i2c_start_w (&i2c, (PCF8574_ADDRBASE + deviceid) << 1, 1, I2C_STOP);
+      i2c_putc (&i2c, b);
+      return 0;
+   }
+   return -1;
+}
+
+/*
+ * set output pin
+ */
+int8_t
+pcf8574_setoutputpin (uint8_t deviceid, uint8_t pin, uint8_t data)
+{
+   if ((deviceid < PCF8574_MAXDEVICES)
+       && (pin < PCF8574_MAXPINS))
+   {
+      uint8_t b = 0;
+      b = pcf8574_pinstatus[deviceid];
+      b = (data != 0) ? (b | (1 << pin)) : (b & ~(1 << pin));
+      pcf8574_pinstatus[deviceid] = b;
+      //update device
+      i2c_start_w (&i2c, (PCF8574_ADDRBASE + deviceid) << 1, 1, I2C_STOP);
+      i2c_putc (&i2c, b);
+      return 0;
+   }
+   return -1;
+}
+
+/*
+ * set output pin high
+ */
+int8_t
+pcf8574_setoutputpinhigh (uint8_t deviceid, uint8_t pin)
+{
+   return pcf8574_setoutputpin (deviceid, pin, 1);
+}
+
+/*
+ * set output pin low
+ */
+int8_t
+pcf8574_setoutputpinlow (uint8_t deviceid, uint8_t pin)
+{
+   return pcf8574_setoutputpin (deviceid, pin, 0);
+}
+
+
+/*
+ * get input data
+ */
+int8_t
+pcf8574_getinput (uint8_t deviceid)
+{
+   int8_t data = -1;
+   if ((deviceid < PCF8574_MAXDEVICES))
+   {
+      i2c_start_r (&i2c, (PCF8574_ADDRBASE + deviceid) << 1, 1, I2C_STOP);
+      data = ~i2c_getc (&i2c);
+   }
+   return data;
+}
+
+/*
+ * get input pin (up or low)
+ */
+int8_t
+pcf8574_getinputpin (uint8_t deviceid, uint8_t pin)
+{
+   int8_t data = -1;
+   if ((deviceid < PCF8574_MAXDEVICES)
+       && (pin < PCF8574_MAXPINS))
+   {
+      data = pcf8574_getinput (deviceid);
+      if (data != -1)
+      {
+         data = (data >> pin) & 0b00000001;
+      }
+   }
+   return data;
+}

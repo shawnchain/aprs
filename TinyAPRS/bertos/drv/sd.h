@@ -35,7 +35,7 @@
  * \author Francesco Sacchi <batt@develer.com>
  *
  * $WIZ$ module_name = "sd"
- * $WIZ$ module_depends = "kfile", "timer", "kblock"
+ * $WIZ$ module_depends = "kfile", "timer", "kblock", "sd_spi"
  * $WIZ$ module_hw = "bertos/hw/hw_sd.h"
  * $WIZ$ module_configuration = "bertos/cfg/cfg_sd.h"
  */
@@ -51,9 +51,59 @@
 
 #include <fs/fatfs/diskio.h>
 
+typedef struct SdCID
+{
+	uint8_t        manfid;
+	uint8_t        prod_name[8];
+	uint32_t       serial;
+	uint16_t       oemid;
+	uint32_t       year_off;
+	uint8_t        m_rev;
+	uint8_t        l_rev;
+}SdCID;
+
+typedef struct SdCSD
+{
+	uint8_t     structure;
+	uint8_t     ccc;          ///< Card command classes
+	uint32_t    erase_size;  ///< The size of an erasable sector, in write block len
+	uint32_t    capacity;     ///< Card size in byte
+	uint32_t    max_data_rate; ///< Step rate, usec
+	uint32_t    block_len;      ///< Block data size len in byte
+	uint32_t    block_num;      ///< Number of block in card
+	uint32_t  	write_blk_bits; ///< Max write block length in bits
+	uint32_t  	read_blk_bits;  ///< Max read block length in bits
+	uint8_t     read_partial:1,
+				read_misalign:1,
+				write_partial:1,
+				write_misalign:1;
+} SdCSD;
+
+typedef struct SdSSR
+{
+	uint8_t    bus_width;
+	uint8_t    card_type;
+	uint8_t    speed_class;
+	uint8_t    au_size;
+	uint8_t    erase_size;
+} SdSSR;
+
+#define SD_START_DELAY  10
+#define SD_INIT_TIMEOUT ms_to_ticks(2000)
+#define SD_IDLE_RETRIES 4
+#define SD_DEFAULT_BLOCKLEN 512
+
+/**
+ * $WIZ$ sd_mode = "SD_SDMMC_MODE", "SD_SPI_MODE"
+ * \{
+ */
+#define SD_SDMMC_MODE  0
+#define SD_SPI_MODE    1
+/** \} */
 
 #define SD_UNBUFFERED     BV(0) ///< Open SD memory disabling page caching, no modification and partial write are allowed.
 
+struct SdHardware* hw;
 /**
  * SD Card context structure.
  */
@@ -61,14 +111,25 @@ typedef struct Sd
 {
 	KBlock b;   ///< KBlock base class
 	KFile *ch;  ///< SPI communication channel
-	uint16_t r1;  ///< Last status data received from SD
-	uint16_t tranfer_len; ///< Lenght for the read/write commands, cached in order to increase speed.
+	struct SdHardware* hw;
+	uint32_t addr;
+	uint32_t status;
 } Sd;
 
-bool sd_initUnbuf(Sd *sd, KFile *ch);
-bool sd_initBuf(Sd *sd, KFile *ch);
+bool sd_hw_initUnbuf(Sd *sd, KFile *ch);
+bool sd_hw_initBuf(Sd *sd, KFile *ch);
+
+bool sd_spi_initUnbuf(Sd *sd, KFile *ch);
+bool sd_spi_initBuf(Sd *sd, KFile *ch);
+
+// For old compatibility.
+#ifndef CONFIG_SD_MODE
+	#define CONFIG_SD_MODE  SD_SPI_MODE
+	#define SD_INCLUDE_SPI_SOURCE
+#endif
 
 #if CONFIG_SD_OLD_INIT
+
 	#if !(ARCH & ARCH_NIGHTTEST)
 		#warning "Deprecated: this API will be removed in the next major release,"
 		#warning "please disable CONFIG_SD_OLD_INIT and pass explicitly the SD context to sd_init()."
@@ -86,7 +147,11 @@ bool sd_initBuf(Sd *sd, KFile *ch);
 	 *
 	 * \see CONFIG_SD_OLD_INIT.
 	 */
-	#define sd_init(ch) {static struct Sd sd; sd_initUnbuf(&sd, (ch));}
+	#if CONFIG_SD_MODE == SD_SPI_MODE
+		#define sd_init(ch) {static struct Sd sd; sd_spi_initUnbuf(&sd, (ch));}
+	#else
+		#define sd_init(ch) {static struct Sd sd; sd_hw_initUnbuf(&sd, (ch));}
+	#endif
 
 #else
 
@@ -102,7 +167,11 @@ bool sd_initBuf(Sd *sd, KFile *ch);
 	 *
 	 * \return true if initialization succeds, false otherwise.
 	 */
-	#define sd_init(sd, ch, buffered) ((buffered & SD_UNBUFFERED) ? sd_initUnbuf((sd), (ch)) : sd_initBuf((sd), (ch)))
+	#if CONFIG_SD_MODE == SD_SPI_MODE
+		#define sd_init(sd, ch, buffered) ((buffered & SD_UNBUFFERED) ? sd_spi_initUnbuf((sd), (ch)) : sd_spi_initBuf((sd), (ch)))
+	#else
+		#define sd_init(sd, ch, buffered) ((buffered & SD_UNBUFFERED) ? sd_hw_initUnbuf((sd), (ch)) : sd_hw_initBuf((sd), (ch)))
+	#endif
 
 #endif
 
@@ -118,5 +187,5 @@ INLINE Sd *SD_CAST(KBlock *b)
 	return (Sd *)b;
 }
 
-
 #endif /* DRV_SD_H */
+
