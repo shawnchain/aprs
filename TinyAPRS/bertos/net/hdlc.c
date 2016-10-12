@@ -322,7 +322,11 @@ int hdlc_encode (Hdlc * hdlc, FIFOBuffer * fifo)
  * \param bitrate bit rate to allow conversion from number of mS to number of flags
  *
  */
+<<<<<<< HEAD
+void hdlc_head (Hdlc * hdlc, uint8_t head, uint16_t bitrate)
+=======
 void hdlc_head (Hdlc * hdlc, uint16_t head, uint16_t bitrate)
+>>>>>>> I2C porting WIP
 {
 	hdlc->TXhead = DIV_ROUND (head * bitrate, 8000UL);
 }
@@ -337,7 +341,11 @@ void hdlc_head (Hdlc * hdlc, uint16_t head, uint16_t bitrate)
  * \param bitrate bit rate to allow conversion from number of mS to number of flags
  *
  */
+<<<<<<< HEAD
+void hdlc_tail (Hdlc * hdlc, uint8_t tail, uint16_t bitrate)
+=======
 void hdlc_tail (Hdlc * hdlc, uint16_t tail, uint16_t bitrate)
+>>>>>>> I2C porting WIP
 {
 	hdlc->TXtail = DIV_ROUND (tail * bitrate, 8000UL);
 }

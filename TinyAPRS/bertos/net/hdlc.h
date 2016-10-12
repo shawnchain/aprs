@@ -94,8 +94,13 @@ typedef struct Hdlc
 
 int hdlc_decode (Hdlc * hdlc, bool bit, FIFOBuffer * fifo);
 int hdlc_encode (Hdlc * hdlc, FIFOBuffer * fifo);
+<<<<<<< HEAD
+void hdlc_head (Hdlc * hdlc, uint8_t head, uint16_t bitrate);
+void hdlc_tail (Hdlc * hdlc, uint8_t tail, uint16_t bitrate);
+=======
 void hdlc_head (Hdlc * hdlc, uint16_t head, uint16_t bitrate);
 void hdlc_tail (Hdlc * hdlc, uint16_t tail, uint16_t bitrate);
+>>>>>>> I2C porting WIP
 void hdlc_init (Hdlc * hdlc);
 
 /** \} */ //defgroup hdlc_module
