@@ -44,7 +44,7 @@
 
 #include <drv/timer.h>
 
-#warning FIXME: Revise and refactor this code.
+//#warning FIXME: Revise and refactor this code.
 
 #if defined(LCD_READ_H) && defined(LCD_READ_L) && defined(LCD_WRITE_H) && defined(LCD_WRITE_L)
 	#define CONFIG_LCD_4BIT 1
@@ -53,9 +53,6 @@
 #else
 	#error Incomplete or missing LCD_READ/LCD_WRITE macros
 #endif
-
-/** Flag di stato del display */
-#define LCDF_BUSY  BV(7)
 
 #if CONFIG_LCD_ADDRESS_FAST == 1
 #define lcd_address(x) lcd_address[x]
@@ -298,7 +295,7 @@ void lcd_waitBusy(void)
 	for (;;)
 	{
 		uint8_t val = lcd_regRead();
-		if (!(val & LCDF_BUSY))
+		if (!(val & LCD_RESP_BUSY))
 			break;
 	}
 }
@@ -377,6 +374,39 @@ void lcd_remapChar(const char *glyph, char code)
 	/* Move back to original address */
 	lcd_setReg(lcd_address(lcd_current_addr));
 }
+
+
+/**
+ * Allow external access to an inline function so that the LCD can have commands sent to it!
+ */
+void lcd_command(uint8_t value)
+{
+	lcd_regWrite(value);
+}
+
+/**
+ * Allow control of the display on/off, cursor on/off and if the cursor is on then if it blinks or not.
+ */
+void lcd_display(bool display, bool cursor, bool blink )
+{
+	uint8_t value = LCD_CMD_DISPLAY_OFF;
+// not really magic numbers here - we *are* only talking about 1 type of LCD after all!!
+	value |= display ? 0x04 : 0; 
+	value |= cursor ? 0x02 : 0; 
+	value |= blink ? 0x01 : 0; 
+	lcd_regWrite(value);
+	timer_delay(2);
+}
+
+
+void lcd_backlight (uint8_t onoff)
+{
+   if (onoff)
+      LCD_SET_BL
+   else
+      LCD_CLR_BL
+}
+
 
 
 #if 0 /* unused */

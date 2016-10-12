@@ -30,25 +30,24 @@
  *
  * -->
  *
- * \brief Driver for the AVR ATMega TWI (implementation)
+ * \brief Driver for the AVR AT(X)Mega TWI (implementation)
  *
- * \author Daniele Basile <asterix@develer.com>
+ * \author Onno <developer@gorgoz.org>
  */
 
-#ifndef I2C_AVR_H
-#define I2C_AVR_H
+#ifndef I2C_AVR_H_
+#define I2C_AVR_H_
 
-#include <drv/i2c.h>
+#include <cpu/detect.h>
 
-/**
- * \name I2C devices enum
- */
-enum
-{
-	I2C0,
+#if CPU_AVR_MEGA
+	#include "i2c_mega.h"
+#elif CPU_AVR_XMEGA
+	#include "i2c_xmega.h"
+/*#elif  Add other AVR families here */
+#else
+	#error Unknown CPU
+#endif
 
-	I2C_CNT  /**< Number of serial ports */
-};
 
-#endif /* I2C_LM3S_H */
-
+#endif /* I2C_AVR_H_ */

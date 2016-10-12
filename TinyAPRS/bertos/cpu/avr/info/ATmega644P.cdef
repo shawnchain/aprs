@@ -28,15 +28,15 @@
 # invalidate any other reasons why the executable file might be covered by
 # the GNU General Public License.
 #
-# Copyright 2010 Develer S.r.l. (http://www.develer.com/)
+# Copyright 2012 Develer S.r.l. (http://www.develer.com/)
 #
 # -->
 #
-# Cpu info of the ATMega328P.
+# Cpu info of the ATMega644P.
 #
 # This file contain all info for the BeRTOS wizard.
 #
-# \author Luca Ottaviano <lottaviano@develer.com>
+# \author Toth Balazs <balazs.toth@jarkon.hu>
 #
 #
 
@@ -44,12 +44,11 @@
 include("mega.common")
 
 # Short description of the cpu.
-CPU_DESC += [ "Microduino Core+",
-              "64 Kbyte in-System Programmable Flash",
+CPU_DESC += [ "64 Kbyte in-System Programmable Flash",
 	      "4 Kbytes internal SRAM memory",
-	      "4 Kbyte EEPROM memory" ]
+	      "2 Kbyte EEPROM memory" ]
 
 # If we use the GCC compiler we should pass some flags.
-CORE_CPU = "atmega644pa"
+CORE_CPU = "atmega644p"
 
 include("avr_post.common")

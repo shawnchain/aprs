@@ -40,7 +40,7 @@
 
 
 # Import the common settings for the path.
-include("avr.common")
+include("xmega.common")
 
 # Short description of the cpu.
 CPU_DESC += [ "32 Kbyte in-System Programmable Flash",
@@ -50,7 +50,7 @@ CPU_DESC += [ "32 Kbyte in-System Programmable Flash",
 
 # If we use the GCC compiler we should pass some flags.
 CORE_CPU = "atxmega32d4"
-HW_DIR = CPU_DIR + "avr/hw/"
-MK_CPU_CSRC = HW_DIR + "init_xmega.c"
+# add a family tag for the wizard
+CPU_TAGS += ["xmegad4"]
 
 include("avr_post.common")

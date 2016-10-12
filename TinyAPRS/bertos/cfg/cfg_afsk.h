@@ -108,7 +108,7 @@
  * $WIZ$ type = "int"
  * $WIZ$ min = 1
  */
-#define CONFIG_AFSK_PREAMBLE_LEN 400UL
+#define CONFIG_AFSK_PREAMBLE_LEN 300UL
 
 
 
@@ -117,6 +117,12 @@
  * $WIZ$ type = "int"
  * $WIZ$ min = 1
  */
-#define CONFIG_AFSK_TRAILER_LEN 75UL
+#define CONFIG_AFSK_TRAILER_LEN 50UL
+/**
+ * Use PWM TX rather than weighted resistor DAC
+ *
+ * $WIZ$ type = "boolean"
+ */
+#define CONFIG_AFSK_PWM_TX   0
 
 #endif /* CFG_AFSK_H */

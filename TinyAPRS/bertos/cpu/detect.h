@@ -214,12 +214,36 @@
 		#define CPU_CM3_STM32F100RB 0
 	#endif
 
+	#if defined (__ARM_STM32F100C4__)
+		#define CPU_CM3_STM32       1
+		#define CPU_CM3_STM32F100C4 1
+		#define CPU_NAME            "STM32F100C4"
+	#else
+		#define CPU_CM3_STM32F100C4 0
+	#endif
+
 	#if defined (__ARM_STM32F101C4__)
 		#define CPU_CM3_STM32       1
 		#define CPU_CM3_STM32F101C4 1
 		#define CPU_NAME            "STM32F101C4"
 	#else
 		#define CPU_CM3_STM32F101C4 0
+	#endif
+
+	#if defined (__ARM_STM32F102C4__)
+		#define CPU_CM3_STM32       1
+		#define CPU_CM3_STM32F102C4 1
+		#define CPU_NAME            "STM32F102C4"
+	#else
+		#define CPU_CM3_STM32F102C4 0
+	#endif
+
+	#if defined (__ARM_STM32F103C8__)
+		#define CPU_CM3_STM32       1
+		#define CPU_CM3_STM32F103C8 1
+		#define CPU_NAME            "STM32F103C8"
+	#else
+		#define CPU_CM3_STM32F103C8 0
 	#endif
 
 	#if defined (__ARM_STM32F103RB__)
@@ -237,6 +261,7 @@
 	#else
 		#define CPU_CM3_STM32F103RE 0
 	#endif
+
 
 	// AT91SAM3N products serie
 	#if defined (__ARM_SAM3N4__)
@@ -303,7 +328,8 @@
 		#define CPU_CM3_STM32       0
 		#define CPU_CM3_SAM3        0
 	#elif defined (CPU_CM3_STM32)
-		#if CPU_CM3_STM32F100RB + CPU_CM3_STM32F101C4 + CPU_CM3_STM32F103RB + CPU_CM3_STM32F103RE + 0 != 1
+		#if CPU_CM3_STM32F100RB + CPU_CM3_STM32F100C4 + CPU_CM3_STM32F101C4 + CPU_CM3_STM32F103RB + CPU_CM3_STM32F103RE + \
+			CPU_CM3_STM32F102C4 + CPU_CM3_STM32F103C8 + 0 != 1
 			#error STM32 Cortex-M3 CPU configuration error
 		#endif
 		#define CPU_CM3_LM3S        0
@@ -337,6 +363,7 @@
 
 	#define CPU_CM3_STM32 0
 	#define CPU_CM3_STM32F100RB 0
+	#define CPU_CM3_STM32F100C4 0
 	#define CPU_CM3_STM32F103RB 0
 	#define CPU_CM3_STM32F101C4 0
 	#define CPU_CM3_STM32F103RE 0
@@ -450,6 +477,14 @@
 		#define CPU_AVR_ATMEGA8     0
 	#endif
 
+	#if defined(__AVR_ATmega88P__)
+		#define CPU_AVR_MEGA		1
+		#define CPU_AVR_ATMEGA88P   1
+		#define CPU_NAME            "ATmega88P"
+	#else
+		#define CPU_AVR_ATMEGA88P   0
+	#endif
+
 	#if defined(__AVR_ATmega168__)
 		#define CPU_AVR_MEGA		1
 		#define CPU_AVR_ATMEGA168   1
@@ -458,21 +493,27 @@
 		#define CPU_AVR_ATMEGA168   0
 	#endif
 
+	#if defined(__AVR_ATmega324P__)
+		#define CPU_AVR_MEGA		1
+		#define CPU_AVR_ATMEGA324P  1
+		#define CPU_NAME            "ATmega324P"
+	#else
+		#define CPU_AVR_ATMEGA324P  0
+	#endif
+	#if defined(__AVR_ATmega644P__)
+		#define CPU_AVR_MEGA		1
+		#define CPU_AVR_ATMEGA644P  1
+		#define CPU_NAME            "ATmega644P"
+	#else
+		#define CPU_AVR_ATMEGA644P  0
+	#endif
 	#if defined(__AVR_ATmega328P__)
 		#define CPU_AVR_MEGA		1
-		#define CPU_AVR_ATMEGA328P   1
+		#define CPU_AVR_ATMEGA328P  1
 		#define CPU_NAME            "ATmega328P"
 	#else
-		#define CPU_AVR_ATMEGA328P   0
+		#define CPU_AVR_ATMEGA328P  0
 	#endif
-
-        #if defined(__AVR_ATmega644PA__)
-                #define CPU_AVR_MEGA            1
-                #define CPU_AVR_ATMEGA644PA   1
-                #define CPU_NAME            "ATmega644PA"
-        #else
-                #define CPU_AVR_ATMEGA644PA   0
-        #endif
 
 	#if defined(__AVR_ATmega1281__)
 		#define CPU_AVR_MEGA		1
@@ -498,9 +539,52 @@
 		#define CPU_AVR_ATMEGA2560  0
 	#endif
 
+	#if defined(__AVR_ATxmega128A1__)
+		#define CPU_AVR_XMEGA		1
+		#define CPU_AVR_XMEGA_D4	0
+		#define CPU_AVR_XMEGA_D3	0
+		#define CPU_AVR_XMEGA_A4	0
+		#define CPU_AVR_XMEGA_A3	0
+		#define CPU_AVR_XMEGA_A1	1
+		#define CPU_AVR_ATXMEGA128A1	1
+		#define CPU_NAME			"ATxmega128a1"
+	#else
+		#define CPU_AVR_ATXMEGA128A1	0
+	#endif
+
+	#if defined(__AVR_ATxmega64A3__)
+		#define CPU_AVR_XMEGA		1
+		#define CPU_AVR_XMEGA_D4	0
+		#define CPU_AVR_XMEGA_D3	0
+		#define CPU_AVR_XMEGA_A4	0
+		#define CPU_AVR_XMEGA_A3	1
+		#define CPU_AVR_XMEGA_A1	0
+		#define CPU_AVR_ATXMEGA64A3	1
+		#define CPU_NAME			"ATxmega64a3"
+	#else
+		#define CPU_AVR_ATXMEGA64A3	0
+	#endif
+
+	#if defined(__AVR_ATxmega32A4__)
+		#define CPU_AVR_XMEGA		1
+		#define CPU_AVR_XMEGA_D4	0
+		#define CPU_AVR_XMEGA_D3	0
+		#define CPU_AVR_XMEGA_A4	1
+		#define CPU_AVR_XMEGA_A3	0
+		#define CPU_AVR_XMEGA_A1	0
+		#define CPU_AVR_ATXMEGA32A4	1
+		#define CPU_NAME			"ATxmega32a4"
+	#else
+		#define CPU_AVR_ATXMEGA32A4	0
+	#endif
+
 	#if defined(__AVR_ATxmega32D4__)
 		#define CPU_AVR_XMEGA		1
-		#define CPU_AVR_XMEGA_D		1
+		#define CPU_AVR_XMEGA_D4	1
+		#define CPU_AVR_XMEGA_D3	0
+		#define CPU_AVR_XMEGA_A4	0
+		#define CPU_AVR_XMEGA_A3	0
+		#define CPU_AVR_XMEGA_A1	0
 		#define CPU_AVR_ATXMEGA32D4	1
 		#define CPU_NAME			"ATxmega32d4"
 	#else
@@ -508,8 +592,9 @@
 	#endif
 
 	#if CPU_AVR_ATMEGA32 + CPU_AVR_ATMEGA64 + CPU_AVR_ATMEGA103 + CPU_AVR_ATMEGA128 \
-	  + CPU_AVR_ATMEGA8 + CPU_AVR_ATMEGA168 + CPU_AVR_ATMEGA328P + CPU_AVR_ATMEGA644PA + CPU_AVR_ATMEGA1281 \
-	  + CPU_AVR_ATMEGA1280 + CPU_AVR_ATMEGA2560 + CPU_AVR_ATXMEGA32D4 != 1
+	  + CPU_AVR_ATMEGA8 + CPU_AVR_ATMEGA88P + CPU_AVR_ATMEGA168 + CPU_AVR_ATMEGA328P \
+	  + CPU_AVR_ATMEGA324P + CPU_AVR_ATMEGA644P + CPU_AVR_ATMEGA1281 + CPU_AVR_ATMEGA1280 \
+	  + CPU_AVR_ATMEGA2560 + CPU_AVR_ATXMEGA32D4 != 1
 		#error AVR CPU configuration error
 	#endif
 
@@ -517,9 +602,17 @@
 		#error CPU cannot be MEGA and XMEGA
 	#elif defined(CPU_AVR_MEGA)
 		#define CPU_AVR_XMEGA		0
-		#define CPU_AVR_XMEGA_D		0
+		#define CPU_AVR_XMEGA_D4	0
+		#define CPU_AVR_XMEGA_D3	0
+		#define CPU_AVR_XMEGA_A4	0
+		#define CPU_AVR_XMEGA_A3	0
+		#define CPU_AVR_XMEGA_A1	0
 	#elif defined(CPU_AVR_XMEGA)
 		#define CPU_AVR_MEGA		0
+		#if CPU_AVR_XMEGA_D4 + CPU_AVR_XMEGA_D3 + CPU_AVR_XMEGA_A4 \
+		  + CPU_AVR_XMEGA_A3 + CPU_AVR_XMEGA_A1 != 1
+			#error AVR XMEGA CPU Configuration error
+		#endif
 	#endif
 
 	#if CPU_AVR_MEGA + CPU_AVR_XMEGA != 1
@@ -530,18 +623,28 @@
 	#define CPU_AVR                 0
 	#define CPU_AVR_MEGA			0
 	#define CPU_AVR_ATMEGA8         0
+	#define CPU_AVR_ATMEGA88P       0
 	#define CPU_AVR_ATMEGA168       0
 	#define CPU_AVR_ATMEGA328P      0
-	#define CPU_AVR_ATMEGA644PA      0
 	#define CPU_AVR_ATMEGA32        0
 	#define CPU_AVR_ATMEGA64        0
+	#define CPU_AVR_ATMEGA324P      0
+	#define CPU_AVR_ATMEGA644P      0
 	#define CPU_AVR_ATMEGA103       0
 	#define CPU_AVR_ATMEGA128       0
 	#define CPU_AVR_ATMEGA1281      0
 	#define CPU_AVR_ATMEGA1280      0
 	#define CPU_AVR_ATMEGA2560      0
 	#define CPU_AVR_XMEGA			0
-	#define CPU_AVR_XMEGA_D			0
+	#define CPU_AVR_XMEGA_D4		0
+	#define CPU_AVR_XMEGA_D3		0
+	#define CPU_AVR_XMEGA_A4		0
+	#define CPU_AVR_XMEGA_A3		0
+	#define CPU_AVR_XMEGA_A1		0
+	#define CPU_AVR_ATXMEGA128A1 	0
+	#define CPU_AVR_ATXMEGA64A3 	0
+	#define CPU_AVR_XTMEGA32A4		0
+	#define CPU_AVR_ATXMEGA32D4		0
 #endif
 
 #if defined (__MSP430__)

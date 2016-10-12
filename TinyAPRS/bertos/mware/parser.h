@@ -30,7 +30,7 @@
  * All Rights Reserved.
  * -->
  *
- * \defgroup parser Simple RPC machinery
+ * \defgroup parser Simple Remote Procedure Call (RPC) machinery
  * \ingroup mware
  * \{
  *
@@ -128,11 +128,18 @@ typedef enum
 	RC_ERROR  = -1, ///< Reply with error.
 	RC_OK     = 0,  ///< No reply (ignore reply arguments).
 	RC_REPLY  = 1,  ///< Reply command arguments.
-	RC_SKIP   = 2   ///< Skip following commands
+	RC_SKIP   = 2,  ///< Skip following commands
+	RC_CLAMPED = 3, ///< argument values have been clamped.
 } ResultCode;
 
+typedef struct
+{
+	const char *p;
+	int sz;
+} str_parm;
+
 /** union that contains parameters passed to and from commands */
-typedef union { long l; const char *s; } parms;
+typedef union { long l; str_parm s; } parms;
 /** pointer to commands */
 typedef ResultCode (*CmdFuncPtr)(parms args_results[]);
 
@@ -257,6 +264,7 @@ INLINE bool parser_execute_cmd(const struct CmdTemplate* templ, parms args[CONFI
 const struct CmdTemplate* parser_get_cmd_template(const char* line);
 
 bool parser_get_cmd_arguments(const char* line, const struct CmdTemplate* templ, parms args[CONFIG_PARSER_MAX_ARGS]);
+bool get_word(const char **begin, const char **end);
 
 #if CONFIG_ENABLE_COMPAT_BEHAVIOUR
 /**

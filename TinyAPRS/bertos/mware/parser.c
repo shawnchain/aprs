@@ -89,17 +89,31 @@ DECLARE_HASHTABLE_STATIC(commands, CONFIG_MAX_COMMANDS_NUMBER, get_key_from_comm
  * \return True if a word was extracted, false if we got to the end
  * of the string without extracting any word.
  */
-static bool get_word(const char **begin, const char **end)
+bool get_word(const char **begin, const char **end)
 {
 	const char *cur = *end;
+	bool open_quote = false;
 
 	while ((*cur == ' ' || *cur == '\t') && *cur)
 		++cur;
 
+	if (*cur == '"')
+		open_quote = true;
+
 	*begin = cur;
 
-	while ((*cur != ' ' && *cur != '\t') && *cur)
+	if (open_quote)
+	{
 		++cur;
+		while (*cur != '"' && *cur)
+			++cur;
+		if (*cur != '"')
+			return false;
+		++cur;
+	}
+	else
+		while ((*cur != ' ' && *cur != '\t') && *cur)
+			++cur;
 
 	*end = cur;
 
@@ -137,7 +151,15 @@ static bool parseArgs(const char *fmt, const char *input, parms argv[])
 				break;
 
 			case 's':
-				(*argv++).s = begin;
+				(*argv).s.p = begin;
+				(*argv).s.sz = end - begin;
+				/* Remove the quotes from argument */
+				if (*begin == '"' && *(end - 1) == '"')
+				{
+					(*argv).s.p += 1;
+					(*argv).s.sz -= 2;
+				}
+				argv++;
 				break;
 
 			default:
@@ -222,6 +244,7 @@ const struct CmdTemplate* parser_get_cmd_template(const char *input)
 	if (!get_word(&begin, &end))
 		return NULL;
 #endif
+
 	if (!get_word(&begin, &end))
 		return NULL;
 
@@ -237,6 +260,7 @@ static const char *skip_to_params(const char *input, const struct CmdTemplate *c
 	if (!get_word(&begin, &end))
 		return NULL;
 #endif
+
 	if (!get_word(&begin, &end))
 		return NULL;
 
@@ -264,7 +288,7 @@ bool parser_get_cmd_arguments(const char* input, const struct CmdTemplate* cmdp,
 	if (!input)
 		return false;
 
-	args[0].s = cmdp->name;
+	args[0].s.p = cmdp->name;
 	if (!parseArgs(cmdp->arg_fmt, input, args + 1))
 		return false;
 
