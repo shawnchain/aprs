@@ -60,161 +60,6 @@
 
 #include <compat/twi.h>
 
-<<<<<<< HEAD
-#if !CONFIG_I2C_DISABLE_OLD_API
-
-/* Wait for TWINT flag set: bus is ready */
-#define WAIT_TWI_READY  do {} while (!(TWCR & BV(TWINT)))
-
-/**
- * Send START condition on the bus.
- *
- * \return true on success, false otherwise.
- */
-static bool i2c_builtin_start(void)
-{
-	TWCR = BV(TWINT) | BV(TWSTA) | BV(TWEN);
-	WAIT_TWI_READY;
-
-	if (TW_STATUS == TW_START || TW_STATUS == TW_REP_START)
-		return true;
-
-	LOG_ERR("!TW_(REP)START: %x\n", TWSR);
-	return false;
-}
-
-
-/**
- * Send START condition and select slave for write.
- * \c id is the device id comprehensive of address left shifted by 1.
- * The LSB of \c id is ignored and reset to 0 for write operation.
- *
- * \return true on success, false otherwise.
- */
-bool i2c_builtin_start_w(uint8_t id)
-{
-	/*
-	 * Loop on the select write sequence: when the eeprom is busy
-	 * writing previously sent data it will reply to the SLA_W
-	 * control byte with a NACK.  In this case, we must
-	 * keep trying until the eeprom responds with an ACK.
-	 */
-	ticks_t start = timer_clock();
-	while (i2c_builtin_start())
-	{
-		TWDR = id & ~I2C_READBIT;
-		TWCR = BV(TWINT) | BV(TWEN);
-		WAIT_TWI_READY;
-
-		if (TW_STATUS == TW_MT_SLA_ACK)
-			return true;
-		else if (TW_STATUS != TW_MT_SLA_NACK)
-		{
-			LOG_ERR("!TW_MT_SLA_(N)ACK: %x\n", TWSR);
-			break;
-		}
-		else if (timer_clock() - start > ms_to_ticks(CONFIG_I2C_START_TIMEOUT))
-		{
-			LOG_ERR("Timeout on TWI_MT_START\n");
-			break;
-		}
-	}
-
-	return false;
-}
-
-
-/**
- * Send START condition and select slave for read.
- * \c id is the device id comprehensive of address left shifted by 1.
- * The LSB of \c id is ignored and set to 1 for read operation.
- *
- * \return true on success, false otherwise.
- */
-bool i2c_builtin_start_r(uint8_t id)
-{
-	if (i2c_builtin_start())
-	{
-		TWDR = id | I2C_READBIT;
-		TWCR = BV(TWINT) | BV(TWEN);
-		WAIT_TWI_READY;
-
-		if (TW_STATUS == TW_MR_SLA_ACK)
-			return true;
-
-		LOG_ERR("!TW_MR_SLA_ACK: %x\n", TWSR);
-	}
-
-	return false;
-}
-
-
-/**
- * Send STOP condition.
- */
-void i2c_builtin_stop(void)
-{
-	TWCR = BV(TWINT) | BV(TWEN) | BV(TWSTO);
-}
-
-
-/**
- * Put a single byte in master transmitter mode
- * to the selected slave device through the TWI bus.
- *
- * \return true on success, false on error.
- */
-bool i2c_builtin_put(const uint8_t data)
-{
-	TWDR = data;
-	TWCR = BV(TWINT) | BV(TWEN);
-	WAIT_TWI_READY;
-	if (TW_STATUS != TW_MT_DATA_ACK)
-	{
-		LOG_ERR("!TW_MT_DATA_ACK: %x\n", TWSR);
-		return false;
-	}
-	return true;
-}
-
-/**
- * Get 1 byte from slave in master transmitter mode
- * to the selected slave device through the TWI bus.
- * If \a ack is true issue a ACK after getting the byte,
- * otherwise a NACK is issued.
- *
- * \return the byte read if ok, EOF on errors.
- */
-int i2c_builtin_get(bool ack)
-{
-	TWCR = BV(TWINT) | BV(TWEN) | (ack ? BV(TWEA) : 0);
-	WAIT_TWI_READY;
-
-	if (ack)
-	{
-		if (TW_STATUS != TW_MR_DATA_ACK)
-		{
-			LOG_ERR("!TW_MR_DATA_ACK: %x\n", TWSR);
-			return EOF;
-		}
-	}
-	else
-	{
-		if (TW_STATUS != TW_MR_DATA_NACK)
-		{
-			LOG_ERR("!TW_MR_DATA_NACK: %x\n", TWSR);
-			return EOF;
-		}
-	}
-
-	/* avoid sign extension */
-	return (int)(uint8_t)TWDR;
-}
-
-#endif /* !CONFIG_I2C_DISABLE_OLD_API */
-
-=======
->>>>>>> I2C porting WIP
 /*
  * New Api
  */
@@ -390,17 +235,10 @@ void i2c_hw_init(I2c *i2c, int dev, uint32_t clock)
 	#if CPU_AVR_ATMEGA64 || CPU_AVR_ATMEGA128 || CPU_AVR_ATMEGA1281 || CPU_AVR_ATMEGA1280 || CPU_AVR_ATMEGA2560
 		PORTD |= BV(PD0) | BV(PD1);
 		DDRD  |= BV(PD0) | BV(PD1);
-<<<<<<< HEAD
-	#elif CPU_AVR_ATMEGA8 || CPU_AVR_ATMEGA88P || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P
-		PORTC |= BV(PC4) | BV(PC5);
-		DDRC  |= BV(PC4) | BV(PC5);
-	#elif CPU_AVR_ATMEGA32 || CPU_AVR_ATMEGA324P || CPU_AVR_ATMEGA644P
-=======
 	#elif CPU_AVR_ATMEGA8  || CPU_AVR_ATMEGA168 || CPU_AVR_ATMEGA328P
 		PORTC |= BV(PC4) | BV(PC5);
 		DDRC  |= BV(PC4) | BV(PC5);
 	#elif CPU_AVR_ATMEGA32
->>>>>>> I2C porting WIP
 		PORTC |= BV(PC1) | BV(PC0);
 		DDRC  |= BV(PC1) | BV(PC0);
 	#else
