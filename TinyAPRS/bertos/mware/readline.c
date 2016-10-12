@@ -33,39 +33,8 @@
  *
  * \brief Line editing support with history
  *
- * Rationale for basic implementation choices:
- *
- * \li The history is implemented storing consecutive ASCIIZ strings within an array of memory. When
- * the history is full, the first (oldest) line is cancelled and the whole buffer is memmoved to
- * overwrite it and make room. while this is is obviously not the fastest algorithm (which would
- * require the use of a circular buffer) it is surely good enough for this module, which does not
- * aim at fast performances (line editing does not require to be blazingly fast).
- *
- * \li The first character in the history is always \c \\0, and it is used as a guard. By 'wasting' it
- * in this way, the code actually gets much simpler in that we remove many checks when moving
- * backward (\c i>0 and similar).
- *
- * \li While editing, the current index points to the position of the buffer which contains the
- * last character typed in (exactly like a stack pointer). This also allows to simplify calculations
- * and to make easier using the last byte of history.
- *
- * \li While editing, the current line is always kept null-terminated. This is important because
- * if the user press ENTER, we must have room to add a \c \\0 to terminate the line. If the line
- * is as long as the whole history buffer, there would not be space for it. By always keeping the
- * \c \\0 at the end, we properly ensure this without making index checks harder.
- *
- * \li When removing a line from the history (see \c pop_history()), instead of updating all the
- * indices we have around, we move backward the pointer to the history we use. This way, we don't
- * have to update anything. This means that we keep two pointers to the history: \c real_history
- * always points to the physical start, while \c history is the adjusted pointer (that is
- * dereference to read/write to it).
- *
- * \todo Use up/down to move through history  The history line will be copied to the current line,
- * making sure there is room for it.
- *
  * \author Giovanni Bajo <rasky@develer.com>
  */
-
 
 #include "readline.h"
 
@@ -74,12 +43,8 @@
 
 #include <stdio.h>
 
-/// Enable compilation of the unit test code
-#define DEBUG_UNIT_TEST       0
-
 /// Enable dump of the history after each line
 #define DEBUG_DUMP_HISTORY    0
-
 
 /** Special keys (escape sequences converted to a single code) */
 enum RL_KEYS {
@@ -155,9 +120,10 @@ INLINE void rl_putc(const struct RLContext* ctx, char ch)
 		ctx->put(ch, ctx->put_param);
 }
 
-/** Read a character from the IO into \a ch. This function also takes
- *  care of converting the ANSI escape sequences into one of the codes
- *  defined in \c RL_KEYS.
+/**
+ * Read a character from the IO into \a ch. This function also takes
+ * care of converting the ANSI escape sequences into one of the codes
+ * defined in \c RL_KEYS.
  */
 static bool rl_getc(const struct RLContext* ctx, int* ch)
 {
@@ -178,21 +144,22 @@ static bool rl_getc(const struct RLContext* ctx, int* ch)
 		if (ctx->get(ctx->get_param) != 0x5B)
 			return rl_getc(ctx, ch);
 
-		/* To be added:
-			* Home:        0x1b 0x5B 0x31 0x7E
-			* F6:          0x1b 0x5B 0x31 0x37 0x7E
-			* F7:          0x1b 0x5B 0x31 0x38 0x7E
-			* F8:          0x1b 0x5B 0x31 0x39 0x7E
-			* Ins:         0x1b 0x5B 0x32 0x7E
-			* F9:          0x1b 0x5B 0x32 0x30 0x7E
-			* F10:         0x1b 0x5B 0x32 0x31 0x7E
-			* F11:         0x1b 0x5B 0x32 0x33 0x7E
-			* F12:         0x1b 0x5B 0x32 0x34 0x7E
-			* Del:         0x1b 0x5B 0x33 0x7E
-			* End:         0x1b 0x5B 0x34 0x7E
-			* PgUp:        0x1b 0x5B 0x35 0x7E
-			* PgDn:        0x1b 0x5B 0x36 0x7E
-		*/
+		/*
+		 * To be added:
+		 * Home:        0x1b 0x5B 0x31 0x7E
+		 * F6:          0x1b 0x5B 0x31 0x37 0x7E
+		 * F7:          0x1b 0x5B 0x31 0x38 0x7E
+		 * F8:          0x1b 0x5B 0x31 0x39 0x7E
+		 * Ins:         0x1b 0x5B 0x32 0x7E
+		 * F9:          0x1b 0x5B 0x32 0x30 0x7E
+		 * F10:         0x1b 0x5B 0x32 0x31 0x7E
+		 * F11:         0x1b 0x5B 0x32 0x33 0x7E
+		 * F12:         0x1b 0x5B 0x32 0x34 0x7E
+		 * Del:         0x1b 0x5B 0x33 0x7E
+		 * End:         0x1b 0x5B 0x34 0x7E
+		 * PgUp:        0x1b 0x5B 0x35 0x7E
+		 * PgDn:        0x1b 0x5B 0x36 0x7E
+		 */
 
 		c = ctx->get(ctx->get_param);
 		switch (c)
@@ -260,12 +227,14 @@ INLINE bool is_history_end(struct RLContext* ctx, int i)
 INLINE bool is_history_past_end(struct RLContext* ctx, int i)
 { return ctx->history + i >= ctx->real_history + HISTORY_SIZE; }
 
-/** Insert \a num_chars characters from \a ch into the history buffer at the
- *  position indicated by \a curpos. If needed, remove old history to make room.
- *  Returns true if everything was successful, false if there was no room to
- *  add the characters.
- *  \note \a num_chars can be 0, in which case we just make sure the line is
- *  correctly zero-terminated (ASCIIZ format).
+/**
+ * Insert \a num_chars characters from \a ch into the history buffer at the
+ * position indicated by \a curpos. If needed, remove old history to make room.
+ * Returns true if everything was successful, false if there was no room to
+ * add the characters.
+ *
+ * \note \a num_chars can be 0, in which case we just make sure the line is
+ * correctly zero-terminated (ASCIIZ format).
  */
 static bool insert_chars(struct RLContext* ctx, size_t *curpos, const char* ch, int num_chars)
 {
@@ -389,7 +358,7 @@ const char* rl_readline(struct RLContext* ctx)
 		}
 
 		// Backspace cancels a character, or it is ignored if at
-		//  the start of the line
+		// the start of the line
 		if (c == '\b')
 		{
 			if (ctx->history[ctx->line_pos] != '\0')
@@ -432,66 +401,10 @@ const char* rl_readline(struct RLContext* ctx)
 
 	ctx->line_pos = ctx->history_pos;
 
-	if (ctx->prompt)
-		rl_puts(ctx, ctx->prompt);
-
 	insert_chars(ctx, &ctx->line_pos, NULL, 0);
 
 	// Since the current pointer now points to the separator, we need
 	//  to return the first character
 	return buf;
 }
-
-
-#if DEBUG_UNIT_TEST
-
-/** Perform the unit test for the readline library */
-void rl_test(void);
-
-#if HISTORY_SIZE != 32
-	#error This test needs HISTORY_SIZE to be set at 32
-#endif
-
-static struct RLContext test_ctx;
-
-static char* test_getc_ptr;
-static int test_getc(void* data)
-{
-	return *test_getc_ptr++;
-}
-
-/** Perform a readline test. The function pipes the characters from \a input_buffer
- *  through the I/O to \c rl_readline(). After the whole string is sent, \c do_test()
- *  checks if the current history within the context match \a expected_history.
- */
-static bool do_test(char* input_buffer, char* expected_history)
-{
-	rl_init_ctx(&test_ctx);
-	rl_sethook_get(&test_ctx, test_getc, NULL);
-
-	test_getc_ptr = input_buffer;
-	while (*test_getc_ptr)
-		rl_readline(&test_ctx);
-
-	if (memcmp(test_ctx.real_history, expected_history, HISTORY_SIZE) != 0)
-	{
-		ASSERT2(0, "history compare failed");
-		return false;
-	}
-
-	return true;
-}
-
-void rl_test(void)
-{
-	char* test1_in = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np\nq\nr\ns\nt\nu\nv\nw\nx\ny\nz\n";
-	char test1_hist[HISTORY_SIZE] = "\0l\0m\0n\0o\0p\0q\0r\0s\0t\0u\0v\0w\0x\0y\0z";
-
-	if (!do_test(test1_in, test1_hist))
-		return;
-
-	kprintf("rl_test successful\n");
-}
-
-#endif /* DEBUG_UNIT_TEST */
 

@@ -140,6 +140,7 @@
 #include "sam3_sysctl.h"
 #include "sam3_pdc.h"
 #include "sam3_pmc.h"
+#include "sam3_dmac.h"
 #include "sam3_smc.h"
 #include "sam3_sdramc.h"
 #include "sam3_ints.h"
@@ -157,6 +158,8 @@
 #include "sam3_tc.h"
 #include "sam3_twi.h"
 #include "sam3_ssc.h"
+#include "sam3_hsmci.h"
+#include "sam3_chipid.h"
 
 /**
  * U(S)ART I/O pins
@@ -336,5 +339,60 @@
 	#error no ssc pins are defined for this cpu
 #endif
 
-/*\}*/
+
+#if CPU_CM3_SAM3X8
+	#define FLASH_MEM_SIZE          0x80000UL ///< Internal flash memory size
+	#define FLASH_PAGE_SIZE_BYTES         256 ///< Size of cpu flash memory page in bytes
+	#define FLASH_BANKS_NUM                 2 ///< Number of flash banks
+	#define FLASH_PAGES_FOR_BANK         1024 ///< Number pages for each bank
+	#define FLASH_BASE                0x80000 ///< Start address for bank 0
+#elif CPU_CM3_SAM3U4
+	#define FLASH_MEM_SIZE          0x40000UL ///< Internal flash memory size
+	#define FLASH_PAGE_SIZE_BYTES         256 ///< Size of cpu flash memory page in bytes
+	#define FLASH_BANKS_NUM                 2 ///< Number of flash banks
+	#define FLASH_PAGES_FOR_BANK          512 ///< Number pages for each bank
+	#define FLASH_BASE                0x80000 ///< Start address for bank 0
+#elif CPU_CM3_SAM3N4 || CPU_CM3_SAM3S4
+	#define FLASH_MEM_SIZE          0x40000UL ///< Internal flash memory size
+	#define FLASH_PAGE_SIZE_BYTES         256 ///< Size of cpu flash memory page in bytes
+	#define FLASH_BANKS_NUM                 1 ///< Number of flash banks
+	#define FLASH_PAGES_FOR_BANK         1024 ///< Number pages for each bank
+	#define FLASH_BASE               0x400000 ///< Start address for bank 0
+#else
+	#error no internal flash info are defined for this cpu
+#endif
+
+
+#if CPU_CM3_SAM3X8
+	// Port B
+	#define PHY_REFCLK_XT2_BIT      0
+	#define PHY_TXEN_BIT            1
+	#define PHY_TXD0_BIT            2
+	#define PHY_TXD1_BIT            3
+	#define PHY_RXDV_TESTMODE_BIT   4
+	#define PHY_RXD0_AD0_BIT        5
+	#define PHY_RXD1_AD1_BIT        6
+	#define PHY_RXER_RXD4_RPTR_BIT  7
+	#define PHY_MDC_BIT             8
+	#define PHY_MDIO_BIT            9
+	// Port A
+	#define PHY_MDINTR_BIT          5
+#elif (CPU_CM3_SAM3U || CPU_CM3_SAM3N)
+	/* No ethernet interface is present on this cpu */
+#else
+	#error No MII/RMII PHY pins interface was define for select CPU.
+#endif
+
+#define PHY_MII_PINS_PORTB \
+	BV(PHY_REFCLK_XT2_BIT) \
+	| BV(PHY_TXEN_BIT) \
+	| BV(PHY_TXD0_BIT) \
+	| BV(PHY_TXD1_BIT) \
+	| BV(PHY_RXD0_AD0_BIT) \
+	| BV(PHY_RXD1_AD1_BIT) \
+	| BV(PHY_RXER_RXD4_RPTR_BIT) \
+	| BV(PHY_MDC_BIT) \
+	| BV(PHY_MDIO_BIT)
+
+
 #endif /* SAM3_H */

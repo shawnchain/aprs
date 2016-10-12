@@ -26,83 +26,54 @@
  * invalidate any other reasons why the executable file might be covered by
  * the GNU General Public License.
  *
- * Copyright 2007 Develer S.r.l. (http://www.develer.com/)
+ * copyright (c) Davide Gironi, 2012
  *
  * -->
  *
- * \brief PCF8574 i2c port expander driver.
+ * \brief 
  *
- * \author Francesco Sacchi <batt@develer.com>
+ * \author Davide Gironi
+ *
  *
  * $WIZ$ module_name = "pcf8574"
  * $WIZ$ module_depends = "i2c"
  */
 
-#ifndef DRV_PCF8574_H
-#define DRV_PCF8574_H
+/*
+pcf8574 lib 0x02
 
-#include "cfg/cfg_i2c.h"
 
-#include <cfg/compiler.h>
+Released under GPLv3.
+Please refer to LICENSE file for licensing information.
+*/
 
-#include <drv/i2c.h>
 
-#if COMPILER_C99
-	#define pcf8574_init(...)       PP_CAT(pcf8574_init ## _, COUNT_PARMS(__VA_ARGS__)) (__VA_ARGS__)
-	#define pcf8574_get(...)        PP_CAT(pcf8574_get ## _, COUNT_PARMS(__VA_ARGS__)) (__VA_ARGS__)
-	#define pcf8574_put(...)        PP_CAT(pcf8574_put ## _, COUNT_PARMS(__VA_ARGS__)) (__VA_ARGS__)
-#else
-	#define pcf8574_init(args...)   PP_CAT(pcf8574_init ## _, COUNT_PARMS(args)) (args)
-	#define pcf8574_get(args...)    PP_CAT(pcf8574_get ## _, COUNT_PARMS(args)) (args)
-	#define pcf8574_put(args...)    PP_CAT(pcf8574_put ## _, COUNT_PARMS(args)) (args)
+#ifndef PCF8574_H_
+#define PCF8574_H_
+
+#define PCF8574_ADDRBASE (0x27) //device base address
+
+#define PCF8574_I2CINIT 1       //init i2c
+
+#define PCF8574_MAXDEVICES 2    //max devices, depends on address (3 bit)
+#define PCF8574_MAXPINS 8       //max pin per device
+
+
+//pin status
+volatile uint8_t pcf8574_pinstatus[PCF8574_MAXDEVICES];
+
+
+//functions
+void pcf8574_init (void);
+extern int8_t pcf8574_getoutput (uint8_t deviceid);
+extern int8_t pcf8574_getoutputpin (uint8_t deviceid, uint8_t pin);
+extern int8_t pcf8574_setoutput (uint8_t deviceid, uint8_t data);
+extern int8_t pcf8574_setoutputpins (uint8_t deviceid, uint8_t pinstart,
+                                     uint8_t pinlength, int8_t data);
+extern int8_t pcf8574_setoutputpin (uint8_t deviceid, uint8_t pin,
+                                    uint8_t data);
+extern int8_t pcf8574_setoutputpinhigh (uint8_t deviceid, uint8_t pin);
+extern int8_t pcf8574_setoutputpinlow (uint8_t deviceid, uint8_t pin);
+extern int8_t pcf8574_getinput (uint8_t deviceid);
+extern int8_t pcf8574_getinputpin (uint8_t deviceid, uint8_t pin);
 #endif
-
-typedef uint8_t pcf8574_addr;
-
-/**
- * Context for accessing a PCF8574.
- */
-typedef struct Pcf8574
-{
-	pcf8574_addr addr;
-} Pcf8574;
-
-#define PCF8574ID 0x40 ///< I2C address
-
-/**
- * Read PCF8574 \a pcf bit status.
- * \return the pins status or EOF on errors.
- */
-int pcf8574_get_2(I2c *i2c, Pcf8574 *pcf);
-
-/**
- * Write to PCF8574 \a pcf port \a data.
- * \return true if ok, false on errors.
- */
-bool pcf8574_put_3(I2c *i2c, Pcf8574 *pcf, uint8_t data);
-
-/**
- * Init a PCF8574 on the bus with addr \a addr.
- * \return true if device is found, false otherwise.
- */
-bool pcf8574_init_3(I2c *i2c, Pcf8574 *pcf, pcf8574_addr addr);
-
-#if !CONFIG_I2C_DISABLE_OLD_API
-
-DEPRECATED INLINE int pcf8574_get_1(Pcf8574 *pcf)
-{
-	return pcf8574_get_2(&local_i2c_old_api, pcf);
-}
-
-DEPRECATED INLINE bool pcf8574_put_2(Pcf8574 *pcf, uint8_t data)
-{
-	return pcf8574_put_3(&local_i2c_old_api, pcf, data);
-}
-
-DEPRECATED INLINE bool pcf8574_init_2(Pcf8574 *pcf, pcf8574_addr addr)
-{
-	return pcf8574_init_3(&local_i2c_old_api, pcf, addr);
-}
-#endif /* !CONFIG_I2C_DISABLE_OLD_API */
-
-#endif /* DRV_PCF8574_H */

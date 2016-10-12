@@ -319,14 +319,14 @@
  * $WIZ$ type = "int"
  * $WIZ$ min = -1
  */
-#define CONFIG_SER_TXTIMEOUT    -1
+#define CONFIG_SER_TXTIMEOUT    0
 
 /**
  * Default receive timeout (ms). Set to -1 to disable timeout support.
  * $WIZ$ type = "int"
  * $WIZ$ min = -1
  */
-#define CONFIG_SER_RXTIMEOUT    -1
+#define CONFIG_SER_RXTIMEOUT    0
 
 /**
  * Use RTS/CTS handshake.

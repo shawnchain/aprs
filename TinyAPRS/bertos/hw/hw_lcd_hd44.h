@@ -89,6 +89,8 @@
 #define LCD_SET_RD      /* Implement me! */
 #define LCD_CLR_E       /* Implement me! */
 #define LCD_SET_E       /* Implement me! */
+#define LCD_CLR_BL      /* Implement me! */
+#define LCD_SET_BL      /* Implement me! */
 
 /* Enter command mode */
 #define LCD_SET_COMMAND() /* Implement me! */
