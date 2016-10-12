@@ -24,10 +24,6 @@
 #include <avr/wdt.h>
 #include <net/ax25.h>
 #include <cpu/pgm.h>
-#if CPU_AVR
-#include <avr/pgmspace.h>
-
-#endif
 
 //void soft_reboot() {
 //	wdt_disable();
@@ -44,12 +40,8 @@ void wdt_init(void)
 {
     MCUSR = 0;
     wdt_disable();
-    return;
 }
 #endif
-
-
-
 
 // Free ram test
 uint16_t freeRam (void) {
@@ -58,6 +50,16 @@ uint16_t freeRam (void) {
   uint16_t vaddr = (uint16_t)(&v);
   return (uint16_t) (vaddr - (__brkval == 0 ? (uint16_t) &__heap_start : (uint16_t) __brkval));
 }
+
+/*INLINE*/ int kfile_print_P(struct KFile *fd, const char *s){
+    while (PGM_READ_CHAR(s))
+    {
+        if (kfile_putc(PGM_READ_CHAR(s++), fd) == EOF)
+            return EOF;
+    }
+    return 0;
+}
+
 
 /*
  * AX25Call object to String

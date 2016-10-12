@@ -100,6 +100,18 @@ int kfile_printf(struct KFile *fd, const char *format, ...)
 
 	return len;
 }
+
+int kfile_printf_P(struct KFile *fd, const char *format, ...)
+{
+	va_list ap;
+	int len;
+
+	va_start(ap, format);
+	len = _formatted_write_P(format, (void (*)(char, void *))kfile_putc, fd, ap);
+	va_end(ap);
+
+	return len;
+}
 #endif /* CONFIG_PRINTF */
 
 /**
