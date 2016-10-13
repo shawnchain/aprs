@@ -116,7 +116,7 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 
 #if MOD_KISS
 	case MODE_KISS:
-		kiss_send_host(0x00/*kiss port id*/,g_ax25.buf,g_ax25.frm_len - 2);
+		kiss_send_to_serial(0x00,/*kiss port id*/g_ax25.buf,g_ax25.frm_len - 2);
 		break;
 #endif
 
@@ -320,7 +320,7 @@ static void init(void)
 	// Initialize the kiss module
 	// NOTE - use shared memory buffer
 #if MOD_KISS
-	kiss_init(&(g_serial.fd),g_shared_buf, SHARED_BUF_LEN, kiss_mode_exit_callback);
+	kiss_init(&(g_serial.fd),&g_ax25,g_shared_buf, SHARED_BUF_LEN, kiss_mode_exit_callback);
 #endif
 
 #if MOD_BEACON
@@ -385,8 +385,7 @@ int main(void){
 
 #if MOD_KISS
 			case MODE_KISS:{
-				kiss_serial_poll();
-				kiss_queue_process();
+				kiss_poll();
 				break;
 			}
 #endif

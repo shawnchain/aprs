@@ -196,7 +196,8 @@ void ser_setbaudrate(struct Serial *fd, unsigned long rate);
 void ser_setparity(struct Serial *fd, int parity);
 void ser_settimeouts(struct Serial *fd, mtime_t rxtimeout, mtime_t txtimeout);
 void ser_resync(struct Serial *fd, mtime_t delay);
-int ser_getchar_nowait(struct Serial *fd);
+int ser_getchar(struct Serial *fd);
+int ser_putchar(int c, struct Serial *port);
 bool ser_available(struct Serial *fd);
 
 void ser_purgeRx(struct Serial *fd);

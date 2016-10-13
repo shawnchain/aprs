@@ -91,7 +91,7 @@ struct Serial *ser_handles[SER_CNT];
  *
  * \return EOF on error or timeout, \a c otherwise.
  */
-static int ser_putchar(int c, struct Serial *port)
+int ser_putchar(int c, struct Serial *port)
 {
 	if (fifo_isfull_locked(&port->txfifo))
 	{
@@ -137,7 +137,7 @@ static int ser_putchar(int c, struct Serial *port)
  *
  * \return EOF on error or timeout, \a c otherwise.
  */
-static int ser_getchar(struct Serial *port)
+int ser_getchar(struct Serial *port)
 {
 	if (fifo_isempty_locked(&port->rxfifo))
 	{
@@ -174,13 +174,14 @@ static int ser_getchar(struct Serial *port)
 	return (int)(unsigned char)fifo_pop_locked(&port->rxfifo);
 }
 
+#if 0
 /**
  * Fetch a character from the rx FIFO buffer.
  * If the buffer is empty, ser_getchar_nowait() returns
  * EOF immediatly.
  * \note Deprecated, use ser_getchar with rx_timeout set to 0.
  */
-int ser_getchar_nowait(struct Serial *fd)
+static int ser_getchar_nowait(struct Serial *fd)
 {
 	if (fifo_isempty_locked(&fd->rxfifo))
 		return EOF;
@@ -188,6 +189,7 @@ int ser_getchar_nowait(struct Serial *fd)
 	/* NOTE: the double cast prevents unwanted sign extension */
 	return (int)(unsigned char)fifo_pop_locked(&fd->rxfifo);
 }
+#endif
 
 bool ser_available(struct Serial *fd) {
 	if (fifo_isempty_locked(&fd->rxfifo)) {
