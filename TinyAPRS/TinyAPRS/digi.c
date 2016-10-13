@@ -26,8 +26,6 @@
 #include "settings.h"
 #include "utils.h"
 
-#include "kiss.h"
-
 typedef struct CacheEntry{
 	uint16_t hash;
 	uint32_t timestamp; // in seconds
