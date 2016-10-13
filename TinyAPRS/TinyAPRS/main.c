@@ -83,8 +83,6 @@ uint8_t g_shared_buf[SHARED_BUF_LEN];
 
 #define ADC_CH 0
 #define DAC_CH 0
-#define SER_BAUD_RATE_9600 9600L
-#define SER_BAUD_RATE_115200 115200L
 
 // DEBUG FLAGS
 #define DEBUG_FREE_RAM 0
@@ -294,7 +292,7 @@ static void init(void)
 
 	/* Initialize serial port, we are going to use it to show APRS messages*/
 	ser_init(&g_serial, SER_UART0);
-	ser_setbaudrate(&g_serial, SER_BAUD_RATE_9600);
+	ser_setbaudrate(&g_serial, SER_DEFAULT_BAUD_RATE);
     // For some reason BertOS sets the serial
     // to 7 bit characters by default. We set
     // it to 8 instead.

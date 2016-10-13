@@ -54,7 +54,7 @@ void gps_init(GPS *gps){
 		kfile_putc(pgm_read_byte(pstr_baudrate_P + i),&(g_serial.fd));
 	}
 	timer_delay(150);
-	ser_setbaudrate(&g_serial, 9600L);
+	ser_setbaudrate(&g_serial, SER_DEFAULT_BAUD_RATE);
 	timer_delay(150);
 	ser_purge(&g_serial);
 

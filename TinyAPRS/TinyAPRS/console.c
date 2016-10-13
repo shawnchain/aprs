@@ -183,6 +183,7 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 	// print free memory
 	SERIAL_PRINTF_P(pSer,PSTR("Free RAM: %u\r\n"),freeRam());
 
+	kfile_flush((KFile*)pSer);
 	return true;
 }
 

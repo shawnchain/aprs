@@ -29,4 +29,16 @@ extern struct Afsk g_afsk;
 struct GPS;
 extern struct GPS g_gps;
 
+
+#define SER_BAUD_RATE_9600 9600L
+#define SER_BAUD_RATE_115200 115200L
+
+#define SER_FAST_MODE 1
+
+#if SER_FAST_MODE
+#define SER_DEFAULT_BAUD_RATE SER_BAUD_RATE_115200
+#else
+#define SER_DEFAULT_BAUD_RATE SER_BAUD_RATE_9600
+#endif
+
 #endif /* GLOBAL_H_ */
