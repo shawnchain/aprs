@@ -51,10 +51,7 @@
 #include <ctype.h>  //isalnum, toupper
 
 #include <cpu/pgm.h>
-#if CPU_AVR
-#include <avr/pgmspace.h>
 #include <stdio.h>
-#endif
 
 #include <cpu/irq.h>
 
@@ -387,18 +384,17 @@ void ax25_sendRaw(AX25Ctx *ctx, const void *_buf, size_t len)
 	ASSERT(ctx->crc_out == AX25_CRC_CORRECT);
 
 	kfile_putc(HDLC_FLAG, ctx->ch);
+
+	// flush the channel, wait the radio send off
+	kfile_flush(ctx->ch);
 }
 
 static void print_call(KFile *ch, const AX25Call *call)
 {
 #if CPU_AVR
-	char buf[8];
-	sprintf_P(buf,PSTR("%.6s"),call->call);
-	kfile_print(ch,buf);
-	if(call->ssid){
-		sprintf_P(buf,PSTR("-%d"),call->ssid);
-		kfile_print(ch,buf);
-	}
+	kfile_printf_P(ch, PSTR("%.6s"), call->call);
+	if (call->ssid)
+		kfile_printf_P(ch, PSTR("-%d"), call->ssid);
 #else
 	kfile_printf(ch, "%.6s", call->call);
 	if (call->ssid)
@@ -413,11 +409,6 @@ static void print_call(KFile *ch, const AX25Call *call)
  */
 void ax25_print(KFile *ch, const AX25Msg *msg)
 {
-
-#if CPU_AVR
-	char buf[16];
-#endif
-
 	print_call(ch, &msg->src);
 	kfile_putc('>', ch);
 	print_call(ch, &msg->dst);
@@ -434,15 +425,10 @@ void ax25_print(KFile *ch, const AX25Msg *msg)
 	}
 	#endif
 
-#if 1
-	//NOTE - snprintf_P seems not support %.*s, so we use kfile_printf instead
-	// to save ram, first use strncpy_P to copy the format string from PROGMEM
-	//sprintf_P(buf,PSTR(":%.*s\n\r"),(msg->len>61?61:msg->len),msg->info);
-	//	kfile_print(ch,buf);
-	strncpy_P(buf,PSTR(":%.*s\n\r"),10);
-	kfile_printf(ch, buf, msg->len, msg->info);
+#if CPU_AVR
+	kfile_printf_P(ch, PSTR(":%.*s\n\r"), msg->len, msg->info);
 #else
-	kfile_printf(ch, ":%.*s\n\r", msg->len, msg->info);
+	kfile_printf_P(ch, ":%.*s\n\r", msg->len, msg->info);
 #endif
 }
 

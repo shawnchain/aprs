@@ -24,6 +24,7 @@
 
 #include "global.h"
 #include "settings.h"
+#include "utils.h"
 
 typedef struct CacheEntry{
 	uint16_t hash;
@@ -42,15 +43,12 @@ void digi_init(void){
 	cacheIndex = 0;
 }
 
+static uint32_t c = 1;
 static bool _digi_repeat_message(AX25Msg *msg){
 	// force delay 150ms
-	timer_delayTicks(ms_to_ticks(150));
+	timer_delay(150);
 #if DIGI_DEBUG
-	{
-	char fmt[16];
-	sprintf_P(fmt,PSTR("digipeat:\r\n"));
-	kfile_printf(&g_serial.fd,fmt);
-	}
+	kfile_printf_P(&g_serial.fd,PSTR("digipeat [%d]:\r\n"),c++);
 	ax25_print(&g_serial.fd, msg);
 #endif
 	ax25_sendMsg(&g_ax25, msg);

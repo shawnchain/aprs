@@ -25,6 +25,9 @@
 #include <net/ax25.h>
 #include <cpu/pgm.h>
 
+//FIXME - use bertos PGM routins
+#include <avr/pgmspace.h>
+
 //void soft_reboot() {
 //	wdt_disable();
 //	wdt_enable(WDTO_2S);
@@ -51,10 +54,10 @@ uint16_t freeRam (void) {
   return (uint16_t) (vaddr - (__brkval == 0 ? (uint16_t) &__heap_start : (uint16_t) __brkval));
 }
 
-/*INLINE*/ int kfile_print_P(struct KFile *fd, const char *s){
-    while (PGM_READ_CHAR(s))
+int kfile_print_P(struct KFile *fd, const char *s){
+    while (pgm_read_byte(s))
     {
-        if (kfile_putc(PGM_READ_CHAR(s++), fd) == EOF)
+        if (kfile_putc(pgm_read_byte(s++), fd) == EOF)
             return EOF;
     }
     return 0;
