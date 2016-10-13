@@ -26,6 +26,8 @@
 #include "settings.h"
 #include "utils.h"
 
+#include "kiss.h"
+
 typedef struct CacheEntry{
 	uint16_t hash;
 	uint32_t timestamp; // in seconds
@@ -42,6 +44,9 @@ void digi_init(void){
 	memset(&cache,0,sizeof(CacheEntry) * CACHE_SIZE);
 	cacheIndex = 0;
 }
+
+
+//FIXME - CSMA check ?
 
 static uint32_t c = 1;
 static bool _digi_repeat_message(AX25Msg *msg){

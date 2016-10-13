@@ -228,7 +228,7 @@ void kiss_send_to_modem(/*channel = 0*/ uint8_t *buf, size_t len){
 				sent = true;
 			} else {
 				//TEST ONLY -
-				// kfile_printf_P(kiss.serial,PSTR("send backoff 100ms, because %d > persistence \n"),tp);
+				///kfile_printf_P(kiss.serial,PSTR("send backoff 100ms, because %d > persistence \n"),tp);
 				// block waiting 100ms by default.
 				timer_delay(kiss.param.slot_time * 10);
 			}

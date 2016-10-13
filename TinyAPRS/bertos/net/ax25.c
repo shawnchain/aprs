@@ -1,4 +1,4 @@
-/**
+ /**
  * \file
  * <!--
  * This file is part of BeRTOS.
@@ -311,6 +311,7 @@ void ax25_sendVia(AX25Ctx *ctx, const AX25Call *path, size_t path_len, const voi
 
 	ASSERT(ctx->crc_out == AX25_CRC_CORRECT);
 
+	// flush
 	kfile_putc(HDLC_FLAG, ctx->ch);
 
 #if CONFIG_AX25_STAT
@@ -357,9 +358,12 @@ void ax25_sendMsg(AX25Ctx *ctx, const AX25Msg *msg){
 
 	kfile_putc(HDLC_FLAG, ctx->ch);
 
-	#if CONFIG_AX25_STAT
-		ATOMIC(ctx->stat.tx_ok++);
-	#endif
+	// flush the channel, wait the radio send off
+	kfile_flush(ctx->ch);
+
+#if CONFIG_AX25_STAT
+	ATOMIC(ctx->stat.tx_ok++);
+#endif
 }
 
 void ax25_sendRaw(AX25Ctx *ctx, const void *_buf, size_t len)
@@ -387,6 +391,10 @@ void ax25_sendRaw(AX25Ctx *ctx, const void *_buf, size_t len)
 
 	// flush the channel, wait the radio send off
 	kfile_flush(ctx->ch);
+
+#if CONFIG_AX25_STAT
+	ATOMIC(ctx->stat.tx_ok++);
+#endif
 }
 
 static void print_call(KFile *ch, const AX25Call *call)
