@@ -205,23 +205,32 @@ static void kiss_handle_frame(uint8_t *frame, uint16_t size){
 	}// end of switch(cmd)
 }
 
-#define ACTIVE_CSMA_ENABLED 1
-
+/*
+ * send to modem/rf
+ */
 void kiss_send_to_modem(/*channel = 0*/ uint8_t *buf, size_t len){
-#if ACTIVE_CSMA_ENABLED
 	bool sent = false;
-	Afsk *afsk = (Afsk*)kiss.modem->ch;
+	Afsk *afsk = AFSK_CAST(kiss.modem->ch);
+
+	if(kiss.param.duplex == KISS_DUPLEX_FULL){
+		ax25_sendRaw(kiss.modem, buf, len);
+		return;
+	}
+
+	// Perform CSMA check under HALF_DUPLEX mode,
+	// FIXME - blocking send currently.
 	while (!sent) {
 		if (!/*ctx->dcd*/(afsk)->hdlc.rxstart) {
-			uint8_t tp = rand() & 0xFF;
+			uint16_t i = rand();
+			uint8_t tp = ((i >> 8) ^ (i & 0xff));
 			if (tp < kiss.param.persistence) {
 				ax25_sendRaw(kiss.modem,buf, len);
 				sent = true;
 			} else {
-				ticks_t start = timer_clock();
-				while (timer_clock() - start < ms_to_ticks(kiss.param.slot_time * 10)) {
-					cpu_relax();
-				}
+				//TEST ONLY -
+				// kfile_printf_P(kiss.serial,PSTR("send backoff 100ms, because %d > persistence \n"),tp);
+				// block waiting 100ms by default.
+				timer_delay(kiss.param.slot_time * 10);
 			}
 		} else {
 			while (!sent && /*kiss_ax25->dcd*/ (afsk)->hdlc.rxstart) {
@@ -239,9 +248,6 @@ void kiss_send_to_modem(/*channel = 0*/ uint8_t *buf, size_t len){
 			}
 		}
 	}
-#else
-	ax25_sendRaw(kiss.modem, buf, len);
-#endif
 }
 
 #if 0
