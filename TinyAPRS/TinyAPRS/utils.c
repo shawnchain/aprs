@@ -35,7 +35,6 @@
 //	}
 //}
 
-
 #if SOFT_RESET_ENABLED
 // need to disable watch dog after reset on XMega
 void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
@@ -62,7 +61,6 @@ int kfile_print_P(struct KFile *fd, const char *s){
     }
     return 0;
 }
-
 
 /*
  * AX25Call object to String
@@ -122,5 +120,16 @@ void ax25call_from_string(struct AX25Call *call, char* buf){
 				call->ssid = call->ssid * 10 + (c - '0');
 		}
 	}
+}
 
+/*
+ * Calculate the data checksum
+ */
+uint8_t calc_crc(uint8_t *data, uint16_t size){
+	uint8_t i = 0;
+	uint8_t sum = 0;
+	for(;i<size;i++){
+		sum += data[i];
+	}
+	return ~sum;
 }

@@ -10,6 +10,8 @@
 #include <drv/ser.h>
 
 #include "global.h"
+#include "settings.h"
+#include "utils.h"
 
 #define KISS_FEND  0xc0
 #define KISS_FESC  0xdb
@@ -29,33 +31,25 @@ enum {
 };
 
 enum {
-	KISS_DUPLEX_HALF = 0,
-	KISS_DUPLEX_FULL
+	KISS_DUPLEX_HALF = 0, KISS_DUPLEX_FULL
 };
 
 enum {
-	KISS_QUEUE_IDLE,
-	KISS_QUEUE_DELAYED,
+	KISS_QUEUE_IDLE, KISS_QUEUE_DELAYED,
 };
 
-static KissCtx kiss = {
-		.rxBufLen = 0,
-		.rxPos = 0,
-		.rxTick = 0,
-		.param = {
-			.txdelay = 50,
-			.persistence = 63,
-			.txtail = 5,
-			.slot_time = 10,
-			.duplex = KISS_DUPLEX_HALF
-		}
-};
+static KissCtx kiss = { .rxBufLen = 0, .rxPos = 0, .rxTick = 0, .param = {
+		.txdelay = 50, .persistence = 63, .txtail = 5, .slot_time = 10,
+		.duplex = KISS_DUPLEX_HALF } };
 
 static kiss_exit_callback_t exitCallback = 0;
 
 static void kiss_handle_frame(uint8_t *frame, uint16_t size);
 
-void kiss_init(KFile *_ser, AX25Ctx *_mdm, uint8_t *buf, uint16_t bufLen, kiss_exit_callback_t hook){
+static void kiss_handle_config_frame(uint8_t *frame, uint16_t size);
+
+void kiss_init(KFile *_ser, AX25Ctx *_mdm, uint8_t *buf, uint16_t bufLen,
+		kiss_exit_callback_t hook) {
 	//memset(&kiss,0,sizeof(KissCtx));
 
 	kiss.serial = _ser;
@@ -69,24 +63,26 @@ void kiss_init(KFile *_ser, AX25Ctx *_mdm, uint8_t *buf, uint16_t bufLen, kiss_e
 	kiss.rxBufLen = bufLen; // buffer length, should be >= CONFIG_AX25_FRAME_BUF_LEN
 }
 
-INLINE void kiss_recv(int c){
+INLINE void kiss_recv(int c) {
 	static bool escaped = false;
 	// sanity checks
 	// no serial input in last 2 secs?
-	if ((kiss.rxPos != 0) && (timer_clock() - kiss.rxTick  >  ms_to_ticks(2000L))) {
+	if ((kiss.rxPos != 0)
+			&& (timer_clock() - kiss.rxTick > ms_to_ticks(2000L))) {
 		LOG_INFO("Serial - Timeout\n");
 		kiss.rxPos = 0;
 	}
 
 	// about to overflow buffer? reset
 	if (kiss.rxPos >= (kiss.rxBufLen - 2)) {
-		LOG_INFO("Serial - Packet too long %d >= %d\n", kiss.rxPos, kiss.rxBufLen - 2);
+		LOG_INFO("Serial - Packet too long %d >= %d\n", kiss.rxPos,
+				kiss.rxBufLen - 2);
 		kiss.rxPos = 0;
 	}
 
 	if (c == KISS_FEND) {
 		if ((!escaped) && (kiss.rxPos > 0)) {
-			kiss_handle_frame(kiss.rxBuf,kiss.rxPos);
+			kiss_handle_frame(kiss.rxBuf, kiss.rxPos);
 		}
 		kiss.rxPos = 0;
 		escaped = false;
@@ -113,7 +109,7 @@ INLINE void kiss_recv(int c){
 	kiss.rxTick = timer_clock();
 }
 
-void kiss_poll(){
+void kiss_poll() {
 	Serial *serial = SERIAL_CAST(kiss.serial);
 	int c = ser_getchar(serial); // Make sure CONFIG_SERIAL_RXTIMEOUT = 0
 	//c = kfile_getc(kiss.serial);
@@ -123,15 +119,15 @@ void kiss_poll(){
 	kiss_recv(c);
 }
 
-static void kiss_handle_frame(uint8_t *frame, uint16_t size){
+static void kiss_handle_frame(uint8_t *frame, uint16_t size) {
 
-	if(size == 0)
+	if (size == 0)
 		return;
 
 	// Check return command
-	if(size == 1 && frame[0] == KISS_CMD_Return){
+	if (size == 1 && frame[0] == KISS_CMD_Return) {
 		//LOG_INFO("Kiss - exiting");
-		if(exitCallback){
+		if (exitCallback) {
 			exitCallback();
 		}
 		return;
@@ -143,7 +139,7 @@ static void kiss_handle_frame(uint8_t *frame, uint16_t size){
 	}
 
 	// the first byte of KISS message is for command and port
-	uint8_t cmd =frame[0] & 0x0f;
+	uint8_t cmd = frame[0] & 0x0f;
 	uint8_t port = frame[0] >> 4 & 0x0f;
 	uint8_t *payload = frame + 1;
 
@@ -152,67 +148,68 @@ static void kiss_handle_frame(uint8_t *frame, uint16_t size){
 		return;
 	}
 
-	switch(cmd){
-		case KISS_CMD_DATA:
-			//LOG_INFO("Kiss - handle frame message\n");
-			kiss_send_to_modem(payload, size - 1);
-			break;
+	switch (cmd) {
+	case KISS_CMD_DATA:
+		//LOG_INFO("Kiss - handle frame message\n");
+		kiss_send_to_modem(payload, size - 1);
+		break;
 
-		case KISS_CMD_Config:
-			//TODO - Save to EEPROM settings
-			//settings_save_raw(payload,size - 1);
-			break;
+	case KISS_CMD_Config:
+		//TODO - Save to EEPROM settings
+		//settings_save_raw(payload,size - 1);
+		kiss_handle_config_frame(payload, size - 1);
+		break;
 
 		/*
-		case KISS_CMD_TXDELAY:{
-			//LOG_INFO("Kiss - setting txdelay %d\n", k->buf[1]);
-			if(kiss.rxBuf[1] > 0){
-				kiss_txdelay = kiss.rxBuf[1];
-			}
-			break;
-		}
-		case KISS_CMD_P:{
-			//LOG_INFO("Kiss - setting persistence %d\n", k->buf[1]);
-			if(kiss.rxBuf[1] > 0){
-				kiss_persistence = kiss.rxBuf[1];
-			}
-			break;
-		}
-		case KISS_CMD_SlotTime:{
-			//LOG_INFO("Kiss - setting slot_time %d\n", k->buf[1]);
-			if(kiss.rxBuf[1] > 0){
-				kiss_slot_time = kiss.rxBuf[1];
-			}
-			break;
-		}
-		case KISS_CMD_TXtail:{
-			LOG_INFO("Kiss - setting txtail %d\n", k->buf[1]);
-			if(k->buf[1] > 0){
-				kiss_txtail = k->buf[1];
-			}
-			break;
-		}
-		case KISS_CMD_FullDuplex:{
-			LOG_INFO("Kiss - setting duplex %d\n", k->buf[1]);
-			kiss_duplex = k->buf[1];
-			break;
-		}
-		*/
+		 case KISS_CMD_TXDELAY:{
+		 //LOG_INFO("Kiss - setting txdelay %d\n", k->buf[1]);
+		 if(kiss.rxBuf[1] > 0){
+		 kiss_txdelay = kiss.rxBuf[1];
+		 }
+		 break;
+		 }
+		 case KISS_CMD_P:{
+		 //LOG_INFO("Kiss - setting persistence %d\n", k->buf[1]);
+		 if(kiss.rxBuf[1] > 0){
+		 kiss_persistence = kiss.rxBuf[1];
+		 }
+		 break;
+		 }
+		 case KISS_CMD_SlotTime:{
+		 //LOG_INFO("Kiss - setting slot_time %d\n", k->buf[1]);
+		 if(kiss.rxBuf[1] > 0){
+		 kiss_slot_time = kiss.rxBuf[1];
+		 }
+		 break;
+		 }
+		 case KISS_CMD_TXtail:{
+		 LOG_INFO("Kiss - setting txtail %d\n", k->buf[1]);
+		 if(k->buf[1] > 0){
+		 kiss_txtail = k->buf[1];
+		 }
+		 break;
+		 }
+		 case KISS_CMD_FullDuplex:{
+		 LOG_INFO("Kiss - setting duplex %d\n", k->buf[1]);
+		 kiss_duplex = k->buf[1];
+		 break;
+		 }
+		 */
 
-		default:
-			// Unsupported command
-			break;
-	}// end of switch(cmd)
+	default:
+		// Unsupported command
+		break;
+	}			// end of switch(cmd)
 }
 
 /*
  * send to modem/rf
  */
-void kiss_send_to_modem(/*channel = 0*/ uint8_t *buf, size_t len){
+void kiss_send_to_modem(/*channel = 0*/uint8_t *buf, size_t len) {
 	bool sent = false;
 	Afsk *afsk = AFSK_CAST(kiss.modem->ch);
 
-	if(kiss.param.duplex == KISS_DUPLEX_FULL){
+	if (kiss.param.duplex == KISS_DUPLEX_FULL) {
 		ax25_sendRaw(kiss.modem, buf, len);
 		return;
 	}
@@ -224,7 +221,7 @@ void kiss_send_to_modem(/*channel = 0*/ uint8_t *buf, size_t len){
 			uint16_t i = rand();
 			uint8_t tp = ((i >> 8) ^ (i & 0xff));
 			if (tp < kiss.param.persistence) {
-				ax25_sendRaw(kiss.modem,buf, len);
+				ax25_sendRaw(kiss.modem, buf, len);
 				sent = true;
 			} else {
 				//TEST ONLY -
@@ -233,7 +230,7 @@ void kiss_send_to_modem(/*channel = 0*/ uint8_t *buf, size_t len){
 				timer_delay(kiss.param.slot_time * 10);
 			}
 		} else {
-			while (!sent && /*kiss_ax25->dcd*/ (afsk)->hdlc.rxstart) {
+			while (!sent && /*kiss_ax25->dcd*/(afsk)->hdlc.rxstart) {
 				// Continously poll the modem for data
 				// while waiting, so we don't overrun
 				// receive buffers
@@ -299,4 +296,45 @@ void kiss_send_to_serial(uint8_t port, uint8_t *buf, size_t len) {
 }
 
 #endif
+
+/*
+ * Config data is encapsulated in the kiss frame with following format
+ *
+ * HEAD（2） | DATA (128) | SUM
+ * where:
+ *   HEAD = 1 bit type + 7 bit length(not including the sum byte)
+ *   DATA = $length bytes of data(byte order is CPU specific, AVR/X86 is little-endian, BRCM63xx is big-endian)
+ *   SUM  = ~(sum of each data bytes)
+ */
+static void kiss_handle_config_frame(uint8_t *frame, uint16_t size) {
+	if(size < 3) {
+		// at least 3 bytes
+		return;
+	}
+
+	uint8_t type = frame[0] >> 7 & 0x01;
+	uint8_t len = frame[0] & 0x7f;
+	uint8_t *data = frame + 1;
+	if(len != size - 2) {
+		// data length mismatch!
+		return;
+	}
+	if(data[len]/*sum*/ != calc_crc(data,len)){
+		// checksum mismatch
+		return;
+	}
+
+	// now save to settings
+	switch(type) {
+		case 0:
+			settings_set_bytes(data,len);
+			settings_save();
+			break;
+		case 1:
+			settings_set_beacon_text((char*)data,len);
+			break;
+		default:
+			break;
+	}
+}
 

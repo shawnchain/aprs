@@ -77,4 +77,6 @@ void ax25call_from_string(struct AX25Call *call, char* buf);
  */
 #define timer_clock_seconds(void) ticks_to_ms(timer_clock()) / 1000
 
+uint8_t calc_crc(uint8_t *data, uint16_t size);
+
 #endif /* SYS_UTILS_H_ */

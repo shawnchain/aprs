@@ -76,8 +76,6 @@ bool settings_save(void);
  */
 void settings_clear(void);
 
-
-
 /**
  * Get value of a specific settings
  * @type the type of setting to get
@@ -90,6 +88,11 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* valueOutLen);
  * Set value of a specific setting
  */
 void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen);
+
+/**
+ * Set/copy raw bytes into settingsData memory.
+ */
+bool settings_set_bytes(uint8_t *bytes, uint16_t size);
 
 /*
  * get the beacon text

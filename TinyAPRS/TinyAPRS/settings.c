@@ -15,9 +15,10 @@
  */
 
 #include "settings.h"
-#include "utils.h"
 
+#include <cpu/irq.h>
 #include <net/ax25.h>
+#include "utils.h"
 
 #define DEFAULT_BEACON_INTERVAL 20 * 60 // 20 minutes of beacon send interval
 #define DEFAULT_BEACON_TEXT "!3014.00N/12009.00E>TinyAPRS Rocks!" //
@@ -47,6 +48,7 @@ SettingsData g_settings = {
 #define NV_SETTINGS_BLOCK_SIZE SETTINGS_SIZE
 uint8_t EEMEM nvSetHeadByte;
 uint8_t EEMEM nvSettings[NV_SETTINGS_BLOCK_SIZE];
+uint8_t EEMEM nvSetCrcByte;
 
 uint8_t EEMEM nvMyCallHeadByte;
 uint8_t EEMEM nvMyCall[7];
@@ -63,17 +65,41 @@ uint8_t EEMEM nvPath2Call[7];
 uint8_t EEMEM nvBeaconTextHeadByte;
 uint8_t EEMEM nvBeaconText[NV_BEACON_TEXT_BLOCK_SIZE];
 
+/*
+ * Copy the data into settings and save to eeprom
+ */
+bool settings_set_bytes(uint8_t *bytes, uint16_t size){
+	if(size != sizeof(SettingsData)){
+		// size mismatch
+		return false;
+	}
+	//FIXME - swap the byte order ?
+	ATOMIC( \
+		memcpy(&g_settings,bytes,size) \
+	);
+
+	return true;
+}
 
 /*
  * Load settings
  */
 bool settings_load(void){
-	uint8_t verification = eeprom_read_byte((void*)&nvSetHeadByte);
-	if (verification != NV_SETTINGS_HEAD_BYTE_VALUE) {
+	uint8_t magicHead = eeprom_read_byte((void*)&nvSetHeadByte);
+	if (magicHead != NV_SETTINGS_HEAD_BYTE_VALUE) {
 		// fill up zero values
 		return false;
 	}
 	eeprom_read_block((void*)&g_settings, (void*)nvSettings, NV_SETTINGS_BLOCK_SIZE);
+	uint8_t sum = eeprom_read_byte((void*)&nvSetCrcByte);
+	if(sum != calc_crc((uint8_t*)&g_settings,sizeof(SettingsData))){
+		// if sum check failed, clear the setting data
+		settings_clear();
+		// TODO - roll back to the default values ?
+		// memset(&g_settings,0,sizeof(SettingsData));
+		// reboot()!
+		return false;
+	}
 	return true;
 }
 
@@ -83,6 +109,8 @@ bool settings_load(void){
 bool settings_save(void){
 	eeprom_update_block((void*)&g_settings, (void*)nvSettings, NV_SETTINGS_BLOCK_SIZE);
 	eeprom_update_byte((void*)&nvSetHeadByte, NV_SETTINGS_HEAD_BYTE_VALUE);
+	uint8_t sum = calc_crc((uint8_t*)&g_settings,sizeof(SettingsData));
+	eeprom_update_byte((void*)&nvSetCrcByte, sum);
 	return true;
 }
 
@@ -96,6 +124,7 @@ void settings_clear(void){
 	eeprom_update_byte((void*)&nvDestCallHeadByte,0xFF);
 	eeprom_update_byte((void*)&nvPath1CallHeadByte,0xFF);
 	eeprom_update_byte((void*)&nvPath2CallHeadByte,0xFF);
+	eeprom_update_byte((void*)&nvSetCrcByte, 0xFF);
 }
 
 /*
