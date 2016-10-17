@@ -1,0 +1,5 @@
+.checkout_source
+.patch_applied
+bin/*
+.xboot
+
