@@ -21,27 +21,9 @@
 
 #include <io/kfile.h>
 
-#include <avr/wdt.h>
-
 uint16_t freeRam (void);
 
-#define SOFT_RESET_ENABLED 0
-
-// Software reset
-#if SOFT_RESET_ENABLED
- #define soft_reset()        \
- do                          \
- {                           \
-     wdt_enable(WDTO_500MS);    \
-     for(;;)                 \
-     {                       \
-    	 cpu_relax();		\
-     }                       \
- } while(0)
-#else
-#define soft_reset()
-#endif
-
+void soft_reset(void);
 
 /////////////////////////////////////////////////////////////////////////
 // Serial print/printf macros

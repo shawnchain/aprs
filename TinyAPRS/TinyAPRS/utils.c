@@ -14,28 +14,37 @@
  * \date 2015-2-11
  */
 
-#include "utils.h"
+#include <cfg/compiler.h>
+#include <cpu/irq.h>
+#include <cpu/detect.h>
+#include <cpu/pgm.h>
+
+#include <drv/wdt.h>
+#include <net/ax25.h>
+
 #include <stdio.h>
 #include <string.h>
-
-#include <cfg/compiler.h>
 #include <ctype.h>
 
-#include <avr/wdt.h>
-#include <net/ax25.h>
-#include <cpu/pgm.h>
+#include "utils.h"
 
 //FIXME - use bertos PGM routins
 #include <avr/pgmspace.h>
 
-//void soft_reboot() {
-//	wdt_disable();
-//	wdt_enable(WDTO_2S);
-//	while (1) {
-//	}
-//}
+void soft_reset(void)  __attribute__((noreturn));
 
+#define SOFT_RESET_ENABLED 1
+
+void soft_reset(void){
+	// Software reset
 #if SOFT_RESET_ENABLED
+	wdt_start(5);
+	while(1){
+	}
+#endif
+}
+
+#if 0
 // need to disable watch dog after reset on XMega
 void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
 void wdt_init(void)
