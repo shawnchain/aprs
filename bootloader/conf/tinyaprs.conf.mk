@@ -29,7 +29,7 @@ USE_DFLL = yes
 
 # Programmer settings
 OVERRIDE_AVRDUDE_PROGRAMMER = yes
-AVRDUDE_PROGRAMMER = jtag2isp
+AVRDUDE_PROGRAMMER = usbasp
 AVRDUDE_PORT = usb
 
 # Fuse settings
@@ -39,13 +39,13 @@ AVRDUDE_FUSES =
 # and then uncomment OVERRIDE_AVRDUDE_FUSES
 
 #AVRDUDE_FUSES += -U lfuse:w:0xFF:m
-#AVRDUDE_FUSES += -U hfuse:w:0xDA:m
+AVRDUDE_FUSES += -U hfuse:w:0xD8:m
 #AVRDUDE_FUSES += -U efuse:w:0x05:m
 #AVRDUDE_FUSES += -U lock:w:0xFF:m
 
 # Uncomment to override default fuse configurations
 # from main Makefile
-#OVERRIDE_AVRDUDE_FUSES = yes
+OVERRIDE_AVRDUDE_FUSES = yes
 
 # XBoot settings
 
@@ -85,8 +85,8 @@ ENABLE_CRC_SUPPORT = yes
 # API
 ENABLE_API = yes
 USE_API_VERSION = 1
-ENABLE_API_LOW_LEVEL_FLASH = yes
-ENABLE_API_SPM_WRAPPER = yes
+ENABLE_API_LOW_LEVEL_FLASH = no
+ENABLE_API_SPM_WRAPPER = no
 ENABLE_API_FIRMWARE_UPDATE = yes
 
 # Code Protection
@@ -105,7 +105,7 @@ ENTER_BLINK_COUNT     = 3
 ENTER_BLINK_WAIT      = 300000
 
 # ENTER_UART
-#ENTER_UART_NEED_SYNC = yes
+ENTER_UART_NEED_SYNC = yes
 
 # ENTER_FIFO
 #ENTER_FIFO_NEED_SYNC = yes
