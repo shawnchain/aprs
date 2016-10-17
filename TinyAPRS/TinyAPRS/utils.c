@@ -34,17 +34,20 @@
 void soft_reset(void)  __attribute__((noreturn));
 
 #define SOFT_RESET_ENABLED 1
+#define NO_BOOTLOADER 0
 
 void soft_reset(void){
 	// Software reset
 #if SOFT_RESET_ENABLED
 	wdt_start(5);
 	while(1){
+		// NOTE: Need bootloader support to cal wdt_disable() when started
+		// or enable the wdt_init() below if no bootloader there.
 	}
 #endif
 }
 
-#if 0
+#if NO_BOOTLOADER
 // need to disable watch dog after reset on XMega
 void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
 void wdt_init(void)
