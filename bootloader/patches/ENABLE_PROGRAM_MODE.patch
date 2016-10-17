@@ -1,0 +1,135 @@
+diff --git a/protocol.h b/protocol.h
+index 1548a72..05a1d2b 100644
+--- a/protocol.h
++++ b/protocol.h
+@@ -108,5 +108,23 @@
+ #define REPLY_YES               'Y'
+ #define REPLY_ERROR             '?'
+ 
++#ifdef ENABLE_PROGRAM_MODE
++#define INIT_PROGRAM_MODE() uint8_t program_mode = 0
++#define SET_PROGRAM_MODE() program_mode = 1
++#define RESET_PROGRAM_MODE() program_mode = 0
++#define IF_PROGRAM_MODE() \
++    if (!program_mode) \
++    { \
++        in_bootloader = 0; \
++        send_char(REPLY_ERROR); \
++    } \
++    else
++#else
++#define INIT_PROGRAM_MODE() do {} while (0)
++#define SET_PROGRAM_MODE() do {} while (0)
++#define RESET_PROGRAM_MODE() do {} while (0)
++#define IF_PROGRAM_MODE() if (1)
++#endif
++
+ #endif // __PROTOCOL_H
+ 
+diff --git a/xboot.c b/xboot.c
+index ebedb66..c39722e 100644
+--- a/xboot.c
++++ b/xboot.c
+@@ -68,6 +68,7 @@ int main(void)
+         int i = 0;
+         uint32_t j;
+         uint8_t k;
++        INIT_PROGRAM_MODE();
+         
+         #ifdef NEED_CODE_PROTECTION
+         protected = 1;
+@@ -486,6 +487,7 @@ int main(void)
+                 // Chip erase
+                 else if (val == CMD_CHIP_ERASE)
+                 {
++                    IF_PROGRAM_MODE() {
+                         // Erase the application section
+                         // XMEGA E5: ERASE_APP NVM command (0x20) erases the entire flash - as a workaround, we erase page-by-page.
+                         // From Atmel Support: "The NVM controller design is such that the entire flash will get erased always when application/bootloader erase is called."
+@@ -532,6 +534,7 @@ int main(void)
+                         
+                         // acknowledge
+                         send_char(REPLY_ACK);
++                    }
+                 }
+                 #ifdef ENABLE_BLOCK_SUPPORT
+                 // Check block load support
+@@ -546,12 +549,14 @@ int main(void)
+                 // Block load
+                 else if (val == CMD_BLOCK_LOAD)
+                 {
++                    IF_PROGRAM_MODE() {
+                         // Block size
+                         i = get_2bytes();
+                         // Memory type
+                         val = get_char();
+                         // Load it
+                         send_char(BlockLoad(i, val, &address));
++                    }
+                 }
+                 // Block read
+                 else if (val == CMD_BLOCK_READ)
+@@ -583,22 +588,27 @@ int main(void)
+                 // Write program memory low byte
+                 else if (val == CMD_WRITE_LOW_BYTE)
+                 {
++                    IF_PROGRAM_MODE() {
+                         // get low byte
+                         i = get_char();
+                         send_char(REPLY_ACK);
++                    }
+                 }
+                 // Write program memory high byte
+                 else if (val == CMD_WRITE_HIGH_BYTE)
+                 {
++                    IF_PROGRAM_MODE() {
+                         // get high byte; combine
+                         i |= (get_char() << 8);
+                         Flash_LoadFlashWord((address << 1), i);
+                         address++;
+                         send_char(REPLY_ACK);
++                    }
+                 }
+                 // Write page
+                 else if (val == CMD_WRITE_PAGE)
+                 {
++                    IF_PROGRAM_MODE() {
+                         if (address >= (APP_SECTION_SIZE>>1))
+                         {
+                                 // don't allow bootloader overwrite
+@@ -609,15 +619,18 @@ int main(void)
+                                 Flash_WriteApplicationPage( address << 1);
+                                 send_char(REPLY_ACK);
+                         }
++                    }
+                 }
+                 #endif // ENABLE_FLASH_BYTE_SUPPORT
+                 #ifdef ENABLE_EEPROM_BYTE_SUPPORT
+                 // Write EEPROM memory
+                 else if (val == CMD_WRITE_EEPROM_BYTE)
+                 {
++                    IF_PROGRAM_MODE() {
+                         EEPROM_write_byte(address, get_char());
+                         address++;
+                         send_char(REPLY_ACK);
++                    }
+                 }
+                 // Read EEPROM memory
+                 else if (val == CMD_READ_EEPROM_BYTE)
+@@ -668,9 +681,14 @@ int main(void)
+ #endif // __AVR_XMEGA__
+                 #endif // ENABLE_FUSE_BITS
+                 // Enter and leave programming mode
+-                else if ((val == CMD_ENTER_PROG_MODE) || (val == CMD_LEAVE_PROG_MODE))
++                else if (val == CMD_ENTER_PROG_MODE)
+                 {
+-                        // just acknowledge
++                        SET_PROGRAM_MODE();
++                        send_char(REPLY_ACK);
++                }
++                else if (val == CMD_LEAVE_PROG_MODE)
++                {
++                        RESET_PROGRAM_MODE();
+                         send_char(REPLY_ACK);
+                 }
+                 // Exit bootloader

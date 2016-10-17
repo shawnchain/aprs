@@ -1,13 +1,17 @@
 # Based on XBoot
 
+XBOOT_GIT = https://github.com/alexforencich/xboot
+XBOOT_REV = f364317
+
 .checkout_source:
 	@echo Checkout source ...
-	@git clone https://github.com/alexforencich/xboot .xboot
+	@git clone $(XBOOT_GIT) .xboot
+	@cd .xboot; git checkout $(XBOOT_REV)
 	@touch .checkout_source
 
 .patch_applied:
 	@echo Applying patches ...
-	@cd .xboot; cat ../patches/*.patch | patch -p2
+	@cd .xboot; cat ../patches/*.patch | patch -p1
 	@touch .patch_applied
 
 all: .checkout_source .patch_applied
