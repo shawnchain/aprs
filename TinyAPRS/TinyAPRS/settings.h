@@ -46,16 +46,15 @@ typedef enum {
 
 #define SETTINGS_BEACON_TEXT_MAX 128
 
+typedef struct BeaconParams{
+	uint8_t		symbol[2];		// Symbol table and the index
+	uint16_t	interval; 		// Beacon send interval
+	uint8_t		type;			// 0 = smart, 1 = fixed interval
+}BeaconParams;
+
 typedef struct{
-	uint8_t symbol[2];		// Symbol table and the index
-
 	uint8_t run_mode;		// the run mode ,could be 0|1|2
-
-	uint16_t beacon_interval; // Beacon send interval
-
-	uint8_t beacon_type;	// 0 = smart, 1 = fixed interval
-
-	uint8_t unused[2];
+	BeaconParams beacon;
 } SettingsData;
 
 
