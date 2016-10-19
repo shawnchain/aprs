@@ -173,9 +173,9 @@ void tracker_update_location(struct GPS *gps){
 	if(shouldSend){
 		// prepare payload and send
 		char payload[64];
-		char s1 = g_settings.symbol[0];
+		char s1 = g_settings.beacon.symbol[0];
 		if(s1 == 0) s1 = '/';
-		char s2 = g_settings.symbol[1];
+		char s2 = g_settings.beacon.symbol[1];
 		if(s2 == 0) s2 = '>';
 		uint8_t len = snprintf_P(payload,63,PSTR("!%.7s%c%c%.8s%c%c%03d/%03d"),
 				gps->_term[GPRMC_TERM_LATITUDE],gps->_term[GPRMC_TERM_LATITUDE_NS][0],

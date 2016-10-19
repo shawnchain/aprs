@@ -36,12 +36,14 @@
 
 // Instance of the settings data. // TODO - Store default settings in the PROGMEM
 SettingsData g_settings = {
-		.symbol="/>",
-		//.location={30,14,0,'N',120,0,9,'E'},
-		//.phgd={0,0,0,0},
-		//.comments="TinyAPRS Rocks!",
-		.beacon_interval = 0, // by default beacon is disabled;
-		.beacon_type=0, // 0 = smart, 1 = fixed interval
+		.beacon={
+			.symbol="/>",
+			.interval = 0, // by default beacon is disabled;
+			.type=0, // 0 = smart, 1 = fixed interval
+			//.location={30,14,0,'N',120,0,9,'E'},
+			//.phgd={0,0,0,0},
+			//.comments="TinyAPRS Rocks!",
+		},
 };
 
 #define NV_SETTINGS_HEAD_BYTE_VALUE 0x88
@@ -134,8 +136,8 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 	if(*pValueOutLen <= 0) return;
 	switch(type){
 		case SETTINGS_SYMBOL:
-			*((uint8_t*)valueOut) = g_settings.symbol[0];
-			*((uint8_t*)valueOut + 1) = g_settings.symbol[1];
+			*((uint8_t*)valueOut) = g_settings.beacon.symbol[0];
+			*((uint8_t*)valueOut + 1) = g_settings.beacon.symbol[1];
 			*pValueOutLen = 2;
 			break;
 		case SETTINGS_RUN_MODE:
@@ -143,7 +145,7 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 			*pValueOutLen = 1;
 			break;
 		case SETTINGS_BEACON_INTERVAL:
-			*((uint16_t*)valueOut) = g_settings.beacon_interval;
+			*((uint16_t*)valueOut) = g_settings.beacon.interval;
 			*pValueOutLen = 2;
 			break;
 		default:
@@ -159,14 +161,14 @@ void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
 	(void)valueLen;
 	switch(type){
 		case SETTINGS_SYMBOL:
-			g_settings.symbol[0] = *((uint8_t*)value);
-			g_settings.symbol[1] = *(((uint8_t*)value)+1);
+			g_settings.beacon.symbol[0] = *((uint8_t*)value);
+			g_settings.beacon.symbol[1] = *(((uint8_t*)value)+1);
 			break;
 		case SETTINGS_RUN_MODE:
 			g_settings.run_mode = *((uint8_t*)value);
 			break;
 		case SETTINGS_BEACON_INTERVAL:
-			g_settings.beacon_interval =  *((uint16_t*)value);
+			g_settings.beacon.interval =  *((uint16_t*)value);
 			break;
 		default:
 			break;

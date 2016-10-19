@@ -61,7 +61,7 @@ void beacon_send_test_message_immediate(uint8_t repeats, const char* text){
 #endif
 
 void beacon_broadcast_poll(void){
-	uint16_t beaconSendInterval = g_settings.beacon_interval;
+	uint16_t beaconSendInterval = g_settings.beacon.interval;
 	if(beaconSendInterval == 0){
 		//it's disabled;
 		return;
