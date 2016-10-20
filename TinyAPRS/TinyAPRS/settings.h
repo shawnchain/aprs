@@ -27,6 +27,7 @@
 
 
 #define SETTINGS_SUPPORT_BEACON_TEXT 1
+#define SETTINGS_BEACON_TEXT_MAX_LEN 128
 
 /*
  * The setting types
@@ -41,22 +42,29 @@ typedef enum {
 	SETTINGS_BEACON_INTERVAL,
 }SETTINGS_TYPE;
 
-#define SETTINGS_MAX_SSID 99
-#define SETTINGS_SIZE 8
-
-#define SETTINGS_BEACON_TEXT_MAX 128
-
 typedef struct BeaconParams{
 	uint8_t		symbol[2];		// Symbol table and the index
 	uint16_t	interval; 		// Beacon send interval
 	uint8_t		type;			// 0 = smart, 1 = fixed interval
 }BeaconParams;
 
+typedef struct RfParams{
+	uint8_t txdelay;
+	uint8_t txtail;
+	uint8_t persistence;
+	uint8_t slot_time;
+	uint8_t duplex;
+}RfParams;
+
 typedef struct{
 	uint8_t run_mode;		// the run mode ,could be 0|1|2
-	BeaconParams beacon;
+	BeaconParams beacon;	// the beacon parameters
+	RfParams rf;			// the rf parameters
 } SettingsData;
-
+enum {
+	RF_DUPLEX_HALF = 0,
+	RF_DUPLEX_FULL
+};
 
 extern SettingsData g_settings;
 

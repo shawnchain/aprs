@@ -21,7 +21,10 @@
 #include "utils.h"
 
 #define DEFAULT_BEACON_INTERVAL 20 * 60 // 20 minutes of beacon send interval
-#define DEFAULT_BEACON_TEXT "!3014.00N/12009.00E>TinyAPRS Rocks!" //
+
+const char PROGMEM DEFAULT_BEACON_TEXT[] = "!3014.00N/12009.00E>TinyAPRS Rocks!";
+
+#define SETTINGS_SIZE sizeof(SettingsData)
 
 /*
  * Helper macros
@@ -44,12 +47,18 @@ SettingsData g_settings = {
 			//.phgd={0,0,0,0},
 			//.comments="TinyAPRS Rocks!",
 		},
+		.rf = {
+			.txdelay = 50,
+			.persistence = 63,
+			.txtail = 5,
+			.slot_time = 10,
+			.duplex = RF_DUPLEX_HALF
+		}
 };
 
 #define NV_SETTINGS_HEAD_BYTE_VALUE 0x88
-#define NV_SETTINGS_BLOCK_SIZE SETTINGS_SIZE
 uint8_t EEMEM nvSetHeadByte;
-uint8_t EEMEM nvSettings[NV_SETTINGS_BLOCK_SIZE];
+uint8_t EEMEM nvSettings[SETTINGS_SIZE];
 uint8_t EEMEM nvSetCrcByte;
 
 uint8_t EEMEM nvMyCallHeadByte;
@@ -63,9 +72,8 @@ uint8_t EEMEM nvPath2Call[7];
 
 // beacon text(raw packet)
 #define NV_BEACON_TEXT_HEAD_BYTE_VALUE 0x99
-#define NV_BEACON_TEXT_BLOCK_SIZE SETTINGS_BEACON_TEXT_MAX
 uint8_t EEMEM nvBeaconTextHeadByte;
-uint8_t EEMEM nvBeaconText[NV_BEACON_TEXT_BLOCK_SIZE];
+uint8_t EEMEM nvBeaconText[SETTINGS_BEACON_TEXT_MAX_LEN];
 
 /*
  * Copy the data into settings and save to eeprom
@@ -92,7 +100,7 @@ bool settings_load(void){
 		// fill up zero values
 		return false;
 	}
-	eeprom_read_block((void*)&g_settings, (void*)nvSettings, NV_SETTINGS_BLOCK_SIZE);
+	eeprom_read_block((void*)&g_settings, (void*)nvSettings, SETTINGS_SIZE);
 	uint8_t sum = eeprom_read_byte((void*)&nvSetCrcByte);
 	if(sum != calc_crc((uint8_t*)&g_settings,sizeof(SettingsData))){
 		// if sum check failed, clear the setting data
@@ -109,7 +117,7 @@ bool settings_load(void){
  * Save settings
  */
 bool settings_save(void){
-	eeprom_update_block((void*)&g_settings, (void*)nvSettings, NV_SETTINGS_BLOCK_SIZE);
+	eeprom_update_block((void*)&g_settings, (void*)nvSettings, SETTINGS_SIZE);
 	eeprom_update_byte((void*)&nvSetHeadByte, NV_SETTINGS_HEAD_BYTE_VALUE);
 	uint8_t sum = calc_crc((uint8_t*)&g_settings,sizeof(SettingsData));
 	eeprom_update_byte((void*)&nvSetCrcByte, sum);
@@ -252,34 +260,34 @@ void settings_set_call(SETTINGS_TYPE callType, struct AX25Call *call){
 	}
 }
 
-//#define DEFAULT_BEACON_TEXT "!3014.00N/12009.00E>000/000/A=000087TinyAPRS Rocks!"
+//DEFAULT_BEACON_TEXT "!3014.00N/12009.00E>000/000/A=000087TinyAPRS Rocks!"
 /*
  * get beacon text from settings
  */
 uint8_t settings_get_beacon_text(char* buf, uint8_t bufLen){
 	buf[0] = 0;
 	uint8_t verification = eeprom_read_byte((void*)&nvBeaconTextHeadByte);
-	uint8_t bytesToRead = MIN(bufLen,SETTINGS_BEACON_TEXT_MAX);
-	if (verification == NV_BEACON_TEXT_HEAD_BYTE_VALUE) {
-		eeprom_read_block((void*)buf, (void*)nvBeaconText, bytesToRead);
+	uint8_t bytesToRead = MIN(bufLen - 1,SETTINGS_BEACON_TEXT_MAX_LEN);
+	if (verification != NV_BEACON_TEXT_HEAD_BYTE_VALUE) {
+		// using default beacon text
+		return snprintf_P(buf,bufLen,DEFAULT_BEACON_TEXT);
 	}
 
+	eeprom_read_block((void*)buf, (void*)nvBeaconText, bytesToRead);
 	// get the actual text length, like strlen()
 	uint8_t i = 0;
 	while(buf[i] != 0 && i < bytesToRead){
 		i++;
 	}
-	if(i > 0)
-		return i;
-	else
-		return snprintf_P(buf,bufLen,PSTR(DEFAULT_BEACON_TEXT));
+	buf[i] = 0;
+	return i;
 }
 
 /*
  * set beacon text to settings
  */
 uint8_t settings_set_beacon_text(char* data, uint8_t dataLen){
-	uint8_t bytesToWrite = MIN(dataLen,(SETTINGS_BEACON_TEXT_MAX - 1));
+	uint8_t bytesToWrite = MIN(dataLen,(SETTINGS_BEACON_TEXT_MAX_LEN - 1));
 	eeprom_update_block((void*)data, (void*)nvBeaconText, bytesToWrite);
 	eeprom_update_byte((void*)(nvBeaconText + bytesToWrite), 0);
 	eeprom_update_byte((void*)&nvBeaconTextHeadByte, NV_BEACON_TEXT_HEAD_BYTE_VALUE);

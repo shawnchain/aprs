@@ -31,16 +31,15 @@ enum {
 };
 
 enum {
-	KISS_DUPLEX_HALF = 0, KISS_DUPLEX_FULL
+	KISS_QUEUE_IDLE = 0,
+	KISS_QUEUE_DELAYED,
 };
 
-enum {
-	KISS_QUEUE_IDLE, KISS_QUEUE_DELAYED,
+static KissCtx kiss = {
+		.rxBufLen = 0,
+		.rxPos = 0,
+		.rxTick = 0,
 };
-
-static KissCtx kiss = { .rxBufLen = 0, .rxPos = 0, .rxTick = 0, .param = {
-		.txdelay = 50, .persistence = 63, .txtail = 5, .slot_time = 10,
-		.duplex = KISS_DUPLEX_HALF } };
 
 static kiss_exit_callback_t exitCallback = 0;
 
@@ -112,7 +111,6 @@ INLINE void kiss_recv(int c) {
 void kiss_poll() {
 	Serial *serial = SERIAL_CAST(kiss.serial);
 	int c = ser_getchar(serial); // Make sure CONFIG_SERIAL_RXTIMEOUT = 0
-	//c = kfile_getc(kiss.serial);
 	if (c == EOF) {
 		return;
 	}
@@ -209,7 +207,7 @@ void kiss_send_to_modem(/*channel = 0*/uint8_t *buf, size_t len) {
 	bool sent = false;
 	Afsk *afsk = AFSK_CAST(kiss.modem->ch);
 
-	if (kiss.param.duplex == KISS_DUPLEX_FULL) {
+	if (g_settings.rf.duplex == RF_DUPLEX_FULL) {
 		ax25_sendRaw(kiss.modem, buf, len);
 		return;
 	}
@@ -220,14 +218,14 @@ void kiss_send_to_modem(/*channel = 0*/uint8_t *buf, size_t len) {
 		if (!/*ctx->dcd*/(afsk)->hdlc.rxstart) {
 			uint16_t i = rand();
 			uint8_t tp = ((i >> 8) ^ (i & 0xff));
-			if (tp < kiss.param.persistence) {
+			if (tp < g_settings.rf.persistence) {
 				ax25_sendRaw(kiss.modem, buf, len);
 				sent = true;
 			} else {
 				//TEST ONLY -
 				///kfile_printf_P(kiss.serial,PSTR("send backoff 100ms, because %d > persistence \n"),tp);
 				// block waiting 100ms by default.
-				timer_delay(kiss.param.slot_time * 10);
+				timer_delay(g_settings.rf.slot_time * 10);
 			}
 		} else {
 			while (!sent && /*kiss_ax25->dcd*/(afsk)->hdlc.rxstart) {

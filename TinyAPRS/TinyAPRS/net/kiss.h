@@ -15,14 +15,6 @@
 //typedef void (*kiss_in_callback_t)(uint8_t *buf, size_t len);
 typedef void (*kiss_exit_callback_t)(void);
 
-typedef struct KissParam{
-	uint8_t txdelay;
-	uint8_t txtail;
-	uint8_t persistence;
-	uint8_t slot_time;
-	uint8_t duplex;
-}KissParam;
-
 typedef struct KissCtx{
 	KFile *serial;
 	AX25Ctx *modem;
@@ -31,13 +23,13 @@ typedef struct KissCtx{
 	uint16_t rxPos;
 	ticks_t rxTick;
 
-	/*
+#if 0 // TX Buffering Enabled
 	uint8_t *txBuf;
 	uint16_t txBufLen;
 	uint16_t txPos;
 	ticks_t txTick;
-	*/
-	KissParam param;
+#endif
+
 }KissCtx;
 
 void kiss_init(KFile *serial, AX25Ctx *modem, uint8_t *buf, uint16_t bufLen, kiss_exit_callback_t hook);

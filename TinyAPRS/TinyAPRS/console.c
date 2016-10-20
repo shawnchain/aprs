@@ -337,15 +337,9 @@ static bool cmd_settings_beacon_text(Serial* pSer, char* value, size_t valueLen)
 
 #define DEBUG_BEACON_TEXT 1
 #if DEBUG_BEACON_TEXT
-	#define BUF_LEN SETTINGS_BEACON_TEXT_MAX + 4
-	char buf[BUF_LEN];
-	buf[0] = '>';
-	uint8_t bytesRead = settings_get_beacon_text(buf+1,BUF_LEN - 4);
-	buf[bytesRead + 1] = '\n';
-	buf[bytesRead+2] = '\r';
-	buf[bytesRead+3] = 0;
-	kfile_print((&(pSer->fd)),buf);
-
+	char buf[64]; // see SETTINGS_BEACON_TEXT_MAX_LEN
+	/*uint8_t bytesRead = */settings_get_beacon_text(buf,64);
+	kfile_printf_P((KFile*)pSer,PSTR(">%s\n\r"),buf);
 	uint16_t free = freeRam();
 	SERIAL_PRINTF_P(pSer, PSTR("free mem: %d\n\r"),free)
 #endif
