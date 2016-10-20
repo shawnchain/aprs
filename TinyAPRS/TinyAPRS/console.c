@@ -157,12 +157,17 @@ void console_parse_command(char* command, size_t commandLen){
 	return;
 }
 
+////////////////////////////////////////////////////////////////////////////////////
+// Command Handlers
+////////////////////////////////////////////////////////////////////////////////////
+
+static const PROGMEM char BANNER[] = "\r\nTinyAPRS (KISS-TNC/GPS-Beacon) 1.1-SNAPSHOT (f%da%d-%d)\r\n";
 static bool cmd_info(Serial* pSer, char* value, size_t len){
 	(void)value;
 	(void)len;
 
 	// print welcome banner
-	SERIAL_PRINTF_P(pSer, PSTR("\r\nTinyAPRS (KISS-TNC/GPS-Beacon) 1.1-SNAPSHOT (f%da%d-%d)\r\n"),CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	kfile_printf_P((KFile*)pSer,BANNER,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 
 	// print settings
 	{
@@ -181,7 +186,7 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 #endif
 
 	// print free memory
-	SERIAL_PRINTF_P(pSer,PSTR("Free RAM: %u\r\n"),freeRam());
+	kfile_printf_P((KFile*)pSer,PSTR("Free RAM: %u\r\n"),freeRam());
 
 	kfile_flush((KFile*)pSer);
 	return true;
@@ -205,7 +210,7 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=[1]\t\t\t;Enter kiss mode\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("??\t\t\t\t;Display this help messages\r\n"));
 
-	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyright 2015, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
+	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyright 2015,2016, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
 
 	return true;
 }

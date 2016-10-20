@@ -36,7 +36,7 @@ void reader_init(uint8_t *buf, uint16_t bufLen, ReaderCallback callback){
 
 void reader_poll(Serial *pSerial){
 	//NOTE - make sure that CONFIG_SER_RXTIMEOUT = 0 in cfg_ser.h
-	int c = kfile_getc(&(pSerial->fd));
+	int c = ser_getchar(pSerial);
 	//int c = ser_getchar_nowait(pSerial);
 	if(c == EOF)  return;
 
