@@ -95,7 +95,7 @@ typedef struct Location{
 void gps_init(GPS *gps);
 
 
-int gps_parse(GPS *gps, char *sentence, uint8_t len);
+int gps_parse(GPS *gps, char *sentence, size_t len);
 
 void gps_get_location(GPS *gps, Location *pLoc);
 

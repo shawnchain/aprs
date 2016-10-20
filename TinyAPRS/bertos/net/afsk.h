@@ -82,13 +82,13 @@ typedef struct Hdlc
 	bool rxstart;       ///< True if an HDLC_FLAG char has been found in the bitstream.
 } Hdlc;
 
-#define FIR_MAX_TAPS 16
-typedef struct FIR
-{
-	int8_t taps;
-	int8_t coef[FIR_MAX_TAPS];
-	int16_t mem[FIR_MAX_TAPS];
-} FIR;
+//#define FIR_MAX_TAPS 16
+//typedef struct FIR
+//{
+//	int8_t taps;
+//	int8_t coef[FIR_MAX_TAPS];
+//	int16_t mem[FIR_MAX_TAPS];
+//} FIR;
 
 /**
  * RX FIFO buffer full error.

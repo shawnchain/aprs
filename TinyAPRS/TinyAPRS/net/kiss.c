@@ -26,8 +26,10 @@ enum {
 	KISS_CMD_TXtail,
 	KISS_CMD_FullDuplex,
 	KISS_CMD_SetHardware,
-	KISS_CMD_Config = 0x0e,
-	KISS_CMD_Return = 0xff
+	KISS_CMD_Call = 0x0C,
+	KISS_CMD_Text = 0x0D,
+	KISS_CMD_Config = 0x0E,
+	KISS_CMD_Return = 0xFF
 };
 
 enum {
@@ -158,6 +160,11 @@ static void kiss_handle_frame(uint8_t *frame, uint16_t size) {
 		kiss_handle_config_frame(payload, size - 1);
 		break;
 
+	case KISS_CMD_Call:
+		break;
+
+	case KISS_CMD_Text:
+		break;
 		/*
 		 case KISS_CMD_TXDELAY:{
 		 //LOG_INFO("Kiss - setting txdelay %d\n", k->buf[1]);
@@ -223,9 +230,10 @@ void kiss_send_to_modem(/*channel = 0*/uint8_t *buf, size_t len) {
 				sent = true;
 			} else {
 				//TEST ONLY -
+#if 0
 				///kfile_printf_P(kiss.serial,PSTR("send backoff 100ms, because %d > persistence \n"),tp);
-				// block waiting 100ms by default.
-				timer_delay(g_settings.rf.slot_time * 10);
+#endif
+				timer_delay(g_settings.rf.slot_time * 10); // block waiting 100ms by default.
 			}
 		} else {
 			while (!sent && /*kiss_ax25->dcd*/(afsk)->hdlc.rxstart) {

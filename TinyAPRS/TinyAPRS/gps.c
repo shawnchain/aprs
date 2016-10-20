@@ -89,7 +89,7 @@ INLINE int nmea_dehex(char a) {
 
 #define GPRMC_PARITY_INITIAL 0x4b
 #define GPGGA_PARITY_INITIAL 0x56
-int gps_parse(GPS *gps, char *sentence, uint8_t len){
+int gps_parse(GPS *gps, char *sentence, size_t len){
 	uint8_t sentenceType = 0;
 
 	GPS_LED_OFF();
@@ -111,7 +111,7 @@ int gps_parse(GPS *gps, char *sentence, uint8_t len){
 	uint8_t state = 0;
 	int terms = 0;
 
-	for(int n = 6;n < len;n++){
+	for(uint16_t n = 6;n < len;n++){
 		char c = sentence[n];
 		if ((c == 0x0A) || (c == 0x0D) || terms == MAX_TERMS) {
 			// we're done
