@@ -17,13 +17,8 @@
 #ifndef TRACKER_H_
 #define TRACKER_H_
 
+void tracker_init(void);
 
-struct GPS;
-
-/*
- * Send the beacon location
- */
-void tracker_update_location(struct GPS *gps);
-
+void tracker_poll(void);
 
 #endif /* TRACKER_H_ */

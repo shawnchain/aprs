@@ -21,49 +21,47 @@
 #include "global.h"
 #include <drv/ser.h>
 
-
-static Reader g_reader;
-
-
-void reader_init(uint8_t *buf, uint16_t bufLen, ReaderCallback callback){
-	memset(&g_reader, 0, sizeof(Reader));
-	Reader *reader = &g_reader;
+void serialreader_init(SerialReader *reader, Serial *ser, uint8_t *buf, uint16_t bufLen){
+	memset(reader, 0, sizeof(SerialReader));
+	reader->ser = ser;
 	reader->buf = buf;
 	reader->bufLen = bufLen;
-	reader->readLen = 0;
-	reader->callback = callback;
 }
 
-void reader_poll(Serial *pSerial){
-	//NOTE - make sure that CONFIG_SER_RXTIMEOUT = 0 in cfg_ser.h
-	int c = ser_getchar(pSerial);
-	//int c = ser_getchar_nowait(pSerial);
-	if(c == EOF)  return;
-
-	Reader *reader = &g_reader;
+int serialreader_readline(SerialReader *reader){
 	uint8_t *readBuffer = reader->buf;
-#if READ_TIMEOUT > 0
-	static ticks_t lastReadTick = 0;
-	if((reader->readLen > 0) && (timer_clock() - lastReadTick > ms_to_ticks(READ_TIMEOUT)) ){
+
+#if CFG_READER_READ_TIMEOUT > 0
+	// discard the buffer if read timeout;
+	if((reader->readLen > 0) && (timer_clock() - reader->lastReadTick > ms_to_ticks(CFG_READER_READ_TIMEOUT)) ){
 		//LOG_INFO("Console - Timeout\n");
 		reader->readLen = 0;
 	}
 #endif
 
-	// read until met CR/LF/EOF or buffer is full
-	if ((reader->readLen >= reader->bufLen) || (c == '\r') || (c == '\n') || (c == EOF) ) {
-		if(reader->readLen > 0){
-			readBuffer[reader->readLen] = 0; // complete the buffered string
-			if(reader->callback){
-				reader->callback((char*)readBuffer, reader->readLen);
-			}
-			reader->readLen = 0;
-		}
-	} else {
-		// keep in buffer
+	//Check the "cfg_ser.h" file for CONFIG_SER_RXTIMEOUT = 0
+	int c = ser_getchar(reader->ser);
+	if(c == EOF)  return 0;
+
+	if(c != '\r' && c != '\n'){
 		readBuffer[reader->readLen++] = c;
-#if READ_TIMEOUT > 0
-		lastReadTick = timer_clock();
-#endif
+		// check if buffer is full
+		if(reader->readLen < reader->bufLen - 1){
+	#if CFG_READER_READ_TIMEOUT > 0
+			reader->lastReadTick = timer_clock();
+	#endif
+			return 0;
+		}
 	}
+
+	// if run here, we got \r \n or buffer is full
+	if(reader->readLen > 0){
+		readBuffer[reader->readLen] = 0; // complete the buffered string
+		reader->data = reader->buf;
+		reader->dataLen = reader->readLen;
+		reader->readLen = 0; // reset the counter!
+		return reader->dataLen;
+	}
+
+	return 0;
 }

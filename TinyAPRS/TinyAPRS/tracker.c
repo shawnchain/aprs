@@ -32,10 +32,13 @@
 #include "gps.h"
 #include "utils.h"
 
+#include "reader.h"
+
 #define CFG_BEACON_SMART 1  // Beacon smart mode: 0 disabled, 1 by speed and heading
 
 #define DUMP_BEACON_PAYLOAD 0
 #define DUMP_GPS_INFO 0
+#define DEBUG_GPS_OUTPUT 0
 
 static mtime_t lastSendTimeSeconds = 0; // in seconds
 
@@ -152,7 +155,7 @@ static bool _smart_beacon_check(Location *location){
 /*
  * smart beacon algorithm
  */
-void tracker_update_location(struct GPS *gps){
+static void tracker_update_location(struct GPS *gps){
 	if(!gps->valid){
 		return;
 	}
@@ -201,9 +204,7 @@ void tracker_update_location(struct GPS *gps){
 		lastSendTimeSeconds = timer_clock_seconds();
 
 #if DUMP_BEACON_PAYLOAD   // DEBUG DUMP
-		kfile_print((&(g_serial.fd)),payload);
-		kfile_putc('\r', &(g_serial.fd));
-		kfile_putc('\n', &(g_serial.fd));
+		kfile_printf_P(((KFile*)(g_serialreader.ser)),PSTR("%s,\r\n"),payload);
 #endif
 	}
 
@@ -250,12 +251,27 @@ void tracker_update_location(struct GPS *gps){
 //}
 
 #if DUMP_GPS_INFO
-	Location location;
-	gps_get_location(gps,&location);
-	// TODO - send the location message
-	char* lat = g_gps._term[GPRMC_TERM_LATITUDE];
-	char* lon = g_gps._term[GPRMC_TERM_LONGITUDE];
-	char* spd = g_gps._term[GPRMC_TERM_SPEED];
-	SERIAL_PRINTF_P((&g_serial),PSTR("lat:%s, lon:%s, speed:%s\n"),lat,lon,spd);
+	char* lat = gps->_term[GPRMC_TERM_LATITUDE];
+	char* lon = gps->_term[GPRMC_TERM_LONGITUDE];
+	char* spd = gps->_term[GPRMC_TERM_SPEED];
+	kfile_printf_P((KFile*)g_serialreader.ser,PSTR("lat:%s, lon:%s, speed:%s\r\n"),lat,lon,spd);
+	//kfile_printf_P((KFile*)g_serialreader.ser,PSTR("lat:%f, lon:%s, speed:%s\r\n"),lat,lon,spd);
 #endif
+}
+
+void tracker_init(void){
+	//TODO - initialize the GPS modules
+}
+
+void tracker_poll(void){
+	if(serialreader_readline(&g_serialreader) > 0){
+#if DEBUG_GPS_OUTPUT
+		kfile_printf_P((KFile*)(g_serialreader.ser),PSTR("%s\r\n"),(char*)g_serialreader.data);
+#endif
+
+		// got the gps line!
+		if(gps_parse(&g_gps,(char*)g_serialreader.data,g_serialreader.dataLen) && g_gps.valid){
+			tracker_update_location(&g_gps);
+		}
+	}
 }

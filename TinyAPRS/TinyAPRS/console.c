@@ -9,6 +9,7 @@
 
 #include "utils.h"
 #include "settings.h"
+#include "reader.h"
 
 #include <net/ax25.h>
 
@@ -459,4 +460,11 @@ void console_init(){
 
 	// Initialization done, display the welcome banner and settings info
 	cmd_info(&g_serial,0,0);
+}
+
+void console_poll(){
+	if(serialreader_readline(&g_serialreader) > 0){
+		// handle the line
+		console_parse_command((char*)g_serialreader.data,g_serialreader.dataLen);
+	}
 }

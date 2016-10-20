@@ -22,19 +22,33 @@
 #include <drv/ser.h>
 
 //Reader parameters
-#define READ_TIMEOUT 0
+#define CFG_READER_READ_TIMEOUT 0
 
 typedef void (*ReaderCallback)(char* line, uint8_t len);
 
-typedef struct Reader{
-//	struct KFile *fd;
+typedef struct SerialReader{
+	Serial *ser;
 	uint8_t* buf;
-	uint16_t bufLen;
-	uint8_t readLen; // Counter for counting length of data from serial
-	ReaderCallback callback;
-}Reader;
+	uint16_t bufLen; // The total buffer length;
+	uint8_t readLen; // Counter for counting length of data from serial;
+	uint8_t* data;
+	uint16_t dataLen;
 
-void reader_init(uint8_t *buf, uint16_t bufLen, ReaderCallback callback);
-void reader_poll(Serial *pSerial);
+#if CFG_READER_READ_TIMEOUT > 0
+	ticks_t lastReadTick;
+#endif
+}SerialReader;
+
+
+void serialreader_init(SerialReader *reader, Serial *ser, uint8_t *buf, uint16_t bufLen);
+
+/*
+ * read a line from the underlying serial
+ * returns:
+ *   n  bytes
+ *   0  no data
+ *  -1  error
+ */
+int serialreader_readline(SerialReader *reader);
 
 #endif /* READER_H_ */

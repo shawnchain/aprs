@@ -81,13 +81,15 @@ Serial g_serial;
 #endif
 uint8_t g_shared_buf[SHARED_BUF_LEN];
 
+SerialReader g_serialreader;
+
+
 #define ADC_CH 0
 #define DAC_CH 0
 
 // DEBUG FLAGS
 #define DEBUG_FREE_RAM 0
 #define DEBUG_SOFT_SER 0
-#define DEBUG_GPS_OUTPUT 0
 
 typedef enum{
 	MODE_CFG  = 0,
@@ -150,39 +152,6 @@ static void beacon_mode_exit_callback(void){
 }
 #endif
 
-
-/*
- * Callback when a line is read from the serial port.
- */
-static void serial_read_line_callback(char* line, uint8_t len){
-	(void)line;
-	(void)len;
-	switch(currentMode){
-
-#if MOD_TRACKER
-		case MODE_TRACKER:
-			if(gps_parse(&g_gps,line,len) && g_gps.valid){
-				tracker_update_location(&g_gps);
-			}
-			#if DEBUG_GPS_OUTPUT
-			kfile_print((&(g_serial.fd)),line);
-			kfile_putc('\r', &(g_serial.fd));
-			kfile_putc('\n', &(g_serial.fd));
-			#endif
-			break;
-#endif
-#if MOD_KISS
-		case MODE_KISS:
-			// do nothing for KISS mode
-			break;
-#endif
-		default:
-#if MOD_CONSOLE
-			console_parse_command(line,len);
-#endif
-			break;
-	}
-}
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Command handlers
@@ -298,6 +267,9 @@ static void init(void)
     // it to 8 instead.
     UCSR0C = _BV(UCSZ01) | _BV(UCSZ00); // see ATMEGA328P datasheet P197, Table 20-11. UCSZn Bits Settings
 
+    // initialize the reader that wraps the serial
+    serialreader_init(&g_serialreader, &g_serial, g_shared_buf, SHARED_BUF_LEN);
+
     // Load settings first
     settings_load();
 
@@ -338,11 +310,10 @@ static void init(void)
     radio_init(&softSer,431, 400);
 #endif
 
-    reader_init(g_shared_buf, SHARED_BUF_LEN,serial_read_line_callback);
-
     // Initialize GPS NMEA/GPRMC parser
 #if MOD_TRACKER
-    gps_init(&g_gps);
+    gps_init(&g_gps); // TODO - initialize when tracker mode is enabled;
+    tracker_init();
 #endif
 
 #if MOD_CONSOLE
@@ -370,14 +341,14 @@ int main(void){
 
 		switch(currentMode){
 			case MODE_CFG:
-				reader_poll(&g_serial);
+				console_poll();
 #if MOD_BEACON
 				beacon_broadcast_poll();
 #endif
 				break;
 #if MOD_TRACKER
 			case MODE_TRACKER:
-				reader_poll(&g_serial);
+				tracker_poll();
 				break;
 #endif
 
@@ -390,7 +361,7 @@ int main(void){
 
 #if MOD_DIGI
 			case MODE_DIGI:{
-				reader_poll(&g_serial);
+				console_poll();
 				beacon_broadcast_poll();
 				break;
 			}

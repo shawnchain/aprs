@@ -20,6 +20,9 @@
 struct Serial;
 extern struct Serial g_serial;
 
+struct SerialReader;
+extern struct SerialReader g_serialreader;
+
 struct AX25Ctx;
 extern struct AX25Ctx g_ax25;
 

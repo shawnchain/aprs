@@ -22,4 +22,9 @@ void console_add_command(PGM_P cmd, PFUN_CMD_HANDLER handler);
  * Parse a command string, the corresponding cmd_xxx function will be called if it matches.
  */
 void console_parse_command(char* command, size_t commandLen);
+
+/*
+ *
+ */
+void console_poll(void);
 #endif
