@@ -25,6 +25,8 @@
 #include <drv/ser.h>
 #include <drv/timer.h>
 
+#include "utils.h"
+
 #include "global.h"
 
 
@@ -39,36 +41,36 @@
 #define sq(x) ((x)*(x))
 
 void gps_init(GPS *gps){
-	uint8_t i;
+	//uint8_t i;
 
 	// initialize the GPS port
 	memset(gps,0,sizeof(GPS));
 
 	//Assume SIRF chip GPS using 4800 baud rate by default
 	// So use SIRF command to set to 9600
-	PGM_P pstr_baudrate_P = PSTR("$PSRF100,1,9600,8,1,0*0D\r\n");  /** Sets baud to 9600*/
+	// TODO - read GPS baud rate from settings
 	ser_setbaudrate(&g_serial, 4800L);
 	timer_delay(150);
 	ser_purge(&g_serial);
-	for (i = 0; i < strlen_P(pstr_baudrate_P); i++){
-		kfile_putc(pgm_read_byte(pstr_baudrate_P + i),&(g_serial.fd));
-	}
+
+	kfile_print_P((KFile*)(&g_serial),PSTR("\r\n""$PSRF100,1,9600,8,1,0*0D\r\n"));
 	timer_delay(150);
-	ser_setbaudrate(&g_serial, SER_DEFAULT_BAUD_RATE);
+
+	ser_setbaudrate(&g_serial, SER_BAUD_RATE_9600);
 	timer_delay(150);
 	ser_purge(&g_serial);
 
-	// Disable unused data
-	PGM_P pstr_config_P = PSTR("$PSRF103,1,0,0,1*25\r\n" 		/** Disables GPGLL */
-							   "$PSRF103,2,0,0,1*26\r\n" 		/** Disables GPGSA */
-							   "$PSRF103,3,0,0,1*27\r\n" 		/** Disables GPGSV */
-							   "$PSRF103,5,0,0,1*21\r\n" 		/** Disables GPVTG */
-							   );
-	/* Write the configuration sentences to the module */
-	for (i = 0; i < strlen_P(pstr_config_P); i++){
-		//soft_uart_putchar(pgm_read_byte(pstr_config_P + i));
-		kfile_putc(pgm_read_byte(pstr_config_P + i),&(g_serial.fd));
-	}
+	// Disable unused data beacuse of small memory
+//	for (i = 0; i < strlen_P(pstr_config_P); i++){
+//		//soft_uart_putchar(pgm_read_byte(pstr_config_P + i));
+//		kfile_putc(pgm_read_byte(pstr_config_P + i),&(g_serial.fd));
+//	}
+	kfile_print_P((KFile*)(&g_serial),PSTR("\r\n"
+			   "$PSRF103,1,0,0,1*25\r\n" 		/** Disables GPGLL */
+			   "$PSRF103,2,0,0,1*26\r\n" 		/** Disables GPGSA */
+			   "$PSRF103,3,0,0,1*27\r\n" 		/** Disables GPGSV */
+			   "$PSRF103,5,0,0,1*21\r\n" 		/** Disables GPVTG */
+			   ));
 	timer_delay(50);
 	ser_purge(&g_serial);
 

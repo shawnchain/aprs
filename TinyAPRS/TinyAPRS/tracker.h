@@ -19,6 +19,12 @@
 
 void tracker_init(void);
 
+/*
+ * initialize the gps module
+ * triggered by the main loop when mode switched to MOD_TRACKER
+ */
+void tracker_init_gps(void);
+
 void tracker_poll(void);
 
 #endif /* TRACKER_H_ */

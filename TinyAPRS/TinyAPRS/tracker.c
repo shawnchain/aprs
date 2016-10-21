@@ -29,6 +29,8 @@
 #include "beacon.h"
 #include "settings.h"
 #include "global.h"
+
+#include "cfg/cfg_gps.h"
 #include "gps.h"
 #include "utils.h"
 
@@ -39,6 +41,8 @@
 #define DUMP_BEACON_PAYLOAD 0
 #define DUMP_GPS_INFO 0
 #define DEBUG_GPS_OUTPUT 0
+
+GPS g_gps;
 
 static mtime_t lastSendTimeSeconds = 0; // in seconds
 
@@ -194,7 +198,7 @@ static void tracker_update_location(struct GPS *gps){
 			len += snprintf_P((char*)payload + len,63 - len,PSTR("/A=%06d"),gps->altitude);
 		}
 
-		len += snprintf_P((char*)payload + len, 63 - len, PSTR(" TinyAPRS"));
+		len += snprintf_P((char*)payload + len, 63 - len, PSTR(" TinyAPRS Rocks!"));
 
 		beacon_send(payload,len);
 #if CFG_BEACON_SMART // heading support
@@ -204,7 +208,7 @@ static void tracker_update_location(struct GPS *gps){
 		lastSendTimeSeconds = timer_clock_seconds();
 
 #if DUMP_BEACON_PAYLOAD   // DEBUG DUMP
-		kfile_printf_P(((KFile*)(g_serialreader.ser)),PSTR("%s,\r\n"),payload);
+		kfile_printf_P(((KFile*)(g_serialreader.ser)),PSTR("%s\r\n"),payload);
 #endif
 	}
 
@@ -260,7 +264,11 @@ static void tracker_update_location(struct GPS *gps){
 }
 
 void tracker_init(void){
-	//TODO - initialize the GPS modules
+}
+
+void tracker_init_gps(void){
+	//initialize the GPS modules
+    gps_init(&g_gps);
 }
 
 void tracker_poll(void){

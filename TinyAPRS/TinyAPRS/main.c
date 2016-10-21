@@ -59,10 +59,7 @@ static SoftSerial softSer;
 #endif
 
 #if MOD_TRACKER
-#include "cfg/cfg_gps.h"
-#include "gps.h"
 #include "tracker.h"
-GPS g_gps;
 #endif
 
 #if MOD_BEACON
@@ -191,7 +188,10 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 #if MOD_TRACKER
 		case MODE_TRACKER:
 			currentMode = MODE_TRACKER;
-			SERIAL_PRINT_P(pSer,PSTR("Enter Tracker mode\r\n"));
+			kfile_printf_P((KFile*)pSer,PSTR("Enter Tracker mode\r\n"));
+			kfile_flush((KFile*)pSer);
+			// should enable the tracker/gps
+			tracker_init_gps();
 			break;
 #endif
 
@@ -239,15 +239,21 @@ static bool cmd_enter_kiss_mode(Serial* pSer, char* value, size_t len){
 #endif
 
 static void check_run_mode(void){
-	static ticks_t ts = 0;
-	if(timer_clock_unlocked() -  ts > ms_to_ticks(10000)){
+	if(currentMode == g_settings.run_mode){
+		return;
+	}
+
+	static ticks_t start = 0;
+	ticks_t now = timer_clock_unlocked();
+	if(start == 0){
+		start = now;
+	}else if(now -  start > ms_to_ticks(10000)){
 		if(currentMode != g_settings.run_mode){
 			char c[2];
 			c[0] = (g_settings.run_mode + 48);
 			c[1] = 0;
 			cmd_switch_mode(&g_serial,c,1);
 		}
-		ts = timer_clock_unlocked(); // update the timestamp
 	}
 }
 
@@ -312,7 +318,6 @@ static void init(void)
 
     // Initialize GPS NMEA/GPRMC parser
 #if MOD_TRACKER
-    gps_init(&g_gps); // TODO - initialize when tracker mode is enabled;
     tracker_init();
 #endif
 
