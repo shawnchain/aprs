@@ -20,12 +20,20 @@
 #include <drv/timer.h>
 #include "global.h"
 #include <drv/ser.h>
+#include <cfg/cfg_ax25.h>
 
-void serialreader_init(SerialReader *reader, Serial *ser, uint8_t *buf, uint16_t bufLen){
+#if MOD_KISS
+#define READER_BUF_LEN CONFIG_AX25_FRAME_BUF_LEN //shared buffer is 330 bytes for KISS module reading received AX25 frame.
+#else
+#define READER_BUF_LEN 128
+#endif
+static uint8_t read_buffer[READER_BUF_LEN];
+
+void serialreader_init(SerialReader *reader, Serial *ser){
 	memset(reader, 0, sizeof(SerialReader));
 	reader->ser = ser;
-	reader->buf = buf;
-	reader->bufLen = bufLen;
+	reader->buf = read_buffer;
+	reader->bufLen = READER_BUF_LEN;
 }
 
 int serialreader_readline(SerialReader *reader){

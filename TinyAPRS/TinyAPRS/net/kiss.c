@@ -13,6 +13,16 @@
 #include "settings.h"
 #include "utils.h"
 
+#include <io/kfile.h>
+#include <net/afsk.h>
+#include <net/ax25.h>
+#include <drv/ser.h>
+#include "reader.h"
+
+
+#include <algo/crc_ccitt.h>
+
+
 #define KISS_FEND  0xc0
 #define KISS_FESC  0xdb
 #define KISS_TFEND 0xdc
@@ -26,9 +36,9 @@ enum {
 	KISS_CMD_TXtail,
 	KISS_CMD_FullDuplex,
 	KISS_CMD_SetHardware,
-	KISS_CMD_Call = 0x0C,
-	KISS_CMD_Text = 0x0D,
-	KISS_CMD_Config = 0x0E,
+	KISS_CMD_CONFIG_CALL = 0x0C,
+	KISS_CMD_CONFIG_TEXT = 0x0D,
+	KISS_CMD_CONFIG_PARAMS = 0x0E,
 	KISS_CMD_Return = 0xFF
 };
 
@@ -37,33 +47,76 @@ enum {
 	KISS_QUEUE_DELAYED,
 };
 
-static KissCtx kiss = {
-		.rxBufLen = 0,
-		.rxPos = 0,
-		.rxTick = 0,
-};
-
-static kiss_exit_callback_t exitCallback = 0;
+static KissCtx kiss;
 
 static void kiss_handle_frame(uint8_t *frame, uint16_t size);
 
-static void kiss_handle_config_frame(uint8_t *frame, uint16_t size);
+static void kiss_handle_config_params_frame(uint8_t *frame, uint16_t size);
 
-void kiss_init(KFile *_ser, AX25Ctx *_mdm, uint8_t *buf, uint16_t bufLen,
-		kiss_exit_callback_t hook) {
-	//memset(&kiss,0,sizeof(KissCtx));
+void kiss_init(struct SerialReader *serialReader,struct AX25Ctx *modem){
+	memset(&kiss,0,sizeof(KissCtx));
+	kiss.serialReader = serialReader;
+	kiss.modem = modem;
 
-	kiss.serial = _ser;
-	kiss.modem = _mdm;
-
-	exitCallback = hook;
-
+	//kiss.serial = serialReader->ser;
 	//NOTE - Atmega328P has limited 2048 RAM, so here we have to use shared read buffer to save memory
-	// NO queue for kiss message
-	kiss.rxBuf = buf;			// Shared buffer
-	kiss.rxBufLen = bufLen; // buffer length, should be >= CONFIG_AX25_FRAME_BUF_LEN
+	//kiss.rxBuf = serialReader->buf;			// Shared buffer in SerialReader
+	//kiss.rxBufLen = serialReader->bufLen; 	// buffer length, should be >= CONFIG_AX25_FRAME_BUF_LEN
 }
 
+static void kiss_poll_serial(void){
+	SerialReader *reader = kiss.serialReader;
+
+	int c = ser_getchar(reader->ser); // Make sure CONFIG_SERIAL_RXTIMEOUT = 0
+	if (c == EOF) {
+		return;
+	}
+
+	static bool escaped = false;
+	// sanity checks
+	// no serial input in last 2 secs?
+	if ((reader->readLen != 0)
+			&& (timer_clock() - kiss.rxTick > ms_to_ticks(2000L))) {
+		LOG_INFO("Serial - Timeout\n");
+		reader->readLen = 0;
+	}
+
+	// about to overflow buffer? reset
+	if (reader->readLen >= (reader->bufLen - 2)) {
+		LOG_INFO("Serial - Packet too long %d >= %d\n", reader->readLen,
+				reader->bufLen - 2);
+		reader->readLen = 0;
+	}
+
+	if (c == KISS_FEND) {
+		if ((!escaped) && (reader->readLen > 0)) {
+			kiss_handle_frame(reader->buf, reader->readLen);
+		}
+		reader->readLen = 0;
+		escaped = false;
+		return;
+	} else if (c == KISS_FESC) {
+		escaped = true;
+		return;
+	} else if (c == KISS_TFESC) {
+		if (escaped) {
+			escaped = false;
+			c = KISS_FESC;
+		}
+	} else if (c == KISS_TFEND) {
+		if (escaped) {
+			escaped = false;
+			c = KISS_FEND;
+		}
+	} else if (escaped) {
+		escaped = false;
+	}
+
+	reader->buf[reader->readLen++] = c & 0xff;
+	kiss.rxTick = timer_clock();
+}
+
+/*
 INLINE void kiss_recv(int c) {
 	static bool escaped = false;
 	// sanity checks
@@ -109,14 +162,18 @@ INLINE void kiss_recv(int c) {
 	kiss.rxPos++;
 	kiss.rxTick = timer_clock();
 }
+*/
 
 void kiss_poll() {
-	Serial *serial = SERIAL_CAST(kiss.serial);
+	/*
+	Serial *serial = kiss.serial;
 	int c = ser_getchar(serial); // Make sure CONFIG_SERIAL_RXTIMEOUT = 0
 	if (c == EOF) {
 		return;
 	}
 	kiss_recv(c);
+	*/
+	kiss_poll_serial();
 }
 
 static void kiss_handle_frame(uint8_t *frame, uint16_t size) {
@@ -127,9 +184,6 @@ static void kiss_handle_frame(uint8_t *frame, uint16_t size) {
 	// Check return command
 	if (size == 1 && frame[0] == KISS_CMD_Return) {
 		//LOG_INFO("Kiss - exiting");
-		if (exitCallback) {
-			exitCallback();
-		}
 		return;
 	}
 
@@ -154,16 +208,16 @@ static void kiss_handle_frame(uint8_t *frame, uint16_t size) {
 		kiss_send_to_modem(payload, size - 1);
 		break;
 
-	case KISS_CMD_Config:
+	case KISS_CMD_CONFIG_PARAMS:
 		//TODO - Save to EEPROM settings
 		//settings_save_raw(payload,size - 1);
-		kiss_handle_config_frame(payload, size - 1);
+		kiss_handle_config_params_frame(payload, size - 1);
 		break;
 
-	case KISS_CMD_Call:
+	case KISS_CMD_CONFIG_CALL:
 		break;
 
-	case KISS_CMD_Text:
+	case KISS_CMD_CONFIG_TEXT:
 		break;
 		/*
 		 case KISS_CMD_TXDELAY:{
@@ -282,7 +336,7 @@ void kiss_send_to_serial(uint8_t port, uint8_t *buf, size_t len) {
 #else
 void kiss_send_to_serial(uint8_t port, uint8_t *buf, size_t len) {
 	size_t i;
-	Serial *serial = SERIAL_CAST(kiss.serial);
+	Serial *serial = kiss.serialReader->ser;
 	ser_putchar(KISS_FEND, serial);
 	ser_putchar((port << 4) & 0xf0, serial);
 
@@ -308,20 +362,21 @@ void kiss_send_to_serial(uint8_t port, uint8_t *buf, size_t len) {
  *
  * HEAD（2） | DATA (128) | SUM
  * where:
- *   HEAD = 1 bit type + 7 bit length(not including the sum byte)
- *   DATA = $length bytes of data(byte order is CPU specific, AVR/X86 is little-endian, BRCM63xx is big-endian)
- *   SUM  = ~(sum of each data bytes)
+ *   HEAD(2) = type(4-bit) + (12-bit) length
+ *   DATA(4096) = $length bytes of data(byte order is CPU specific, AVR/X86 is little-endian, BRCM63xx is big-endian)
+ *   SUM(1)  = ~(sum of each data bytes)
  */
-static void kiss_handle_config_frame(uint8_t *frame, uint16_t size) {
+static void kiss_handle_config_params_frame(uint8_t *frame, uint16_t size) {
 	if(size < 3) {
 		// at least 3 bytes
 		return;
 	}
 
-	uint8_t type = frame[0] >> 7 & 0x01;
-	uint8_t len = frame[0] & 0x7f;
-	uint8_t *data = frame + 1;
-	if(len != size - 2) {
+	AX25Call call;
+	SettingsType type = frame[0] >> 4 & 0x0f;
+	uint16_t len = (frame[0] & 0x0f)<<8 | frame[1];
+	uint8_t *data = frame + 2;
+	if(len != size - 3 /*2 bytes head + 1 byte crc*/) {
 		// data length mismatch!
 		return;
 	}
@@ -332,15 +387,29 @@ static void kiss_handle_config_frame(uint8_t *frame, uint16_t size) {
 
 	// now save to settings
 	switch(type) {
-		case 0:
-			settings_set_bytes(data,len);
-			settings_save();
+		case SETTINGS_PARAMS:
+			settings_set_params_bytes(data,len);
 			break;
-		case 1:
+		case SETTINGS_TEXT:
 			settings_set_beacon_text((char*)data,len);
+			break;
+		case SETTINGS_CALL:
+			// set the call
+			if(len == 7 * 4){
+				// set the call
+				memcpy(&call,data,7);
+				settings_set_call(SETTINGS_MY_CALL,&call);
+				memcpy(&call,data+7,7);
+				settings_set_call(SETTINGS_DEST_CALL,&call);
+				memcpy(&call,data+14,7);
+				settings_set_call(SETTINGS_PATH1_CALL,&call);
+				memcpy(&call,data+21,7);
+				settings_set_call(SETTINGS_PATH2_CALL,&call);
+			}
+		case SETTINGS_COMMIT:
+			settings_save();
 			break;
 		default:
 			break;
 	}
 }
-

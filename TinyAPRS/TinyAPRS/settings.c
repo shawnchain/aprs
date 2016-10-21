@@ -78,7 +78,7 @@ uint8_t EEMEM nvBeaconText[SETTINGS_BEACON_TEXT_MAX_LEN];
 /*
  * Copy the data into settings and save to eeprom
  */
-bool settings_set_bytes(uint8_t *bytes, uint16_t size){
+bool settings_set_params_bytes(uint8_t *bytes, uint16_t size){
 	if(size != sizeof(SettingsData)){
 		// size mismatch
 		return false;
@@ -140,7 +140,7 @@ void settings_clear(void){
 /*
  * Get settings value, fill up the valueOut buffer, and update the valueOutLen of the actual value lenth
  */
-void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
+void settings_get_params(SettingsParamKey type, void* valueOut, uint8_t* pValueOutLen){
 	if(*pValueOutLen <= 0) return;
 	switch(type){
 		case SETTINGS_SYMBOL:
@@ -165,7 +165,7 @@ void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* pValueOutLen){
 /*
  * Set settings value
  */
-void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
+void settings_set_params(SettingsParamKey type, void* value, uint8_t valueLen){
 	(void)valueLen;
 	switch(type){
 		case SETTINGS_SYMBOL:
@@ -186,7 +186,7 @@ void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen){
 /*
  * Get call object from settings
  */
-void settings_get_call(SETTINGS_TYPE callType, struct AX25Call *call){
+void settings_get_call(SettingsParamKey callType, struct AX25Call *call){
 	memset(call,0,sizeof(struct AX25Call));
 	uint8_t head = 0;
 	switch(callType){
@@ -237,7 +237,7 @@ void settings_get_call(SETTINGS_TYPE callType, struct AX25Call *call){
 /*
  * Set call object to settings
  */
-void settings_set_call(SETTINGS_TYPE callType, struct AX25Call *call){
+void settings_set_call(SettingsParamKey callType, struct AX25Call *call){
 	switch(callType){
 	case SETTINGS_MY_CALL:
 		eeprom_update_block((void*)call,(void*)nvMyCall,7);

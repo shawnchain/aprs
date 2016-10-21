@@ -211,7 +211,7 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=[1]\t\t\t;Enter kiss mode\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("??\t\t\t\t;Display this help messages\r\n"));
 
-	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyright 2015,2016, BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
+	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyright 2015,2016 BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
 
 	return true;
 }
@@ -320,13 +320,13 @@ static bool cmd_settings_reset(Serial* pSer, char* value, size_t len){
 //TODO -implement me
 static bool cmd_settings_symbol(Serial* pSer, char* value, size_t len){
 	if(len >= 2){
-		settings_set(SETTINGS_SYMBOL,value,2);
+		settings_set_params(SETTINGS_SYMBOL,value,2);
 		settings_save();
 	}
 
 	uint8_t symbol[2];
 	uint8_t bufLen = 2;
-	settings_get(SETTINGS_SYMBOL,symbol,&bufLen);
+	settings_get_params(SETTINGS_SYMBOL,symbol,&bufLen);
 	SERIAL_PRINTF_P(pSer,PSTR("SYMBOL: %c%c\r\n"),symbol[0],symbol[1]);
 
 	return true;
@@ -357,12 +357,12 @@ static bool cmd_settings_beacon_interval(Serial* pSer, char* value, size_t value
 	uint16_t i = 0;
 	if(valueLen > 0){
 		i = atoi((const char*) value) & 0xffff;
-		settings_set(SETTINGS_BEACON_INTERVAL,&i,2);
+		settings_set_params(SETTINGS_BEACON_INTERVAL,&i,2);
 		settings_save();
 	}
 
 	uint8_t bufLen = 2;
-	settings_get(SETTINGS_BEACON_INTERVAL,&i,&bufLen);
+	settings_get_params(SETTINGS_BEACON_INTERVAL,&i,&bufLen);
 	SERIAL_PRINTF_P(pSer,PSTR("Beacon Interval: %d seconds\r\n"),i);
 
 	return true;

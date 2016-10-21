@@ -3,25 +3,25 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <drv/timer.h>
 
 #include "cfg/cfg_kiss.h"
 
-#include <io/kfile.h>
-#include <net/afsk.h>
-#include <net/ax25.h>
-#include <drv/timer.h>
-#include <algo/crc_ccitt.h>
-
-//typedef void (*kiss_in_callback_t)(uint8_t *buf, size_t len);
-typedef void (*kiss_exit_callback_t)(void);
+struct Serial;
+struct SerialReader;
+struct AX25Ctx;
 
 typedef struct KissCtx{
-	KFile *serial;
-	AX25Ctx *modem;
+	struct SerialReader *serialReader;
+	struct AX25Ctx *modem;
+
+	ticks_t  rxTick;
+#if 0
+	struct Serial  *serial;
 	uint8_t *rxBuf;
 	uint16_t rxBufLen;
 	uint16_t rxPos;
-	ticks_t rxTick;
+#endif
 
 #if 0 // TX Buffering Enabled
 	uint8_t *txBuf;
@@ -32,7 +32,7 @@ typedef struct KissCtx{
 
 }KissCtx;
 
-void kiss_init(KFile *serial, AX25Ctx *modem, uint8_t *buf, uint16_t bufLen, kiss_exit_callback_t hook);
+void kiss_init(struct SerialReader *serialReader,struct AX25Ctx *modem);
 void kiss_poll(void);
 void kiss_send_to_modem(uint8_t *buf, size_t len);
 void kiss_send_to_serial(uint8_t port, uint8_t *buf, size_t len);

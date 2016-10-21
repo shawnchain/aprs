@@ -40,7 +40,7 @@ typedef struct SerialReader{
 }SerialReader;
 
 
-void serialreader_init(SerialReader *reader, Serial *ser, uint8_t *buf, uint16_t bufLen);
+void serialreader_init(SerialReader *reader, Serial *ser);
 
 /*
  * read a line from the underlying serial

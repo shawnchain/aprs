@@ -70,16 +70,7 @@ static SoftSerial softSer;
 Afsk g_afsk;
 AX25Ctx g_ax25;
 Serial g_serial;
-
-#if MOD_KISS
-#define SHARED_BUF_LEN CONFIG_AX25_FRAME_BUF_LEN //shared buffer is 330 bytes for KISS module reading received AX25 frame.
-#else
-#define SHARED_BUF_LEN 128
-#endif
-uint8_t g_shared_buf[SHARED_BUF_LEN];
-
 SerialReader g_serialreader;
-
 
 #define ADC_CH 0
 #define DAC_CH 0
@@ -212,7 +203,7 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 		// save to settings/run_mode
 		if(modeOK){
 			if(currentMode != g_settings.run_mode){
-				settings_set(SETTINGS_RUN_MODE,&currentMode,1);
+				settings_set_params(SETTINGS_RUN_MODE,&currentMode,1);
 				settings_save();
 			}
 		}else{
@@ -274,7 +265,7 @@ static void init(void)
     UCSR0C = _BV(UCSZ01) | _BV(UCSZ00); // see ATMEGA328P datasheet P197, Table 20-11. UCSZn Bits Settings
 
     // initialize the reader that wraps the serial
-    serialreader_init(&g_serialreader, &g_serial, g_shared_buf, SHARED_BUF_LEN);
+    serialreader_init(&g_serialreader, &g_serial);
 
     // Load settings first
     settings_load();
@@ -296,7 +287,7 @@ static void init(void)
 	// Initialize the kiss module
 	// NOTE - use shared memory buffer
 #if MOD_KISS
-	kiss_init(&(g_serial.fd),&g_ax25,g_shared_buf, SHARED_BUF_LEN, kiss_mode_exit_callback);
+	kiss_init(&g_serialreader,&g_ax25);
 #endif
 
 #if MOD_BEACON

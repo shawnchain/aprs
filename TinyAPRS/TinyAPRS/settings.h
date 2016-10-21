@@ -30,7 +30,17 @@
 #define SETTINGS_BEACON_TEXT_MAX_LEN 128
 
 /*
- * The setting types
+ * The settings types
+ */
+typedef enum{
+	SETTINGS_CALL = 1,
+	SETTINGS_TEXT,
+	SETTINGS_PARAMS,
+	SETTINGS_COMMIT = 15
+}SettingsType;
+
+/*
+ * The settings parameter keys
  */
 typedef enum {
 	SETTINGS_MY_CALL = 1,
@@ -40,7 +50,7 @@ typedef enum {
 	SETTINGS_SYMBOL,
 	SETTINGS_RUN_MODE,
 	SETTINGS_BEACON_INTERVAL,
-}SETTINGS_TYPE;
+}SettingsParamKey;
 
 typedef struct BeaconParams{
 	uint8_t		symbol[2];		// Symbol table and the index
@@ -61,6 +71,8 @@ typedef struct{
 	BeaconParams beacon;	// the beacon parameters
 	RfParams rf;			// the rf parameters
 } SettingsData;
+
+
 enum {
 	RF_DUPLEX_HALF = 0,
 	RF_DUPLEX_FULL
@@ -89,17 +101,17 @@ void settings_clear(void);
  * @valueOut out buffer to store the settings
  * @valueOutLen max out buffer len and will be set to the actual value length when function returned.
  */
-void settings_get(SETTINGS_TYPE type, void* valueOut, uint8_t* valueOutLen);
+void settings_get_params(SettingsParamKey type, void* valueOut, uint8_t* valueOutLen);
 
 /**
  * Set value of a specific setting
  */
-void settings_set(SETTINGS_TYPE type, void* value, uint8_t valueLen);
+void settings_set_params(SettingsParamKey type, void* value, uint8_t valueLen);
 
 /**
  * Set/copy raw bytes into settingsData memory.
  */
-bool settings_set_bytes(uint8_t *bytes, uint16_t size);
+bool settings_set_params_bytes(uint8_t *bytes, uint16_t size);
 
 /*
  * get the beacon text
@@ -115,11 +127,11 @@ struct AX25Call;
 /*
  * Get call object from settings
  */
-void settings_get_call(SETTINGS_TYPE callType, struct AX25Call *call);
+void settings_get_call(SettingsParamKey callType, struct AX25Call *call);
 
 /*
  * Set call object from settings
  */
-void settings_set_call(SETTINGS_TYPE callType, struct AX25Call *call);
+void settings_set_call(SettingsParamKey callType, struct AX25Call *call);
 
 #endif /* SETTINGS_H_ */
