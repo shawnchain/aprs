@@ -35,7 +35,7 @@ typedef struct KissCtx{
 void kiss_init(struct SerialReader *serialReader,struct AX25Ctx *modem);
 void kiss_poll(void);
 void kiss_send_to_modem(uint8_t *buf, size_t len);
-void kiss_send_to_serial(uint8_t port, uint8_t *buf, size_t len);
+void kiss_send_to_serial(uint8_t port, uint8_t cmd, uint8_t *buf, size_t len);
 
 #endif
 

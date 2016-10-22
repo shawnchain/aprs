@@ -104,7 +104,7 @@ static void ax25_msg_callback(struct AX25Msg *msg){
 
 #if MOD_KISS
 	case MODE_KISS:
-		kiss_send_to_serial(0x00,/*kiss port id*/g_ax25.buf,g_ax25.frm_len - 2);
+		kiss_send_to_serial(0x00/*kiss port id*/,0x00,g_ax25.buf,g_ax25.frm_len - 2);
 		break;
 #endif
 
