@@ -57,6 +57,11 @@ static void kiss_handle_config_text_cmd(uint8_t *frame, uint16_t size);
 static void kiss_handle_config_call_cmd(uint8_t *frame, uint16_t size);
 static void kiss_handle_config_commit_cmd(uint8_t *frame, uint16_t size);
 
+static void _send_to_serial_begin(uint8_t port, uint8_t cmd);
+static void _send_to_serial(uint8_t *buf, size_t len);
+static void _send_to_serial_end(void);
+
+
 void kiss_init(struct SerialReader *serialReader,struct AX25Ctx *modem){
 	memset(&kiss,0,sizeof(KissCtx));
 	kiss.serialReader = serialReader;
@@ -293,7 +298,39 @@ void kiss_send_to_serial(uint8_t port, uint8_t cmd, uint8_t *buf, size_t len) {
 	kfile_putc(KISS_FEND, kiss.serial);
 }
 #else
+
+INLINE void _send_to_serial_begin(uint8_t port, uint8_t cmd){
+	Serial *serial = kiss.serialReader->ser;
+	ser_putchar(KISS_FEND, serial);
+	ser_putchar(((port << 4) & 0xf0) | (cmd & 0x0f), serial);
+}
+
+static void _send_to_serial(uint8_t *buf, size_t len){
+	Serial *serial = kiss.serialReader->ser;
+	size_t i;
+	for (i = 0; i < len; i++) {
+		uint8_t c = buf[i];
+		if (c == KISS_FEND) {
+			ser_putchar(KISS_FESC, serial);
+			ser_putchar(KISS_TFEND, serial);
+			continue;
+		}
+		ser_putchar(c, serial);
+		if (c == KISS_FESC) {
+			ser_putchar(KISS_TFESC, serial);
+		}
+	}
+}
+
+INLINE void _send_to_serial_end(void){
+	ser_putchar(KISS_FEND, kiss.serialReader->ser);
+}
+
 void kiss_send_to_serial(uint8_t port, uint8_t cmd, uint8_t *buf, size_t len) {
+	_send_to_serial_begin(port,cmd);
+	_send_to_serial(buf,len);
+	_send_to_serial_end();
+	/*
 	size_t i;
 	Serial *serial = kiss.serialReader->ser;
 	ser_putchar(KISS_FEND, serial);
@@ -312,6 +349,7 @@ void kiss_send_to_serial(uint8_t port, uint8_t cmd, uint8_t *buf, size_t len) {
 		}
 	}
 	ser_putchar(KISS_FEND, serial);
+	*/
 }
 
 #endif
@@ -342,7 +380,12 @@ static bool verify_config_data(uint8_t *frame,uint16_t size){
 INLINE void kiss_handle_config_params_cmd(uint8_t *data, uint16_t len) {
 	if(len == 0){
 		//read g_settings and write to serial
-		kiss_send_to_serial(0,KISS_CMD_CONFIG_PARAMS,(uint8_t*)&g_settings,sizeof(SettingsData));
+		//kiss_send_to_serial(0,KISS_CMD_CONFIG_PARAMS,(uint8_t*)&g_settings,sizeof(SettingsData));
+		uint8_t crc = calc_crc((uint8_t*)&g_settings,sizeof(SettingsData));
+		_send_to_serial_begin(0,KISS_CMD_CONFIG_PARAMS);
+		_send_to_serial((uint8_t*)&g_settings,sizeof(SettingsData));
+		_send_to_serial(&crc,1);
+		_send_to_serial_end();
 	}else if(len == sizeof(SettingsData)){
 		// set g_settings
 		settings_set_params_bytes(data,len);
@@ -364,25 +407,14 @@ INLINE void kiss_handle_config_text_cmd(uint8_t *data, uint16_t len) {
 }
 
 INLINE void kiss_handle_config_call_cmd(uint8_t *data, uint16_t len) {
+	CallData calldata;
 	if(len == 0){
 		//read g_settings and write to serial
-		AX25Call calls[4];
-		settings_get_call(SETTINGS_MY_CALL,&calls[0]);
-		settings_get_call(SETTINGS_DEST_CALL,&calls[1]);
-		settings_get_call(SETTINGS_PATH1_CALL,&calls[2]);
-		settings_get_call(SETTINGS_PATH2_CALL,&calls[3]);
-		kiss_send_to_serial(0,KISS_CMD_CONFIG_CALL,(uint8_t*)calls,sizeof(calls));
-	}else if(len == 7 * 4){
-		AX25Call call;
-		// set the call
-		memcpy(&call,data,7);
-		settings_set_call(SETTINGS_MY_CALL,&call);
-		memcpy(&call,data+7,7);
-		settings_set_call(SETTINGS_DEST_CALL,&call);
-		memcpy(&call,data+14,7);
-		settings_set_call(SETTINGS_PATH1_CALL,&call);
-		memcpy(&call,data+21,7);
-		settings_set_call(SETTINGS_PATH2_CALL,&call);
+		settings_get_call_data(&calldata);
+		kiss_send_to_serial(0,KISS_CMD_CONFIG_CALL,(uint8_t*)&calldata,sizeof(CallData));
+	}else if(len == sizeof(CallData)){
+		memcpy(&calldata,data,sizeof(CallData));
+		settings_set_call_data(&calldata);
 	}
 }
 
