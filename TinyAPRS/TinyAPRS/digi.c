@@ -133,7 +133,7 @@ bool digi_handle_aprs_message(struct AX25Msg *msg){
 				}
 			}
 			// replace the path with digi call and mark repeated.
-			settings_get_call(SETTINGS_MY_CALL,rpt);
+			settings_get_mycall(rpt);
 			AX25_SET_REPEATED(msg,i,1);
 			return _digi_repeat_message(msg);
 		}

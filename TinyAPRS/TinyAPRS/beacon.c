@@ -41,8 +41,8 @@ void beacon_init(beacon_exit_callback_t exitcb){
 
 
 INLINE void _send_fixed_text(void){
-	char payload[80 + 1];
-	uint8_t payloadLen = settings_get_beacon_text(payload,80);
+	char payload[128];
+	uint8_t payloadLen = settings_get_beacon_text(payload,127);
 	if(payloadLen > 0){
 		beacon_send(payload,payloadLen);
 	}
@@ -74,27 +74,19 @@ void beacon_broadcast_poll(void){
 }
 
 void beacon_send(char* payload, uint8_t payloadLen){
-	AX25Call path[4];// dest,src,rpt1,rpt2
-
-	// dest call: APTI01
-	settings_get_call(SETTINGS_DEST_CALL,&(path[0]));
-	// src call: MyCALL-SSID
-	settings_get_call(SETTINGS_MY_CALL,&(path[1]));
-	// path1: WIDE1-1
-	settings_get_call(SETTINGS_PATH1_CALL,&(path[2]));
-	// path2: WIDE2-2
-	settings_get_call(SETTINGS_PATH2_CALL,&(path[3]));
+	CallData calldata;
+	settings_get_call_data(&calldata);
 
 	// if the digi path is set, just increase that
 	uint8_t pathCount = 2;
-	if(path[2].call[0] > 0){
+	if(calldata.path1.call[0] > 0){
 		pathCount++;
 	}
-	if(path[3].call[0] > 0){
+	if(calldata.path2.call[0] > 0){
 		pathCount++;
 	}
 
-	ax25_sendVia(&g_ax25, path, pathCount, payload, payloadLen);
+	ax25_sendVia(&g_ax25, (AX25Call*)&calldata, pathCount, payload, payloadLen);
 
 #if CFG_BEACON_DEBUG
 	kfile_putc('.',&(g_serial.fd));

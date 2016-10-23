@@ -173,9 +173,9 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 	// print settings
 	{
 	char buf[16];
-	AX25Call call;
-	settings_get_call(SETTINGS_MY_CALL,&call);
-	ax25call_to_string(&call,buf);
+	AX25Call myCall;
+	settings_get_mycall(&myCall);
+	ax25call_to_string(&myCall,buf);
 	SERIAL_PRINTF_P(pSer, PSTR("MyCall: %s\r\n"),buf);
 	}
 
@@ -225,15 +225,15 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
  * parse AT+CALL=CALL-ID
  */
 static bool cmd_settings_mycall(Serial* pSer, char* value, size_t valueLen){
-	AX25Call call;
-	memset(&call,0,sizeof(AX25Call));
+	CallData calldata;
+	settings_get_call_data(&calldata);
+
 	if(valueLen > 0){
-		ax25call_from_string(&call,value);
-		settings_set_call(SETTINGS_MY_CALL, &call);
+		ax25call_from_string(&calldata.myCall,value);
+		settings_set_call_data(&calldata);
 	}
-	settings_get_call(SETTINGS_MY_CALL, &call);
 	char callString[16];
-	ax25call_to_string(&call,callString);
+	ax25call_to_string(&calldata.myCall,callString);
 	SERIAL_PRINTF_P(pSer,PSTR("My Call: %s\r\n"),callString);
 	return true;
 }
@@ -242,16 +242,14 @@ static bool cmd_settings_mycall(Serial* pSer, char* value, size_t valueLen){
  * parse AT+DEST=CALL-ID
  */
 static bool cmd_settings_destcall(Serial* pSer, char* value, size_t valueLen){
-	AX25Call call;
-	memset(&call,0,sizeof(AX25Call));
+	CallData calldata;
+	settings_get_call_data(&calldata);
 	if(valueLen > 0){
-		ax25call_from_string(&call,value);
-		settings_set_call(SETTINGS_DEST_CALL, &call);
+		ax25call_from_string(&calldata.destCall,value);
+		settings_set_call_data(&calldata);
 	}
-	settings_get_call(SETTINGS_DEST_CALL, &call);
 	char callString[16];
-	memset(callString,0,16);
-	ax25call_to_string(&call,callString);
+	ax25call_to_string(&calldata.destCall,callString);
 	SERIAL_PRINTF_P(pSer,PSTR("DEST Call: %s\r\n"),callString);
 	return true;
 }
@@ -260,7 +258,8 @@ static bool cmd_settings_destcall(Serial* pSer, char* value, size_t valueLen){
  * parse AT+PATH=PATH1,PATH2
  */
 static bool cmd_settings_path(Serial* pSer, char* value, size_t valueLen){
-	AX25Call call;
+	CallData calldata;
+	settings_get_call_data(&calldata);
 	if(valueLen > 0){
 		// convert to upper case
 		//strupr(value);
@@ -279,26 +278,22 @@ static bool cmd_settings_path(Serial* pSer, char* value, size_t valueLen){
 				path2Len = strlen(t);
 			}
 			if(path1Len > 0){
-				ax25call_from_string(&call,path1);
-				settings_set_call(SETTINGS_PATH1_CALL,&call);
-
+				ax25call_from_string(&calldata.path1,path1);
 				if(path2Len > 0){
-					ax25call_from_string(&call,path2);
+					ax25call_from_string(&calldata.path2,path2);
 				}else{
 					// no path2, so set an empty call object
-					memset(&call,0,sizeof(AX25Call));
+					memset(&calldata.path2,0,sizeof(AX25Call));
 				}
-				settings_set_call(SETTINGS_PATH2_CALL,&call);
+				settings_set_call_data(&calldata);
 			}
 		}
 	}
 
 	// display the path
 	char p1[10],p2[10];
-	settings_get_call(SETTINGS_PATH1_CALL,&call);
-	ax25call_to_string(&call,p1);
-	settings_get_call(SETTINGS_PATH2_CALL,&call);
-	ax25call_to_string(&call,p2);
+	ax25call_to_string(&calldata.path1,p1);
+	ax25call_to_string(&calldata.path2,p2);
 	SERIAL_PRINTF_P(pSer,PSTR("PATH: %s,%s\r\n"),p1,p2);
 	return true;
 }
