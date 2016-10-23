@@ -84,12 +84,12 @@ void console_parse_command(char* command, size_t commandLen){
 #endif
 
 	if(commandLen ==1 && command[0] == '?'){
-		cmd_info(pSer,0,0);
+		cmd_info(pSer,0,1);
 		return;
 	}
 
 	if(commandLen ==2 && command[0] == '?' && command[1] == '?'){
-		cmd_info(pSer,0,0);
+		cmd_info(pSer,0,1);
 #if CONSOLE_HELP_COMMAND_ENABLED
 		cmd_help(pSer,0,0);
 #endif
@@ -166,13 +166,18 @@ static const PROGMEM char BANNER[] = "\r\nTinyAPRS (KISS-TNC/GPS-Beacon) 1.1-SNA
 static bool cmd_info(Serial* pSer, char* value, size_t len){
 	(void)value;
 	(void)len;
-
+	uint16_t freemem = freeRam();
 	// print welcome banner
 	kfile_printf_P((KFile*)pSer,BANNER,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
 
+	// print settings only when len > 0
+	if(len == 0){
+		goto exit;
+	}
+
 	// print settings
 	{
-	char buf[16];
+	char buf[10];
 	AX25Call myCall;
 	settings_get_mycall(&myCall);
 	ax25call_to_string(&myCall,buf);
@@ -187,8 +192,9 @@ static bool cmd_info(Serial* pSer, char* value, size_t len){
 #endif
 
 	// print free memory
-	kfile_printf_P((KFile*)pSer,PSTR("Free RAM: %u\r\n"),freeRam());
+	kfile_printf_P((KFile*)pSer,PSTR("Free RAM: %u\r\n"),freemem);
 
+exit:
 	kfile_flush((KFile*)pSer);
 	return true;
 }
