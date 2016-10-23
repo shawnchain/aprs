@@ -39,7 +39,7 @@ enum {
 	KISS_CMD_CONFIG_CALL = 0x0C,
 	KISS_CMD_CONFIG_PARAMS = 0x0D,
 	KISS_CMD_CONFIG_TEXT = 0x0E,
-	KISS_CMD_CONFIG_COMMIT = 0x0F,
+	KISS_CMD_CONFIG_MAGIC = 0x0F,
 	KISS_CMD_Return = 0xFF
 };
 
@@ -55,7 +55,7 @@ static void kiss_handle_frame(uint8_t *frame, uint16_t size);
 static void kiss_handle_config_params_cmd(uint8_t *frame, uint16_t size);
 static void kiss_handle_config_text_cmd(uint8_t *frame, uint16_t size);
 static void kiss_handle_config_call_cmd(uint8_t *frame, uint16_t size);
-static void kiss_handle_config_commit_cmd(uint8_t *frame, uint16_t size);
+static void kiss_handle_config_magic_cmd(uint8_t *frame, uint16_t size);
 
 static void _send_to_serial_begin(uint8_t port, uint8_t cmd);
 static void _send_to_serial(uint8_t *buf, size_t len);
@@ -178,9 +178,9 @@ static void kiss_handle_frame(uint8_t *frame, uint16_t size) {
 		}
 		break;
 
-	case KISS_CMD_CONFIG_COMMIT:
+	case KISS_CMD_CONFIG_MAGIC:
 		if(verify_config_data(payload,size - 1)){
-			kiss_handle_config_commit_cmd(payload, size - 2);
+			kiss_handle_config_magic_cmd(payload, size - 2);
 		}
 		break;
 		/*
@@ -406,6 +406,16 @@ INLINE void kiss_handle_config_text_cmd(uint8_t *data, uint16_t len) {
 	}
 }
 
+/*
+B007  <-- BOOT
+C117  <-- COMMIT
+DA7A  <-- DATA
+FACE
+BEEF
+BABE
+CAFE
+*/
+
 INLINE void kiss_handle_config_call_cmd(uint8_t *data, uint16_t len) {
 	CallData calldata;
 	if(len == 0){
@@ -418,8 +428,14 @@ INLINE void kiss_handle_config_call_cmd(uint8_t *data, uint16_t len) {
 	}
 }
 
-INLINE void kiss_handle_config_commit_cmd(uint8_t *data, uint16_t len) {
-	(void)data;
-	(void)len;
-	settings_save();
+INLINE void kiss_handle_config_magic_cmd(uint8_t *data, uint16_t len) {
+	if(len == 4 && data [0] == 0x0C && data[1] == 0x01 && data[2] == 0x01 && data[3] == 0x07 ){
+		// save config magic: 0C 01 01 07
+		settings_save();
+	}else if(len == 4 && data[0] == 0x0B && data[1] == 0x00 && data[2] == 0x00 && data[3] == 0x07){
+		// reboot magic: 0B 00 00 07
+		soft_reset();
+	}else{
+		// ignore unknown command
+	}
 }

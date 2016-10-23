@@ -200,7 +200,7 @@ void settings_get_call_data(CallData *callData){
 		eeprom_read_block((void*)callData,(void*)nvCallData,sizeof(CallData));
 	}else{
 		//read the default parameters
-		memcpy_P((void*)callData,(const PROGMEM void*)&default_calldata,sizeof(CallData));
+		memcpy_P((void*)callData,(const void*)&default_calldata,sizeof(CallData));
 	}
 }
 
@@ -213,7 +213,7 @@ void settings_get_mycall(AX25Call *call){
 		eeprom_read_block((void*)call,(void*)p,sizeof(AX25Call));
 	}else{
 		//read the default parameters
-		memcpy_P((void*)call,(const PROGMEM void*)&default_calldata.myCall,sizeof(AX25Call));
+		memcpy_P((void*)call,(const void*)&default_calldata.myCall,sizeof(AX25Call));
 	}
 }
 
