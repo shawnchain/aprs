@@ -22,20 +22,33 @@
 
 #define DEFAULT_BEACON_INTERVAL 20 * 60 // 20 minutes of beacon send interval
 
-const char PROGMEM DEFAULT_BEACON_TEXT[] = "!3014.00N/12009.00E>TinyAPRS Rocks!";
+static const char PROGMEM DEFAULT_BEACON_TEXT[] = "!3014.00N/12009.00E>TinyAPRS Rocks!";
 
-#define SETTINGS_SIZE sizeof(SettingsData)
+static const PROGMEM CallData default_calldata = {
+		.myCall = {
+				.call={'N','O','C','A','L','L'},
+				.ssid=0,
+		},
+		.destCall = {
+				.call={'A','P','T','I','0','1'},
+				.ssid=0,
+		},
+		.path1 = {
+				.call={'W','I','D','E','1',0},
+				.ssid=1,
+		},
+		.path2 = {
+				.call={'W','I','D','E','2',0},
+				.ssid=2,
+		},
+};
+
 
 /*
  * Helper macros
  */
-#undef ABS
 #undef MIN
-#undef MAX
-#define ABS(a)		(((a) < 0) ? -(a) : (a))
 #define MIN(a,b)	(((a) < (b)) ? (a) : (b))
-#define MAX(a,b)	(((a) > (b)) ? (a) : (b))
-//#include <cfg/macros.h>
 
 // Instance of the settings data. // TODO - Store default settings in the PROGMEM
 SettingsData g_settings = {
@@ -58,17 +71,11 @@ SettingsData g_settings = {
 
 #define NV_SETTINGS_HEAD_BYTE_VALUE 0x88
 uint8_t EEMEM nvSetHeadByte;
-uint8_t EEMEM nvSettings[SETTINGS_SIZE];
+uint8_t EEMEM nvSettings[sizeof(SettingsData)];
 uint8_t EEMEM nvSetCrcByte;
 
-uint8_t EEMEM nvMyCallHeadByte;
-uint8_t EEMEM nvMyCall[7];
-uint8_t EEMEM nvDestCallHeadByte;
-uint8_t EEMEM nvDestCall[7];
-uint8_t EEMEM nvPath1CallHeadByte;
-uint8_t EEMEM nvPath1Call[7];
-uint8_t EEMEM nvPath2CallHeadByte;
-uint8_t EEMEM nvPath2Call[7];
+uint8_t EEMEM nvCallDataHeadByte;
+uint8_t EEMEM nvCallData[sizeof(CallData)];
 
 // beacon text(raw packet)
 #define NV_BEACON_TEXT_HEAD_BYTE_VALUE 0x99
@@ -100,7 +107,7 @@ bool settings_load(void){
 		// fill up zero values
 		return false;
 	}
-	eeprom_read_block((void*)&g_settings, (void*)nvSettings, SETTINGS_SIZE);
+	eeprom_read_block((void*)&g_settings, (void*)nvSettings, sizeof(SettingsData));
 	uint8_t sum = eeprom_read_byte((void*)&nvSetCrcByte);
 	if(sum != calc_crc((uint8_t*)&g_settings,sizeof(SettingsData))){
 		// if sum check failed, clear the setting data
@@ -117,7 +124,7 @@ bool settings_load(void){
  * Save settings
  */
 bool settings_save(void){
-	eeprom_update_block((void*)&g_settings, (void*)nvSettings, SETTINGS_SIZE);
+	eeprom_update_block((void*)&g_settings, (void*)nvSettings, sizeof(SettingsData));
 	eeprom_update_byte((void*)&nvSetHeadByte, NV_SETTINGS_HEAD_BYTE_VALUE);
 	uint8_t sum = calc_crc((uint8_t*)&g_settings,sizeof(SettingsData));
 	eeprom_update_byte((void*)&nvSetCrcByte, sum);
@@ -129,11 +136,8 @@ bool settings_save(void){
  */
 void settings_clear(void){
 	eeprom_update_byte((void*)&nvSetHeadByte, 0xFF);
+	eeprom_update_byte((void*)&nvCallDataHeadByte, 0xFF);
 	eeprom_update_byte((void*)&nvBeaconTextHeadByte, 0xFF);
-	eeprom_update_byte((void*)&nvMyCallHeadByte,0xFF);
-	eeprom_update_byte((void*)&nvDestCallHeadByte,0xFF);
-	eeprom_update_byte((void*)&nvPath1CallHeadByte,0xFF);
-	eeprom_update_byte((void*)&nvPath2CallHeadByte,0xFF);
 	eeprom_update_byte((void*)&nvSetCrcByte, 0xFF);
 }
 
@@ -183,80 +187,33 @@ void settings_set_params(SettingsParamKey type, void* value, uint8_t valueLen){
 	}
 }
 
-/*
- * Get call object from settings
- */
-void settings_get_call(SettingsParamKey callType, struct AX25Call *call){
-	memset(call,0,sizeof(struct AX25Call));
-	uint8_t head = 0;
-	switch(callType){
-	case SETTINGS_MY_CALL:
-		head = eeprom_read_byte((void*)&nvMyCallHeadByte);
-		if(head == NV_SETTINGS_HEAD_BYTE_VALUE){
-			eeprom_read_block((void*)call,(void*)nvMyCall,7);
-		}else{
-			// read the default values "N0CALL"
-			snprintf_P(call->call,7,PSTR("N0CALL"));
-		}
-		break;
-	case SETTINGS_DEST_CALL:
-		head = eeprom_read_byte((void*)&nvDestCallHeadByte);
-		if(head == NV_SETTINGS_HEAD_BYTE_VALUE){
-			eeprom_read_block((void*)call,(void*)nvDestCall,7);
-		}else{
-			// read the default values "N0CALL"
-			snprintf_P(call->call,7,PSTR("APTI01"));
-		}
-		break;
-	case SETTINGS_PATH1_CALL:
-		head = eeprom_read_byte((void*)&nvPath1CallHeadByte);
-		if(head == NV_SETTINGS_HEAD_BYTE_VALUE){
-			eeprom_read_block((void*)call,(void*)nvPath1Call,7);
-		}else{
-			// read the default values "N0CALL"
-			snprintf_P(call->call,6,PSTR("WIDE1"));
-			call->ssid = 1;
-		}
-		break;
-	case SETTINGS_PATH2_CALL:
-		head = eeprom_read_byte((void*)&nvPath2CallHeadByte);
-		if(head == NV_SETTINGS_HEAD_BYTE_VALUE){
-			eeprom_read_block((void*)call,(void*)nvPath2Call,7);
-		}else{
-			// read the default values "N0CALL"
-			snprintf_P(call->call,6,PSTR("WIDE2"));
-			call->ssid = 2;
-		}
-		break;
-	default:
-		break;
+void settings_set_call_data(CallData *callData){
+	eeprom_update_block((void*)callData,(void*)nvCallData,sizeof(CallData));
+	eeprom_update_byte((void*)&nvCallDataHeadByte,NV_SETTINGS_HEAD_BYTE_VALUE);
+}
+
+void settings_get_call_data(CallData *callData){
+	memset(callData,0,sizeof(CallData));
+	uint8_t head = eeprom_read_byte((void*)&nvCallDataHeadByte);
+	if(head == NV_SETTINGS_HEAD_BYTE_VALUE){
+		// read the EEPROM back
+		eeprom_read_block((void*)callData,(void*)nvCallData,sizeof(CallData));
+	}else{
+		//read the default parameters
+		memcpy_P((void*)callData,(const PROGMEM void*)&default_calldata,sizeof(CallData));
 	}
 }
 
-
-/*
- * Set call object to settings
- */
-void settings_set_call(SettingsParamKey callType, struct AX25Call *call){
-	switch(callType){
-	case SETTINGS_MY_CALL:
-		eeprom_update_block((void*)call,(void*)nvMyCall,7);
-		eeprom_update_byte((void*)&nvMyCallHeadByte,NV_SETTINGS_HEAD_BYTE_VALUE);
-		break;
-	case SETTINGS_DEST_CALL:
-		eeprom_update_block((void*)call,(void*)nvDestCall,7);
-		eeprom_update_byte((void*)&nvDestCallHeadByte,NV_SETTINGS_HEAD_BYTE_VALUE);
-		break;
-	case SETTINGS_PATH1_CALL:
-		eeprom_update_block((void*)call,(void*)nvPath1Call,7);
-		eeprom_update_byte((void*)&nvPath1CallHeadByte,NV_SETTINGS_HEAD_BYTE_VALUE);
-		break;
-	case SETTINGS_PATH2_CALL:
-		eeprom_update_block((void*)call,(void*)nvPath2Call,7);
-		eeprom_update_byte((void*)&nvPath2CallHeadByte,NV_SETTINGS_HEAD_BYTE_VALUE);
-		break;
-	default:
-		break;
+void settings_get_mycall(AX25Call *call){
+	memset(call,0,sizeof(AX25Call));
+	uint8_t head = eeprom_read_byte((void*)&nvCallDataHeadByte);
+	if(head == NV_SETTINGS_HEAD_BYTE_VALUE){
+		// read the EEPROM back
+		uint8_t *p = nvCallData + sizeof(AX25Call); // mycall index=1, offset is sizeof(AX25Call)
+		eeprom_read_block((void*)call,(void*)p,sizeof(AX25Call));
+	}else{
+		//read the default parameters
+		memcpy_P((void*)call,(const PROGMEM void*)&default_calldata.myCall,sizeof(AX25Call));
 	}
 }
 

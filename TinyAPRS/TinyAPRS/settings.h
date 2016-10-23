@@ -24,10 +24,18 @@
 #include <stdbool.h>
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
-
+#include <net/ax25.h>
 
 #define SETTINGS_SUPPORT_BEACON_TEXT 1
 #define SETTINGS_BEACON_TEXT_MAX_LEN 128
+
+typedef struct CallData{
+	AX25Call destCall;
+	AX25Call myCall;
+	AX25Call path1;
+	AX25Call path2;
+	//AX25Call path3[7];
+}CallData;
 
 /*
  * The settings types
@@ -43,10 +51,6 @@ typedef enum{
  * The settings parameter keys
  */
 typedef enum {
-	SETTINGS_MY_CALL = 1,
-	SETTINGS_DEST_CALL,
-	SETTINGS_PATH1_CALL,
-	SETTINGS_PATH2_CALL,
 	SETTINGS_SYMBOL,
 	SETTINGS_RUN_MODE,
 	SETTINGS_BEACON_INTERVAL,
@@ -123,15 +127,19 @@ uint8_t settings_get_beacon_text(char* buf, uint8_t bufLen);
  */
 uint8_t settings_set_beacon_text(char* data, uint8_t dataLen);
 
-struct AX25Call;
 /*
- * Get call object from settings
+ * set the call data, including mycall/destCall/path1/path2
  */
-void settings_get_call(SettingsParamKey callType, struct AX25Call *call);
+void settings_set_call_data(CallData *calldata);
 
 /*
- * Set call object from settings
+ * get the call data
  */
-void settings_set_call(SettingsParamKey callType, struct AX25Call *call);
+void settings_get_call_data(CallData *calldata);
+
+/*
+ * Get my call from call data
+ */
+void settings_get_mycall(AX25Call *call);
 
 #endif /* SETTINGS_H_ */
