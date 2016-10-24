@@ -36,9 +36,10 @@ enum {
 	KISS_CMD_TXtail,
 	KISS_CMD_FullDuplex,
 	KISS_CMD_SetHardware,
+	KISS_CMD_CONFIG_TEXT = 0x0B,
 	KISS_CMD_CONFIG_CALL = 0x0C,
 	KISS_CMD_CONFIG_PARAMS = 0x0D,
-	KISS_CMD_CONFIG_TEXT = 0x0E,
+	KISS_CMD_CONFIG_ERROR = 0x0E,
 	KISS_CMD_CONFIG_MAGIC = 0x0F,
 	KISS_CMD_Return = 0xFF
 };
@@ -324,6 +325,7 @@ static void _send_to_serial(uint8_t *buf, size_t len){
 
 INLINE void _send_to_serial_end(void){
 	ser_putchar(KISS_FEND, kiss.serialReader->ser);
+	//kfile_flush((KFile*)kiss.serialReader->ser);
 }
 
 void kiss_send_to_serial(uint8_t port, uint8_t cmd, uint8_t *buf, size_t len) {
@@ -377,6 +379,31 @@ static bool verify_config_data(uint8_t *frame,uint16_t size){
 	return frame[len]/*sum*/ == calc_crc(frame,len);
 }
 
+/*
+B007  <-- BOOT
+C117  <-- COMMIT
+DA7A  <-- DATA
+FACE
+BEEF
+BABE
+CAFE
+*/
+
+#define KISS_SERIAL_RESPOND_OK() kiss_respond_config_magic_cmd(0,0)
+
+INLINE void kiss_flush_serial(void){
+	kfile_flush((KFile*)kiss.serialReader->ser);
+}
+
+static void kiss_respond_config_magic_cmd(uint8_t *data, uint16_t len){
+	uint8_t crc = calc_crc(data,len);
+	_send_to_serial_begin(0,KISS_CMD_CONFIG_MAGIC);
+	_send_to_serial(data,len);
+	_send_to_serial(&crc,1);
+	_send_to_serial_end();
+	kiss_flush_serial();
+}
+
 INLINE void kiss_handle_config_params_cmd(uint8_t *data, uint16_t len) {
 	if(len == 0){
 		//read g_settings and write to serial
@@ -389,6 +416,7 @@ INLINE void kiss_handle_config_params_cmd(uint8_t *data, uint16_t len) {
 	}else if(len == sizeof(SettingsData)){
 		// set g_settings
 		settings_set_params_bytes(data,len);
+		KISS_SERIAL_RESPOND_OK();
 	}
 }
 
@@ -403,18 +431,9 @@ INLINE void kiss_handle_config_text_cmd(uint8_t *data, uint16_t len) {
 		}
 	}else{
 		settings_set_beacon_text((char*)data,len);
+		KISS_SERIAL_RESPOND_OK();
 	}
 }
-
-/*
-B007  <-- BOOT
-C117  <-- COMMIT
-DA7A  <-- DATA
-FACE
-BEEF
-BABE
-CAFE
-*/
 
 INLINE void kiss_handle_config_call_cmd(uint8_t *data, uint16_t len) {
 	CallData calldata;
@@ -425,16 +444,24 @@ INLINE void kiss_handle_config_call_cmd(uint8_t *data, uint16_t len) {
 	}else if(len == sizeof(CallData)){
 		memcpy(&calldata,data,sizeof(CallData));
 		settings_set_call_data(&calldata);
+		KISS_SERIAL_RESPOND_OK();
 	}
 }
 
 INLINE void kiss_handle_config_magic_cmd(uint8_t *data, uint16_t len) {
 	if(len == 4 && data [0] == 0x0C && data[1] == 0x01 && data[2] == 0x01 && data[3] == 0x07 ){
 		// save config magic: 0C 01 01 07
+		//kfile_printf_P((KFile*)&g_serial,PSTR("saving settings"));
+		KISS_SERIAL_RESPOND_OK();
 		settings_save();
 	}else if(len == 4 && data[0] == 0x0B && data[1] == 0x00 && data[2] == 0x00 && data[3] == 0x07){
 		// reboot magic: 0B 00 00 07
+		//kfile_printf_P((KFile*)&g_serial,PSTR("rebooting"));
+		KISS_SERIAL_RESPOND_OK();
 		soft_reset();
+	}else if(len == 4 && data[0] == 0x0B && data[1] == 0x0A && data[2] == 0x0B && data[3] == 0x0E){
+		// query version magic: 0B 0A 0B 0E
+		// TODO - query version info
 	}else{
 		// ignore unknown command
 	}
