@@ -19,6 +19,8 @@
 #include <drv/ser.h>
 #include "reader.h"
 
+#include "buildrev.h"
+
 
 #include <algo/crc_ccitt.h>
 
@@ -471,6 +473,17 @@ INLINE void kiss_handle_config_magic_cmd(uint8_t *data, uint16_t len) {
 	}else if(len == 4 && data[0] == 0x0B && data[1] == 0x0A && data[2] == 0x0B && data[3] == 0x0E){
 		// query version magic: 0B 0A 0B 0E
 		// TODO - query version info
+		uint8_t vers[4] = {
+				0x01,0x00,0x00,0x00
+		};
+		uint16_t build = VERS_BUILD;
+		vers[2] = build >> 8 & 0xff;
+		vers[3] = build & 0xff;
+		uint8_t crc = calc_crc(vers,4);
+		_send_to_serial_begin(0,KISS_CMD_CONFIG_MAGIC);
+		_send_to_serial(vers,4);
+		_send_to_serial(&crc,1);
+		_send_to_serial_end();
 	}else{
 		// ignore unknown command
 	}
