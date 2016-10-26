@@ -427,7 +427,11 @@ INLINE void kiss_handle_config_text_cmd(uint8_t *data, uint16_t len) {
 		kiss.serialReader->readLen = 0; // force discard the received data in buffer as we'll use the buffer now.
 		uint8_t len = settings_get_beacon_text((char*)kiss.serialReader->buf,kiss.serialReader->bufLen);
 		if(len > 0){
-			kiss_send_to_serial(0,KISS_CMD_CONFIG_TEXT,kiss.serialReader->buf,kiss.serialReader->bufLen);
+			uint8_t crc = calc_crc(kiss.serialReader->buf,len);
+			_send_to_serial_begin(0,KISS_CMD_CONFIG_TEXT);
+			_send_to_serial(kiss.serialReader->buf,len);
+			_send_to_serial(&crc,1);
+			_send_to_serial_end();
 		}
 	}else{
 		settings_set_beacon_text((char*)data,len);
@@ -440,7 +444,12 @@ INLINE void kiss_handle_config_call_cmd(uint8_t *data, uint16_t len) {
 	if(len == 0){
 		//read g_settings and write to serial
 		settings_get_call_data(&calldata);
-		kiss_send_to_serial(0,KISS_CMD_CONFIG_CALL,(uint8_t*)&calldata,sizeof(CallData));
+		//kiss_send_to_serial(0,KISS_CMD_CONFIG_CALL,(uint8_t*)&calldata,sizeof(CallData));
+		uint8_t crc = calc_crc((uint8_t*)&calldata,sizeof(CallData));
+		_send_to_serial_begin(0,KISS_CMD_CONFIG_CALL);
+		_send_to_serial((uint8_t*)&calldata,sizeof(CallData));
+		_send_to_serial(&crc,1);
+		_send_to_serial_end();
 	}else if(len == sizeof(CallData)){
 		memcpy(&calldata,data,sizeof(CallData));
 		settings_set_call_data(&calldata);
