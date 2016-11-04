@@ -66,7 +66,8 @@ SettingsData g_settings = {
 			.txtail = 5,
 			.slot_time = 10,
 			.duplex = RF_DUPLEX_HALF
-		}
+		},
+		.run_mode = 1
 };
 
 #define NV_SETTINGS_HEAD_BYTE_VALUE 0x88
