@@ -418,6 +418,7 @@ INLINE void kiss_handle_config_params_cmd(uint8_t *data, uint16_t len) {
 	}else if(len == sizeof(SettingsData)){
 		// set g_settings
 		settings_set_params_bytes(data,len);
+		settings_save();
 		KISS_SERIAL_RESPOND_OK();
 	}
 }
@@ -460,12 +461,15 @@ INLINE void kiss_handle_config_call_cmd(uint8_t *data, uint16_t len) {
 }
 
 INLINE void kiss_handle_config_magic_cmd(uint8_t *data, uint16_t len) {
-	if(len == 4 && data [0] == 0x0C && data[1] == 0x01 && data[2] == 0x01 && data[3] == 0x07 ){
-		// save config magic: 0C 01 01 07
-		//kfile_printf_P((KFile*)&g_serial,PSTR("saving settings"));
-		KISS_SERIAL_RESPOND_OK();
-		settings_save();
-	}else if(len == 4 && data[0] == 0x0B && data[1] == 0x00 && data[2] == 0x00 && data[3] == 0x07){
+//	if(len == 4 && data [0] == 0x0C && data[1] == 0x01 && data[2] == 0x01 && data[3] == 0x07 ){
+//		// save config magic: 0C 01 01 07
+//		//kfile_printf_P((KFile*)&g_serial,PSTR("saving settings"));
+//		// deprecated
+//		KISS_SERIAL_RESPOND_OK();
+//		//settings_save();
+//	}else
+
+	if(len == 4 && data[0] == 0x0B && data[1] == 0x00 && data[2] == 0x00 && data[3] == 0x07){
 		// reboot magic: 0B 00 00 07
 		//kfile_printf_P((KFile*)&g_serial,PSTR("rebooting"));
 		KISS_SERIAL_RESPOND_OK();
