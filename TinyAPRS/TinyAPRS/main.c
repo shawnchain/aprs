@@ -337,7 +337,9 @@ int main(void){
 
 		switch(currentMode){
 			case MODE_CFG:
+#if MOD_CONSOLE
 				console_poll();
+#endif
 #if MOD_BEACON
 				beacon_broadcast_poll();
 #endif
