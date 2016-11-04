@@ -27,7 +27,7 @@ index 1548a72..05a1d2b 100644
  #endif // __PROTOCOL_H
  
 diff --git a/xboot.c b/xboot.c
-index ebedb66..c39722e 100644
+index ebedb66..ce3314c 100644
 --- a/xboot.c
 +++ b/xboot.c
 @@ -68,6 +68,7 @@ int main(void)
@@ -133,3 +133,23 @@ index ebedb66..c39722e 100644
                          send_char(REPLY_ACK);
                  }
                  // Exit bootloader
+@@ -703,13 +721,13 @@ int main(void)
+                 // Return program identifier
+                 else if (val == CMD_PROGRAM_ID)
+                 {
+-                        send_char('X');
++                        send_char('A');
++                        send_char('P');
++                        send_char('T');
++                        send_char('I');
+                         send_char('B');
+-                        send_char('o');
+-                        send_char('o');
+-                        send_char('t');
+-                        send_char('+');
+-                        send_char('+');
++                        send_char('L');
++                        send_char('0');
+                 }
+                 // Read software version
+                 else if (val == CMD_VERSION)
