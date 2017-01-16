@@ -30,17 +30,17 @@
 #include <cfg/macros.h>
 
 
-static mtime_t lastSendTimeSeconds = 0; // in seconds
+static volatile mtime_t lastSendTimeSeconds = 0; // in seconds
 
 /*
  * Initialize the beacon module
  */
 void beacon_init(beacon_exit_callback_t exitcb){
 	(void)exitcb;
+	lastSendTimeSeconds = 0;
 }
 
-
-INLINE void _send_fixed_text(void){
+static void _send_fixed_text(void){
 	char payload[128];
 	uint8_t payloadLen = settings_get_beacon_text(payload,127);
 	if(payloadLen > 0){
@@ -66,8 +66,17 @@ void beacon_broadcast_poll(void){
 		//it's disabled;
 		return;
 	}
-	mtime_t currentTimestamp = timer_clock_seconds();
-	if(lastSendTimeSeconds == 0 ||  currentTimestamp - lastSendTimeSeconds > beaconSendInterval){
+	volatile mtime_t currentTimestamp = timer_clock_seconds();
+	if(lastSendTimeSeconds == 0){
+		// just started
+		lastSendTimeSeconds = timer_clock_seconds();
+		if(lastSendTimeSeconds > 0){ // possible be zero in less than 1 seconds
+			_send_fixed_text();
+		}
+		return;
+	}
+
+	if(currentTimestamp - lastSendTimeSeconds > beaconSendInterval){
 		_send_fixed_text();
 		lastSendTimeSeconds = timer_clock_seconds();
 	}
