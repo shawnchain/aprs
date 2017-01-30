@@ -269,6 +269,7 @@ void tracker_init(void){
 void tracker_init_gps(void){
 	//initialize the GPS modules
     gps_init(&g_gps);
+    serialreader_reset(&g_serialreader);
 }
 
 void tracker_poll(void){
@@ -280,6 +281,8 @@ void tracker_poll(void){
 		// got the gps line!
 		if(gps_parse(&g_gps,(char*)g_serialreader.data,g_serialreader.dataLen) && g_gps.valid){
 			tracker_update_location(&g_gps);
+		}else{
+			//kfile_printf_P((KFile*)g_serialreader.ser,PSTR("invalid input: \r\n%.*s\r\n"),g_serialreader.dataLen,g_serialreader.data);
 		}
 	}
 }

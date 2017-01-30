@@ -43,6 +43,11 @@ typedef struct SerialReader{
 void serialreader_init(SerialReader *reader, Serial *ser);
 
 /*
+ * purge all receive data
+ */
+void serialreader_reset(SerialReader *reader);
+
+/*
  * read a line from the underlying serial
  * returns:
  *   n  bytes

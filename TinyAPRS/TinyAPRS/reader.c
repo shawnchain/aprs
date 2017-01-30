@@ -36,6 +36,12 @@ void serialreader_init(SerialReader *reader, Serial *ser){
 	reader->bufLen = READER_BUF_LEN;
 }
 
+void serialreader_reset(SerialReader *reader){
+	reader->dataLen = 0;
+	reader->readLen = 0;
+	kfile_clearerr((struct KFile*)reader->ser);
+}
+
 int serialreader_readline(SerialReader *reader){
 	uint8_t *readBuffer = reader->buf;
 
