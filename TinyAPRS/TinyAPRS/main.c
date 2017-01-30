@@ -181,6 +181,7 @@ static bool cmd_switch_mode(Serial* pSer, char* value, size_t len){
 			currentMode = MODE_TRACKER;
 			kfile_printf_P((KFile*)pSer,PSTR("Enter Tracker mode\r\n"));
 			kfile_flush((KFile*)pSer);
+			ser_purge(pSer);
 			// should enable the tracker/gps
 			tracker_init_gps();
 			break;
@@ -335,6 +336,8 @@ int main(void){
 		 */
 		ax25_poll(&g_ax25);
 
+		check_run_mode();
+
 		switch(currentMode){
 			case MODE_CFG:
 #if MOD_CONSOLE
@@ -400,7 +403,6 @@ int main(void){
 		}
 #endif
 
-		check_run_mode();
 	} // end of while(1)
 	return 0;
 }
