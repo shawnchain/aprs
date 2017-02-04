@@ -166,8 +166,10 @@ typedef struct Afsk
 	 */
 	uint8_t sampled_bits;
 
+#if CONFIG_AFSK_CARRIER_DETECT_FLAG
 	bool cd;
 	uint8_t cd_state;
+#endif
 
 	/**
 	 * Current phase, needed to know when the bitstream at ADC speed

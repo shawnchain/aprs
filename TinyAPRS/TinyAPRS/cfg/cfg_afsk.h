@@ -124,4 +124,11 @@
  */
 #define CONFIG_AFSK_ADC_USE_EXTERNAL_AREF 0
 
+/**
+ * AFSK stores carrier detected flag
+ * $WIZ$ type = bool
+ * $WIZ$ default value = 0
+ */
+#define CONFIG_AFSK_CARRIER_DETECT_FLAG 0
+
 #endif /* CFG_AFSK_H */

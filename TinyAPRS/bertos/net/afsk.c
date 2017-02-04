@@ -284,7 +284,6 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 	STATIC_ASSERT(BITRATE == 1200);
 
 #define CUTOFF_1200 1 // for 1200BPS, cutoff is 600HZ ?
-#define NRZ_S 1 // See https://en.wikipedia.org/wiki/Non-return-to-zero#Non-return-to-zero_space
 
 #if (CONFIG_AFSK_FILTER != AFSK_FIR)
 
@@ -342,12 +341,10 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 
 	/* Save this sampled bit in a delay line */
 	af->sampled_bits <<= 1;
-#if NRZ_S
+	// Using NRZ-SPACE coding here by the HDLC, see https://en.wikipedia.org/wiki/Non-return-to-zero#Non-return-to-zero_space
 	af->sampled_bits |= (af->iir_y[1] > 0) ? 0 : 1;
-#else
-	af->sampled_bits |= (af->iir_y[1] > 0) ? 1 : 0;
-#endif
 
+#if CONFIG_AFSK_CARRIER_DETECT_FLAG
 	if (ABS(af->iir_y[1]) - 20 > 0) {
 		af->cd_state++;
 		if (af->cd_state > 30) {
@@ -363,6 +360,7 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 			}
 		}
 	}
+#endif
 
 	/* Store current ADC sample in the af->delay_fifo */
 	fifo_push(&af->delay_fifo, curr_sample);
@@ -376,7 +374,7 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 
 	af->sampled_bits <<= 1;
 	af->sampled_bits |= fir_filter(af->iir_y[1] - af->iir_y[0], FIR_1200_LP) > 0;
-
+#if CONFIG_AFSK_CARRIER_DETECT_FLAG
 	if (af->iir_y[1] > DCD_LEVEL || af->iir_y[0] > DCD_LEVEL) {
 		af->cd_state++;
 		if (af->cd_state > 30) {
@@ -392,7 +390,7 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 			}
 		}
 	}
-
+#endif
 #endif
 
 //kprintf("%+03d %+03d %+03d %d\n", curr_sample, af->iir_x[1], af->iir_y[1], (af->cd)?1:0);
@@ -428,8 +426,9 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 		 || bits == 0x06 // 110, 2 bits
 		 || bits == 0x05 // 101, 2 bits
 		 || bits == 0x03 // 011, 2 bits
-		)
+		){
 			af->found_bits |= 1;
+		}
 
 		/*
 		 * NRZ-Space coding: if 2 consecutive bits have the same value
