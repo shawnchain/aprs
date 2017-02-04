@@ -283,7 +283,11 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 	STATIC_ASSERT(SAMPLERATE == 9600);
 	STATIC_ASSERT(BITRATE == 1200);
 
-#define CUTOFF_1200 1 // for 1200BPS, cutoff is 600HZ ?
+#define CUTOFF_600 0 // for 1200BPS, cutoff is 600HZ ?
+#define CUTOFF_800 1
+#define CUTOFF_1200 0
+#define CUTOFF_1600 0
+
 
 #if (CONFIG_AFSK_FILTER != AFSK_FIR)
 
@@ -300,14 +304,23 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 		af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) >> 2;
 		//af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) / 6.027339492;
 	#elif (CONFIG_AFSK_FILTER == AFSK_CHEBYSHEV)
-		#if CUTOFF_1200
-		af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) >> 1;
-		//simplification of:
-        //af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) / 2.228465666;
+		#if CUTOFF_600
+				af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) >> 2;
+				//af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) / 3.558147322;
+		#elif CUTOFF_800
+				af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) >> 2;
+				//af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) / 2.899043379;
+		#elif CUTOFF_1200
+				af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) >> 1;
+				//simplification of:
+				//af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) / 2.228465666;
+		#elif CUTOFF_1600
+				af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) >> 1;
+				//af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) / 1.881349100;
 		#else
-		af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) >> 2;
+			#error Invalid filter cutoff setup!
 		#endif
-		//af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) / 3.558147322;
+
 	#else
 		#error Filter type not found!
 	#endif
@@ -325,18 +338,26 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 		af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] >> 1) + (af->iir_y[0] >> 3) + (af->iir_y[0] >> 5);
 		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + af->iir_y[0] * 0.6681786379;
 	#elif CONFIG_AFSK_FILTER == AFSK_CHEBYSHEV
-		/*
-		 * This should be (af->iir_y[0] * 0.438) but
-		 * (af->iir_y[0] >> 1) is a faster approximation :-)
-		 */
-		#if CUTOFF_1200
-		af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] / 10);
-		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] >> 3);
-		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + af->iir_y[0] * 0.1025215106;
-		#else
+
+#if CUTOFF_600
 		af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] >> 1);
 		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + af->iir_y[0] * 0.4379097269;
-		#endif
+#elif CUTOFF_800
+		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] / 3);
+		af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] >> 2);
+		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] * 0.3101172565);
+#elif CUTOFF_1200
+		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] / 10);
+		af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] >> 3);
+		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] * 0.1025215106);
+#elif CUTOFF_1600
+		af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + -1 * (af->iir_y[0] >> 4);
+		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + -1 * (af->iir_y[0] / 17);
+		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] * -0.0630669239);
+#else
+	#error Invalid filter cutoff setup!
+#endif
+
 	#endif
 
 	/* Save this sampled bit in a delay line */
