@@ -283,6 +283,9 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 	STATIC_ASSERT(SAMPLERATE == 9600);
 	STATIC_ASSERT(BITRATE == 1200);
 
+#define CUTOFF_1200 1 // for 1200BPS, cutoff is 600HZ ?
+#define NRZ_S 1 // See https://en.wikipedia.org/wiki/Non-return-to-zero#Non-return-to-zero_space
+
 #if (CONFIG_AFSK_FILTER != AFSK_FIR)
 
 	/*
@@ -298,7 +301,13 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 		af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) >> 2;
 		//af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) / 6.027339492;
 	#elif (CONFIG_AFSK_FILTER == AFSK_CHEBYSHEV)
+		#if CUTOFF_1200
+		af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) >> 1;
+		//simplification of:
+        //af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) / 2.228465666;
+		#else
 		af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) >> 2;
+		#endif
 		//af->iir_x[1] = ((int8_t)fifo_pop(&af->delay_fifo) * curr_sample) / 3.558147322;
 	#else
 		#error Filter type not found!
@@ -321,13 +330,23 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 		 * This should be (af->iir_y[0] * 0.438) but
 		 * (af->iir_y[0] >> 1) is a faster approximation :-)
 		 */
-		af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] >> 3);
+		#if CUTOFF_1200
+		af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] / 10);
+		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] >> 3);
+		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + af->iir_y[0] * 0.1025215106;
+		#else
+		af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + (af->iir_y[0] >> 1);
 		//af->iir_y[1] = af->iir_x[0] + af->iir_x[1] + af->iir_y[0] * 0.4379097269;
+		#endif
 	#endif
 
 	/* Save this sampled bit in a delay line */
 	af->sampled_bits <<= 1;
+#if NRZ_S
+	af->sampled_bits |= (af->iir_y[1] > 0) ? 0 : 1;
+#else
 	af->sampled_bits |= (af->iir_y[1] > 0) ? 1 : 0;
+#endif
 
 	if (ABS(af->iir_y[1]) - 20 > 0) {
 		af->cd_state++;
@@ -413,7 +432,7 @@ void afsk_adc_isr(Afsk *af, int8_t curr_sample)
 			af->found_bits |= 1;
 
 		/*
-		 * NRZI coding: if 2 consecutive bits have the same value
+		 * NRZ-Space coding: if 2 consecutive bits have the same value
 		 * a 1 is received, otherwise it's a 0.
 		 */
 		if (!hdlc_parse(&af->hdlc, !EDGE_FOUND(af->found_bits), &af->rx_fifo))
@@ -528,7 +547,7 @@ uint8_t afsk_dac_isr(Afsk *af)
 		else
 		{
 			/*
-			 * NRZI: if we want to transmit a 1 the modulated frequency will stay
+			 * NRZ-SPACE: if we want to transmit a 1 the modulated frequency will stay
 			 * unchanged; with a 0, there will be a change in the tone.
 			 */
 			if (af->curr_out & af->tx_bit)
