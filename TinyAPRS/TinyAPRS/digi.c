@@ -51,7 +51,7 @@ static bool _digi_repeat_message(AX25Msg *msg){
 	// force delay 150ms
 	timer_delay(150);
 #if DIGI_DEBUG
-	kfile_printf_P(&g_serial.fd,PSTR("digipeat [%d]:\r\n"),c++);
+	kfile_printf_P(&g_serial.fd,PSTR(">[%d]digipeat:\r\n"),c++);
 	ax25_print(&g_serial.fd, msg);
 #endif
 	ax25_sendMsg(&g_ax25, msg);
@@ -97,19 +97,59 @@ static bool _digi_check_is_duplicated(AX25Msg *msg){
 		}
 	}
 	if(!dup){
-		cacheIndex = (cacheIndex + 1) % CACHE_SIZE;
+		cacheIndex++;
+		if(cacheIndex > CACHE_SIZE) cacheIndex = cacheIndex - CACHE_SIZE;
 		cache[cacheIndex - 1].hash = hash;
 		cache[cacheIndex - 1].timestamp = ticks_to_ms(timer_clock()) / 1000;
 	}
 	return dup;
 }
 
+#define copy_rpt_sta(src,dst) \
+	memset(&(dst->call),0,6); \
+	memcpy(&(dst->call),&(src->call),5); \
+	dst->ssid = src->ssid;
+
+#define rpt_required(rpt) \
+
+
 bool digi_handle_aprs_message(struct AX25Msg *msg){
-	for(int i = 0;i < msg->rpt_cnt;i++){
+	/*
+	AX25Call rptd[AX25_MAX_RPT];
+	uint8_t i = 0,j=0;
+	BOOL changed = false;
+	for(;i < msg->rpt_cnt;i++,j++){
 		AX25Call *rpt = msg->rpt_lst + i;
-		//uint8_t len = 5;
 		if( ((strncasecmp_P(rpt->call,PSTR("WIDE1"),5) == 0) || (strncasecmp_P(rpt->call,PSTR("WIDE2"),5) == 0) || (strncasecmp_P(rpt->call,PSTR("WIDE3"),5) == 0))
 				&& (rpt->ssid > 0)
+				&& !(AX25_REPEATED(msg,i)) ){
+
+			if(_digi_check_is_duplicated(msg)){
+				// seems duplicated in cache, drop
+				return false;
+			}
+
+			// insert mycall
+			if()
+
+
+			changed = true;
+			continue;
+		}
+		// just copy
+		copy_rpt_sta(&(msg->rpt_lst + i), &(rptd + j));
+	}
+	*/
+#if 1
+	// A quick-n-dirty digipeat logic based on the assumption: WIDE2-2 is always the last element in the path.
+#if DIGI_DEBUG
+	bool prt = false;
+#endif
+
+	for(int i = 0;i < msg->rpt_cnt;i++){
+		AX25Call *sta = msg->rpt_lst + i;
+		if( ((strncasecmp_P(sta->call,PSTR("WIDE1"),5) == 0) || (strncasecmp_P(sta->call,PSTR("WIDE2"),5) == 0) || (strncasecmp_P(sta->call,PSTR("WIDE3"),5) == 0))
+				&& (sta->ssid > 0)
 				&& !(AX25_REPEATED(msg,i)) ){
 
 			// check duplications;
@@ -117,28 +157,38 @@ bool digi_handle_aprs_message(struct AX25Msg *msg){
 				// seems duplicated in cache, drop
 				return false;
 			}
+#if DIGI_DEBUG
+			if(!prt){
+				kfile_printf_P(&g_serial.fd,PSTR(">[%d]original:\r\n"),c);
+				ax25_print(&g_serial.fd, msg);
+				prt = true;
+			}
 
-			if(rpt->ssid >1){
-				rpt->ssid--; // SSID-1
+#endif
+
+			if(sta->ssid >1){ //    case: WIDE2-2
+				sta->ssid--; // subtract: WIDE2-1
 				if(i < AX25_MAX_RPT - 1){
-					// copy WIDEn-(N-1) to next rpt list
-					AX25Call *c = rpt + 1;
+					AX25Call *c = sta + 1; // the next element in path to be copied/overwritten to
 					memset(&c->call,0,6);
-					memcpy(&c->call,&rpt->call,5);
-					c->ssid = rpt->ssid;
-					msg->rpt_cnt++; // we inserted my-call as one of the rpt address.
+					memcpy(&c->call,&sta->call,5);
+					c->ssid = sta->ssid;
+					AX25_SET_REPEATED(msg,i+1,0);
+					if(i == msg->rpt_cnt-1){ // increase count if current element[i] is the last one in path list
+						msg->rpt_cnt++; //
+					} // otherwise the next element is overwritten :(
 				}else{
 					// no space left for the new digi call, drop;
 					return false;
 				}
 			}
-			// replace the path with digi call and mark repeated.
-			settings_get_mycall(rpt);
+			// current element[i] will be replaced by THIS digi call and mark repeated.
+			settings_get_mycall(sta);
 			AX25_SET_REPEATED(msg,i,1);
 			return _digi_repeat_message(msg);
 		}
 	}// end for
-
+#endif
 	return false;
 }
 

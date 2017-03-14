@@ -55,23 +55,19 @@ void gps_init(GPS *gps){
 
 	kfile_print_P((KFile*)(&g_serial),PSTR("\r\n""$PSRF100,1,9600,8,1,0*0D\r\n"));
 	timer_delay(150);
+	ser_purge(&g_serial);
 
 	ser_setbaudrate(&g_serial, SER_BAUD_RATE_9600);
 	timer_delay(150);
 	ser_purge(&g_serial);
 
-	// Disable unused data beacuse of small memory
-//	for (i = 0; i < strlen_P(pstr_config_P); i++){
-//		//soft_uart_putchar(pgm_read_byte(pstr_config_P + i));
-//		kfile_putc(pgm_read_byte(pstr_config_P + i),&(g_serial.fd));
-//	}
 	kfile_print_P((KFile*)(&g_serial),PSTR("\r\n"
 			   "$PSRF103,1,0,0,1*25\r\n" 		/** Disables GPGLL */
 			   "$PSRF103,2,0,0,1*26\r\n" 		/** Disables GPGSA */
 			   "$PSRF103,3,0,0,1*27\r\n" 		/** Disables GPGSV */
 			   "$PSRF103,5,0,0,1*21\r\n" 		/** Disables GPVTG */
 			   ));
-	timer_delay(50);
+	timer_delay(150);
 	ser_purge(&g_serial);
 
 	// Initialize the pin13(PORTB BV(5)) for GPS signal indicator

@@ -34,3 +34,6 @@
 .settings
 /ConfigTool/TinyAPRSConfigTool/TinyAPRSConfigTool/bin
 /ConfigTool/TinyAPRSConfigTool/TinyAPRSConfigTool/obj
+
+*.old
+obj

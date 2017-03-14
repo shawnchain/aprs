@@ -25,6 +25,8 @@
 
 #define CONSOLE_SETTINGS_COMMANDS_ENABLED 1			// Disable console when the config tool is ready
 
+#define CONSOLE_SETTINGS_COMMAND_DEST_ENABLED 0		// Disable the at+dest command by default
+
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
 	#define CONSOLE_MAX_COMMAND	12					// How many AT commands to support
 #else

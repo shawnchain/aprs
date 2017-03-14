@@ -162,13 +162,17 @@ void console_parse_command(char* command, size_t commandLen){
 // Command Handlers
 ////////////////////////////////////////////////////////////////////////////////////
 
-static const PROGMEM char BANNER[] = "\r\nTinyAPRS (KISS-TNC/GPS-Beacon) 1.1-SNAPSHOT (f%da%d-%d)\r\n";
+static const PROGMEM char BANNER[] = "\r\nTinyAPRS Firmware 1.1.0 (f%da%d-%d) BG5HHP\r\n";
+static const PROGMEM char RESTRICTIONS[] = "Non-Commercial Use Only, All Rights Reserved.\r\n";
+static const PROGMEM char COPYRIGHTS[] = "Copyright 2015-2017, BG5HHP(shawn.chain@gmail.com)\r\n";
 static bool cmd_info(Serial* pSer, char* value, size_t len){
 	(void)value;
 	(void)len;
 	uint16_t freemem = freeRam();
 	// print welcome banner
 	kfile_printf_P((KFile*)pSer,BANNER,CONFIG_AFSK_FILTER,CONFIG_AFSK_ADC_USE_EXTERNAL_AREF,VERS_BUILD);
+	//SERIAL_PRINT_P(pSer,  RESTRICTIONS);
+	//SERIAL_PRINT_P(pSer,  COPYRIGHTS);
 
 	// print settings only when len > 0
 	if(len == 0){
@@ -207,17 +211,22 @@ static bool cmd_help(Serial* pSer, char* command, size_t len){
 	SERIAL_PRINT_P(pSer,PSTR("-----------------------------------------------------------\r\n"));
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
 	SERIAL_PRINT_P(pSer,PSTR("AT+CALL=[CALLSIGN-SSID]\t\t;Set my callsign\r\n"));
+#if CONSOLE_SETTINGS_COMMAND_DEST_ENABLED
 	SERIAL_PRINT_P(pSer,PSTR("AT+DEST=[CALLSIGN-SSID]\t\t;Set destination callsign\r\n"));
+#endif
 	SERIAL_PRINT_P(pSer,PSTR("AT+PATH=[WIDE1-1,WIDE2-2]\t;Set PATH, max 2 allowed\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+SYMBOL=[SYMBOL_TABLE/IDX]\t;Set beacon symbol\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+BEACON=[45]\t\t\t;Set beacon interval, 0 to disable \r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+TEXT=[!3011.54N/12007.35E>]\t;Set beacon text \r\n"));
 #endif
-	SERIAL_PRINT_P(pSer,PSTR("AT+MODE=[0|1|2]\t\t\t;Set device run mode\r\n"));
+	SERIAL_PRINT_P(pSer,PSTR("AT+MODE=[0|1|2]\t\t\t;Set device run mode, see manual\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("AT+KISS=[1]\t\t\t;Enter kiss mode\r\n"));
 	SERIAL_PRINT_P(pSer,PSTR("??\t\t\t\t;Display this help messages\r\n"));
 
-	SERIAL_PRINT_P(pSer,  PSTR("\r\nCopyright 2015,2016 BG5HHP(shawn.chain@gmail.com)\r\n\r\n"));
+	SERIAL_PRINT_P(pSer,  PSTR("\r\n"));
+	SERIAL_PRINT_P(pSer,  RESTRICTIONS);
+	SERIAL_PRINT_P(pSer,  COPYRIGHTS);
+
 
 	return true;
 }
@@ -247,6 +256,7 @@ static bool cmd_settings_mycall(Serial* pSer, char* value, size_t valueLen){
 /*
  * parse AT+DEST=CALL-ID
  */
+#if CONSOLE_SETTINGS_COMMAND_DEST_ENABLED
 static bool cmd_settings_destcall(Serial* pSer, char* value, size_t valueLen){
 	CallData calldata;
 	settings_get_call_data(&calldata);
@@ -259,6 +269,7 @@ static bool cmd_settings_destcall(Serial* pSer, char* value, size_t valueLen){
 	SERIAL_PRINTF_P(pSer,PSTR("DEST Call: %s\r\n"),callString);
 	return true;
 }
+#endif
 
 /*
  * parse AT+PATH=PATH1,PATH2
@@ -443,7 +454,9 @@ void console_init(){
 #if CONSOLE_SETTINGS_COMMANDS_ENABLED
 	// settings
     console_add_command(PSTR("CALL"),cmd_settings_mycall);		// setup my callsign-ssid
+#if CONSOLE_SETTINGS_COMMAND_DEST_ENABLED
     console_add_command(PSTR("DEST"),cmd_settings_destcall);	// setup destination call-ssid
+#endif
     console_add_command(PSTR("PATH"),cmd_settings_path);		// setup path like WIDEn-N for beaco
     console_add_command(PSTR("RESET"),cmd_settings_reset);				// reset the tnc
     console_add_command(PSTR("SYMBOL"),cmd_settings_symbol);	// setup the beacon symbol
