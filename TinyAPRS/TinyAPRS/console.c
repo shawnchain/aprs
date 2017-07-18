@@ -162,7 +162,7 @@ void console_parse_command(char* command, size_t commandLen){
 // Command Handlers
 ////////////////////////////////////////////////////////////////////////////////////
 
-static const PROGMEM char BANNER[] = "\r\nTinyAPRS Firmware 1.1.0 (f%da%d-%d) BG5HHP\r\n";
+static const PROGMEM char BANNER[] = "\r\nTinyAPRS Firmware 1.1.1 (f%da%d-%d) BG5HHP\r\n";
 static const PROGMEM char RESTRICTIONS[] = "Non-Commercial Use Only, All Rights Reserved.\r\n";
 static const PROGMEM char COPYRIGHTS[] = "Copyright 2015-2017, BG5HHP(shawn.chain@gmail.com)\r\n";
 static bool cmd_info(Serial* pSer, char* value, size_t len){
