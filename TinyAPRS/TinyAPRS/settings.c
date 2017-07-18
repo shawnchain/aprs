@@ -30,7 +30,7 @@ static const PROGMEM CallData default_calldata = {
 				.ssid=0,
 		},
 		.destCall = {
-				.call={'A','P','T','I','0','1'},
+				.call={'A','P','T','A','0','1'},
 				.ssid=0,
 		},
 		.path1 = {
