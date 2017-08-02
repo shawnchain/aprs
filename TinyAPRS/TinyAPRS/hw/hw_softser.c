@@ -7,7 +7,8 @@
 #include <string.h>
 #include <cfg/compiler.h>
 #include "hw_softser.h"
-#include "hw_pins_arduino.h"
+
+#include "arduino_compat.h"
 
 #if CFG_SOFTSER_RX_ENABLED
 #define _SS_MAX_RX_BUFF CFG_SOFTSER_RXBUFSIZE // RX buffer size, see cfg_softser.h
@@ -56,60 +57,6 @@ const int XMIT_START_ADJUSTMENT = 5;
 
 #error This version of SoftwareSerial supports only 16MHz processors
 
-#endif
-
-static void pinMode(uint8_t pin, uint8_t mode) {
-	uint8_t bit = digitalPinToBitMask(pin);
-	uint8_t port = digitalPinToPort(pin);
-	volatile uint8_t *reg, *out;
-
-	if (port == NOT_A_PIN)
-		return;
-
-	// JWS: can I let the optimizer do this?
-	reg = portModeRegister(port);
-	out = portOutputRegister(port);
-
-	if (mode == INPUT) {
-		ATOMIC(*reg &= ~bit; *out &= ~bit;);
-	} else if (mode == INPUT_PULLUP) {
-		ATOMIC(*reg &= ~bit; *out |= bit;);
-	} else {
-		ATOMIC(*reg |= bit;);
-	}
-}
-
-static void digitalWrite(uint8_t pin, uint8_t val) {
-	uint8_t bit = digitalPinToBitMask(pin);
-	uint8_t port = digitalPinToPort(pin);
-	volatile uint8_t *out;
-
-	if (port == NOT_A_PIN)
-		return;
-
-	out = portOutputRegister(port);
-
-	uint8_t oldSREG = SREG;
-	cli();
-	if (val == LOW) {
-		*out &= ~bit;
-	} else {
-		*out |= bit;
-	}
-	SREG = oldSREG;
-}
-
-#if 0
- static int digitalRead(uint8_t pin) {
- uint8_t bit = digitalPinToBitMask(pin);
- uint8_t port = digitalPinToPort(pin);
- if (port == NOT_A_PIN)
- return LOW;
-
- if (*portInputRegister(port) & bit)
- return HIGH;
- return LOW;
- }
 #endif
 
 //

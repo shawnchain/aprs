@@ -30,18 +30,47 @@ TinyAPRS_USER_CSRC = \
 	$(TinyAPRS_SRC_PATH)/reader.c \
 	$(TinyAPRS_SRC_PATH)/settings.c
 
+MOD_CONSOLE := 1
+MOD_KISS := 0
+MOD_BEACON := 0
+MOD_TRACKER := 0
+MOD_DIGI := 0
+MOD_RADIO := 0
+
+ifeq ($(TNC),1)
+MOD_CONSOLE := 1
+MOD_KISS := 1
+MOD_BEACON := 0
+MOD_TRACKER := 0
+MOD_DIGI := 0
+MOD_RADIO := 0
+endif
+
+ifeq ($(TRACKER),1)
+MOD_CONSOLE := 1
+MOD_KISS := 0
+MOD_BEACON := 1
+MOD_TRACKER := 1
+MOD_DIGI := 0
+MOD_RADIO := 1
+endif
+
+ifeq ($(DIGI),1)
+MOD_CONSOLE := 1
+MOD_KISS := 1
+MOD_BEACON := 1
+MOD_TRACKER := 0
+MOD_DIGI := 1
+MOD_RADIO := 0
+endif
+
 ifeq ($(ALL),1)
 MOD_CONSOLE := 1
 MOD_KISS := 1
 MOD_TRACKER := 1
+MOD_BEACON := 1
 MOD_DIGI := 1
-else
-MOD_CONSOLE := 0
-MOD_KISS := 0
-MOD_TRACKER := 0
-MOD_DIGI := 0
-MOD_BEACON := 0
-MOD_RADIO := 0
+MOD_RADIO := 1
 endif
 
 

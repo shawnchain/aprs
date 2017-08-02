@@ -67,7 +67,15 @@ SettingsData g_settings = {
 			.slot_time = 10,
 			.duplex = RF_DUPLEX_HALF
 		},
+#if MOD_KISS
 		.run_mode = 1
+#elif MOD_TRACKER
+		.run_mode = 2
+#elif MOD_DIGI
+		.run_mode = 3
+#else
+		.run_mode = 0
+#endif
 };
 
 #define NV_SETTINGS_HEAD_BYTE_VALUE 0x88
