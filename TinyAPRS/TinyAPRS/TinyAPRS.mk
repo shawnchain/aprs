@@ -11,6 +11,10 @@ TRG += TinyAPRS
 
 TinyAPRS_PREFIX = "/usr/bin/avr-"
 
+ifeq ($(shell uname | grep -c "Darwin"),1)
+TinyAPRS_PREFIX := "/usr/local/CrossPack-AVR/bin/avr-"
+endif
+
 TinyAPRS_SUFFIX = ""
 
 TinyAPRS_SRC_PATH = TinyAPRS

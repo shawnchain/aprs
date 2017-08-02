@@ -10,6 +10,7 @@
 #include "hw_pins_arduino.h"
 
 #if CFG_SOFTSER_RX_ENABLED
+#define _SS_MAX_RX_BUFF CFG_SOFTSER_RXBUFSIZE // RX buffer size, see cfg_softser.h
 static char _receive_buffer[_SS_MAX_RX_BUFF];
 static volatile uint8_t _receive_buffer_tail = 0;
 static volatile uint8_t _receive_buffer_head = 0;
@@ -291,31 +292,18 @@ int hw_softser_write(SoftSerial *pSSer, uint8_t b) {
 	hw_softser_tunedDelay(pSSer->_tx_delay + XMIT_START_ADJUSTMENT);
 
 	// Write each of the 8 bits
-	if (pSSer->_inverse_logic) {
-		for (uint8_t mask = 0x01; mask; mask <<= 1) {
-			if (b & mask) { // choose bit
-				tx_pin_write(pSSer, LOW); // send 1
-			} else {
-				tx_pin_write(pSSer, HIGH); // send 0
-			}
-
-			hw_softser_tunedDelay(pSSer->_tx_delay);
+	bool HIGH_VALUE = pSSer->_inverse_logic?LOW:HIGH;
+	bool LOW_VALUE = !HIGH_VALUE;
+	for (uint8_t mask = 0x01; mask; mask <<= 1) {
+		if (b & mask) { // choose bit
+			tx_pin_write(pSSer, HIGH_VALUE); // send 1 ( or 0 in inverse logic)
+		} else {
+			tx_pin_write(pSSer, LOW_VALUE); // send 0 ( or 1 in inverse logic)
 		}
 
-		tx_pin_write(pSSer, LOW); // restore pin to natural state
-	} else {
-		for (uint8_t mask = 0x01; mask; mask <<= 1) {
-			if (b & mask) { // choose bit
-				tx_pin_write(pSSer, HIGH); // send 1
-			} else {
-				tx_pin_write(pSSer, LOW); // send 0
-			}
-
-			hw_softser_tunedDelay(pSSer->_tx_delay);
-		}
-
-		tx_pin_write(pSSer, HIGH); // restore pin to natural state
+		hw_softser_tunedDelay(pSSer->_tx_delay);
 	}
+	tx_pin_write(pSSer, HIGH_VALUE); // restore pin to natural state
 
 	SREG = oldSREG; // turn interrupts back on
 	hw_softser_tunedDelay(pSSer->_tx_delay);
@@ -341,10 +329,11 @@ int hw_softser_print(SoftSerial *pSSer, char* str){
 #endif
 }
 
+#if CFG_SOFTSER_RX_ENABLED
+
 #define rx_pin_read(pSSer) \
   (*(pSSer->_receivePortRegister) & (pSSer->_receiveBitMask))
 
-#if CFG_SOFTSER_RX_ENABLED
 //
 // The receive routine called by the interrupt handler
 //
@@ -449,13 +438,12 @@ DECLARE_ISR(PCINT2_vect)
 }
 #endif
 
-/*
  #if defined(PCINT3_vect)
  DECLARE_ISR(PCINT3_vect)
  {
  hw_soft_ser_handle_interrupt();
  }
  #endif
- */
 
-#endif
+
+#endif // end of #if CFG_SOFTSER_RX_ENABLED

@@ -17,11 +17,8 @@
 #ifndef CFG_RADIO_H_
 #define CFG_RADIO_H_
 
-#define CFG_RADIO_ENABLED 0
-
-#define CFG_RADIO_SOFTSER 0
 #define CFG_RADIO_RX_PIN 12
 #define CFG_RADIO_TX_PIN 11
-
+#define CFG_RADIO_PORT_BAUDRATE 9600
 
 #endif /* CFG_RADIO_H_ */

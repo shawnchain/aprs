@@ -20,7 +20,8 @@
 #include "cfg/cfg_radio.h"
 #include "hw/hw_softser.h"
 
-void radio_init(SoftSerial *p,uint16_t freqHigh,uint16_t freqLow);
+extern SoftSerial *radioPort;
+void radio_init(uint32_t freq);
 
 
 #endif /* RADIO_H_ */

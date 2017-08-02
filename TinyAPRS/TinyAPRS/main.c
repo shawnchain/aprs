@@ -55,7 +55,6 @@
 #if MOD_RADIO
 #include "cfg/cfg_radio.h"
 #include "radio.h"
-static SoftSerial softSer;
 #endif
 
 #if MOD_TRACKER
@@ -303,9 +302,7 @@ static void init(void)
 
 #if MOD_RADIO
     // Initialize the soft serial and radio
-    softser_init(&softSer, CFG_RADIO_RX_PIN,CFG_RADIO_TX_PIN);
-    softser_start(&softSer,9600);
-    radio_init(&softSer,431, 400);
+    radio_init(4310400); //TODO read from settings
 #endif
 
     // Initialize GPS NMEA/GPRMC parser
@@ -386,19 +383,20 @@ int main(void){
 #if DEBUG_SOFT_SER
 		// Dump the isr changes
 		{
+			SoftSerial *softSer = radioPort;
 			static uint32_t i = 0;
 			//static uint32_t j = 0;
 			if(i++ == 30000){
 				i = 0;
 
 				char c;
-				while(softser_avail(&softSer)){
-					c = softser_read(&softSer);
-					kfile_putc(c,&(ser.fd));
+				while(softser_avail(softSer)){
+					c = softser_read(softSer);
+					kfile_putc(c,&(g_serial.fd));
 				}
 				char buf[8];
 				sprintf_P(buf,PSTR("0K\n\r"));
-				softser_print(&softSer,buf);
+				softser_print(softSer,buf);
 			}
 		}
 #endif

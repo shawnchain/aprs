@@ -41,6 +41,7 @@ MOD_KISS := 0
 MOD_TRACKER := 0
 MOD_DIGI := 0
 MOD_BEACON := 0
+MOD_RADIO := 0
 endif
 
 
@@ -75,7 +76,14 @@ TinyAPRS_USER_CSRC += \
 	$(TinyAPRS_SRC_PATH)/beacon.c
 endif
 
-MOD_RADIO := 0
+ifeq ($(MOD_RADIO),1)
+MOD_RADIO = 1
+TinyAPRS_USER_CSRC += \
+	$(TinyAPRS_SRC_PATH)/hw/arduino_compat.c \
+	$(TinyAPRS_SRC_PATH)/hw/hw_softser.c \
+	$(TinyAPRS_SRC_PATH)/radio.c
+endif
+
 #TinyAPRS_USER_CSRC += \
 	#$(TinyAPRS_SRC_PATH)/lcd/hw_lcd_4884.c \	
 	#$(TinyAPRS_SRC_PATH)/hw/hw_softser.c \
